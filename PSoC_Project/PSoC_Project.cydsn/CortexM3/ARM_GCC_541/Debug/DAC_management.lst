@@ -1,0 +1,1456 @@
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"DAC_management.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.DAC_Start,"ax",%progbits
+  20              		.align	2
+  21              		.global	DAC_Start
+  22              		.thumb
+  23              		.thumb_func
+  24              		.type	DAC_Start, %function
+  25              	DAC_Start:
+  26              	.LFB64:
+  27              		.file 1 "DAC_management.c"
+   1:DAC_management.c **** /*********************************************************************************
+   2:DAC_management.c **** * File Name: DAC.c
+   3:DAC_management.c **** *
+   4:DAC_management.c **** * Description:
+   5:DAC_management.c **** *  An abstraction of 2 different DACs, an 8-bit VDAC or 12-bit DVDAC.
+   6:DAC_management.c **** *  This file contains the source code for
+   7:DAC_management.c **** *  the custom DAC, an 8-bit VDAC or 12-bit DVDAC selectable by the user
+   8:DAC_management.c **** *
+   9:DAC_management.c **** **********************************************************************************
+  10:DAC_management.c ****  * Copyright Naresuan University, Phitsanulok Thailand
+  11:DAC_management.c ****  * Released under Creative Commons Attribution-ShareAlike  3.0 (CC BY-SA 3.0 US)
+  12:DAC_management.c **** *********************************************************************************/
+  13:DAC_management.c **** 
+  14:DAC_management.c **** #include "DAC_management.h"
+  15:DAC_management.c **** #include "globals.h"
+  16:DAC_management.c **** 
+  17:DAC_management.c **** 
+  18:DAC_management.c **** /******************************************************************************
+  19:DAC_management.c **** * Function Name: DAC_Start
+  20:DAC_management.c **** *******************************************************************************
+  21:DAC_management.c **** *
+  22:DAC_management.c **** * Summary:
+  23:DAC_management.c **** *  Start the correct voltage source.  
+  24:DAC_management.c **** *  Figure what source is being used, set the  correct AMux settings and start 
+  25:DAC_management.c **** *  the correct source
+  26:DAC_management.c **** *
+  27:DAC_management.c **** * Parameters:
+  28:DAC_management.c **** *
+  29:DAC_management.c **** *
+  30:DAC_management.c **** *  Global variables:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 2
+
+
+  31:DAC_management.c **** *  selected_voltage_source:  voltage source that is set to run, 
+  32:DAC_management.c **** *      [VDAC_IS_VDAC or VDAC_IS_DVDAC]
+  33:DAC_management.c **** *
+  34:DAC_management.c **** *******************************************************************************/
+  35:DAC_management.c **** 
+  36:DAC_management.c **** void DAC_Start(void) {
+  28              		.loc 1 36 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32 0000 08B5     		push	{r3, lr}
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 3, -8
+  35              		.cfi_offset 14, -4
+  37:DAC_management.c ****     selected_voltage_source = helper_check_voltage_source();  // check which DAC is being used
+  36              		.loc 1 37 0
+  37 0002 FFF7FEFF 		bl	helper_check_voltage_source
+  38              	.LVL0:
+  39 0006 0B4B     		ldr	r3, .L5
+  40 0008 1870     		strb	r0, [r3]
+  38:DAC_management.c ****     
+  39:DAC_management.c ****     if (selected_voltage_source == VDAC_IS_DVDAC) {
+  41              		.loc 1 39 0
+  42 000a 0228     		cmp	r0, #2
+  43 000c 09D1     		bne	.L2
+  40:DAC_management.c ****         DVDAC_Start();
+  44              		.loc 1 40 0
+  45 000e FFF7FEFF 		bl	DVDAC_Start
+  46              	.LVL1:
+  41:DAC_management.c ****         dac_ground_value = VIRTUAL_GROUND;  //VIRTUAL_GROUND / 1 mV the value of the DAC that will 
+  47              		.loc 1 41 0
+  48 0012 4FF40062 		mov	r2, #2048
+  49 0016 084B     		ldr	r3, .L5+4
+  50 0018 1A80     		strh	r2, [r3]	@ movhi
+  42:DAC_management.c ****         AMux_V_source_Select(DVDAC_channel);
+  51              		.loc 1 42 0
+  52 001a 0120     		movs	r0, #1
+  53 001c FFF7FEFF 		bl	AMux_V_source_Select
+  54              	.LVL2:
+  55 0020 08BD     		pop	{r3, pc}
+  56              	.L2:
+  43:DAC_management.c ****     }
+  44:DAC_management.c ****     else {
+  45:DAC_management.c ****         VDAC_source_Start();
+  57              		.loc 1 45 0
+  58 0022 FFF7FEFF 		bl	VDAC_source_Start
+  59              	.LVL3:
+  46:DAC_management.c ****         dac_ground_value = VIRTUAL_GROUND / 16;  // value of dac to make 0 V across working and aux
+  60              		.loc 1 46 0
+  61 0026 8022     		movs	r2, #128
+  62 0028 034B     		ldr	r3, .L5+4
+  63 002a 1A80     		strh	r2, [r3]	@ movhi
+  47:DAC_management.c ****         AMux_V_source_Select(VDAC_channel);
+  64              		.loc 1 47 0
+  65 002c 0020     		movs	r0, #0
+  66 002e FFF7FEFF 		bl	AMux_V_source_Select
+  67              	.LVL4:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 3
+
+
+  68 0032 08BD     		pop	{r3, pc}
+  69              	.L6:
+  70              		.align	2
+  71              	.L5:
+  72 0034 00000000 		.word	selected_voltage_source
+  73 0038 00000000 		.word	dac_ground_value
+  74              		.cfi_endproc
+  75              	.LFE64:
+  76              		.size	DAC_Start, .-DAC_Start
+  77              		.section	.text.DAC_Sleep,"ax",%progbits
+  78              		.align	2
+  79              		.global	DAC_Sleep
+  80              		.thumb
+  81              		.thumb_func
+  82              		.type	DAC_Sleep, %function
+  83              	DAC_Sleep:
+  84              	.LFB65:
+  48:DAC_management.c ****     }
+  49:DAC_management.c **** }
+  50:DAC_management.c **** 
+  51:DAC_management.c **** /******************************************************************************
+  52:DAC_management.c **** * Function Name: DAC_Sleep
+  53:DAC_management.c **** *******************************************************************************
+  54:DAC_management.c **** *
+  55:DAC_management.c **** * Summary:
+  56:DAC_management.c **** *  Put to sleep the correct voltage source
+  57:DAC_management.c **** *
+  58:DAC_management.c **** * Parameters:
+  59:DAC_management.c **** *
+  60:DAC_management.c **** *
+  61:DAC_management.c **** * Global variables:
+  62:DAC_management.c **** *  selected_voltage_source:  voltage source that is set to run, 
+  63:DAC_management.c **** *      [VDAC_IS_VDAC or VDAC_IS_DVDAC]
+  64:DAC_management.c **** *
+  65:DAC_management.c **** *******************************************************************************/
+  66:DAC_management.c **** 
+  67:DAC_management.c **** void DAC_Sleep(void) {
+  85              		.loc 1 67 0
+  86              		.cfi_startproc
+  87              		@ args = 0, pretend = 0, frame = 0
+  88              		@ frame_needed = 0, uses_anonymous_args = 0
+  89 0000 08B5     		push	{r3, lr}
+  90              		.cfi_def_cfa_offset 8
+  91              		.cfi_offset 3, -8
+  92              		.cfi_offset 14, -4
+  68:DAC_management.c ****     if (selected_voltage_source == VDAC_IS_DVDAC) {
+  93              		.loc 1 68 0
+  94 0002 054B     		ldr	r3, .L11
+  95 0004 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+  96 0006 022B     		cmp	r3, #2
+  97 0008 02D1     		bne	.L8
+  69:DAC_management.c ****         DVDAC_Sleep();
+  98              		.loc 1 69 0
+  99 000a FFF7FEFF 		bl	DVDAC_Sleep
+ 100              	.LVL5:
+ 101 000e 08BD     		pop	{r3, pc}
+ 102              	.L8:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 4
+
+
+  70:DAC_management.c ****     }
+  71:DAC_management.c ****     else {
+  72:DAC_management.c ****         VDAC_source_Sleep();
+ 103              		.loc 1 72 0
+ 104 0010 FFF7FEFF 		bl	VDAC_source_Sleep
+ 105              	.LVL6:
+ 106 0014 08BD     		pop	{r3, pc}
+ 107              	.L12:
+ 108 0016 00BF     		.align	2
+ 109              	.L11:
+ 110 0018 00000000 		.word	selected_voltage_source
+ 111              		.cfi_endproc
+ 112              	.LFE65:
+ 113              		.size	DAC_Sleep, .-DAC_Sleep
+ 114              		.section	.text.DAC_Wakeup,"ax",%progbits
+ 115              		.align	2
+ 116              		.global	DAC_Wakeup
+ 117              		.thumb
+ 118              		.thumb_func
+ 119              		.type	DAC_Wakeup, %function
+ 120              	DAC_Wakeup:
+ 121              	.LFB66:
+  73:DAC_management.c ****     }
+  74:DAC_management.c **** }
+  75:DAC_management.c **** 
+  76:DAC_management.c **** 
+  77:DAC_management.c **** /******************************************************************************
+  78:DAC_management.c **** * Function Name: DAC_Wakeup
+  79:DAC_management.c **** *******************************************************************************
+  80:DAC_management.c **** *
+  81:DAC_management.c **** * Summary:
+  82:DAC_management.c **** *  Wake up the correct voltage source
+  83:DAC_management.c **** *
+  84:DAC_management.c **** * Parameters:
+  85:DAC_management.c **** *
+  86:DAC_management.c **** *
+  87:DAC_management.c **** * Global variables:
+  88:DAC_management.c **** *  selected_voltage_source:  voltage source that is set to run, 
+  89:DAC_management.c **** *      [VDAC_IS_VDAC or VDAC_IS_DVDAC]
+  90:DAC_management.c **** *
+  91:DAC_management.c **** *******************************************************************************/
+  92:DAC_management.c **** 
+  93:DAC_management.c **** void DAC_Wakeup(void) {
+ 122              		.loc 1 93 0
+ 123              		.cfi_startproc
+ 124              		@ args = 0, pretend = 0, frame = 0
+ 125              		@ frame_needed = 0, uses_anonymous_args = 0
+ 126 0000 08B5     		push	{r3, lr}
+ 127              		.cfi_def_cfa_offset 8
+ 128              		.cfi_offset 3, -8
+ 129              		.cfi_offset 14, -4
+  94:DAC_management.c ****     if (selected_voltage_source == VDAC_IS_DVDAC) {
+ 130              		.loc 1 94 0
+ 131 0002 054B     		ldr	r3, .L17
+ 132 0004 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 133 0006 022B     		cmp	r3, #2
+ 134 0008 02D1     		bne	.L14
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 5
+
+
+  95:DAC_management.c ****         DVDAC_Wakeup();
+ 135              		.loc 1 95 0
+ 136 000a FFF7FEFF 		bl	DVDAC_Wakeup
+ 137              	.LVL7:
+ 138 000e 08BD     		pop	{r3, pc}
+ 139              	.L14:
+  96:DAC_management.c ****     }
+  97:DAC_management.c ****     else {
+  98:DAC_management.c ****         VDAC_source_Wakeup();
+ 140              		.loc 1 98 0
+ 141 0010 FFF7FEFF 		bl	VDAC_source_Wakeup
+ 142              	.LVL8:
+ 143 0014 08BD     		pop	{r3, pc}
+ 144              	.L18:
+ 145 0016 00BF     		.align	2
+ 146              	.L17:
+ 147 0018 00000000 		.word	selected_voltage_source
+ 148              		.cfi_endproc
+ 149              	.LFE66:
+ 150              		.size	DAC_Wakeup, .-DAC_Wakeup
+ 151              		.section	.text.DAC_SetValue,"ax",%progbits
+ 152              		.align	2
+ 153              		.global	DAC_SetValue
+ 154              		.thumb
+ 155              		.thumb_func
+ 156              		.type	DAC_SetValue, %function
+ 157              	DAC_SetValue:
+ 158              	.LFB67:
+  99:DAC_management.c ****     }
+ 100:DAC_management.c **** }
+ 101:DAC_management.c **** 
+ 102:DAC_management.c **** 
+ 103:DAC_management.c **** /******************************************************************************
+ 104:DAC_management.c **** * Function Name: DAC_SetValue
+ 105:DAC_management.c **** *******************************************************************************
+ 106:DAC_management.c **** *
+ 107:DAC_management.c **** * Summary:
+ 108:DAC_management.c **** *  Set the value of the correct voltage source
+ 109:DAC_management.c **** *
+ 110:DAC_management.c **** * Parameters:
+ 111:DAC_management.c **** *  uint16_t value: number to place in the appropriate DAC
+ 112:DAC_management.c **** *
+ 113:DAC_management.c **** * Global variables:
+ 114:DAC_management.c **** *  selected_voltage_source:  voltage source that is set to run, 
+ 115:DAC_management.c **** *      [VDAC_IS_VDAC or VDAC_IS_DVDAC]
+ 116:DAC_management.c **** *
+ 117:DAC_management.c **** *******************************************************************************/
+ 118:DAC_management.c **** 
+ 119:DAC_management.c **** void DAC_SetValue(uint16_t value) {
+ 159              		.loc 1 119 0
+ 160              		.cfi_startproc
+ 161              		@ args = 0, pretend = 0, frame = 0
+ 162              		@ frame_needed = 0, uses_anonymous_args = 0
+ 163              	.LVL9:
+ 164 0000 08B5     		push	{r3, lr}
+ 165              		.cfi_def_cfa_offset 8
+ 166              		.cfi_offset 3, -8
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 6
+
+
+ 167              		.cfi_offset 14, -4
+ 120:DAC_management.c ****     
+ 121:DAC_management.c ****     if (selected_voltage_source == VDAC_IS_DVDAC) {
+ 168              		.loc 1 121 0
+ 169 0002 054B     		ldr	r3, .L23
+ 170 0004 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 171 0006 022B     		cmp	r3, #2
+ 172 0008 02D1     		bne	.L20
+ 122:DAC_management.c ****         DVDAC_SetValue(value);
+ 173              		.loc 1 122 0
+ 174 000a FFF7FEFF 		bl	DVDAC_SetValue
+ 175              	.LVL10:
+ 176 000e 08BD     		pop	{r3, pc}
+ 177              	.LVL11:
+ 178              	.L20:
+ 123:DAC_management.c ****     }
+ 124:DAC_management.c ****     else {
+ 125:DAC_management.c ****         VDAC_source_SetValue(value);
+ 179              		.loc 1 125 0
+ 180 0010 C0B2     		uxtb	r0, r0
+ 181              	.LVL12:
+ 182 0012 FFF7FEFF 		bl	VDAC_source_SetValue
+ 183              	.LVL13:
+ 184 0016 08BD     		pop	{r3, pc}
+ 185              	.L24:
+ 186              		.align	2
+ 187              	.L23:
+ 188 0018 00000000 		.word	selected_voltage_source
+ 189              		.cfi_endproc
+ 190              	.LFE67:
+ 191              		.size	DAC_SetValue, .-DAC_SetValue
+ 192              		.comm	finished_procedure_flag,1,1
+ 193              		.comm	data_long,5000,4
+ 194              		.comm	data_to_send,120,4
+ 195              		.comm	temp,20,4
+ 196              		.comm	data_buffer,20,4
+ 197              		.comm	selected_voltage_source,1,1
+ 198              		.comm	tia_calibration_values,21,4
+ 199              		.comm	lut_length,2,2
+ 200              		.comm	lut_index,2,2
+ 201              		.comm	waveform_lut,10010,4
+ 202              		.comm	lut_value,2,2
+ 203              		.comm	return_value,4,4
+ 204              		.comm	dac_ground_value,2,2
+ 205              		.bss
+ 206              		.type	input_flag, %object
+ 207              		.size	input_flag, 1
+ 208              	input_flag:
+ 209 0000 00       		.space	1
+ 210              		.type	connection_state, %object
+ 211              		.size	connection_state, 1
+ 212              	connection_state:
+ 213 0001 00       		.space	1
+ 214              		.type	buffer_index, %object
+ 215              		.size	buffer_index, 1
+ 216              	buffer_index:
+ 217 0002 00       		.space	1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 7
+
+
+ 218              		.text
+ 219              	.Letext0:
+ 220              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 221              		.file 3 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 222              		.file 4 "Generated_Source\\PSoC5/cytypes.h"
+ 223              		.file 5 "globals.h"
+ 224              		.file 6 "Generated_Source\\PSoC5/core_cm3.h"
+ 225              		.file 7 "DAC_management.h"
+ 226              		.file 8 "BT_protocols.h"
+ 227              		.file 9 "hardware_management.h"
+ 228              		.file 10 "Generated_Source\\PSoC5/DVDAC.h"
+ 229              		.file 11 "Generated_Source\\PSoC5/AMux_V_source.h"
+ 230              		.file 12 "Generated_Source\\PSoC5/VDAC_source.h"
+ 231              		.section	.debug_info,"",%progbits
+ 232              	.Ldebug_info0:
+ 233 0000 B7030000 		.4byte	0x3b7
+ 234 0004 0400     		.2byte	0x4
+ 235 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 236 000a 04       		.byte	0x4
+ 237 000b 01       		.uleb128 0x1
+ 238 000c C9000000 		.4byte	.LASF52
+ 239 0010 0C       		.byte	0xc
+ 240 0011 9B010000 		.4byte	.LASF53
+ 241 0015 F7020000 		.4byte	.LASF54
+ 242 0019 00000000 		.4byte	.Ldebug_ranges0+0
+ 243 001d 00000000 		.4byte	0
+ 244 0021 00000000 		.4byte	.Ldebug_line0
+ 245 0025 02       		.uleb128 0x2
+ 246 0026 01       		.byte	0x1
+ 247 0027 06       		.byte	0x6
+ 248 0028 AF000000 		.4byte	.LASF0
+ 249 002c 03       		.uleb128 0x3
+ 250 002d 15000000 		.4byte	.LASF3
+ 251 0031 02       		.byte	0x2
+ 252 0032 1D       		.byte	0x1d
+ 253 0033 37000000 		.4byte	0x37
+ 254 0037 02       		.uleb128 0x2
+ 255 0038 01       		.byte	0x1
+ 256 0039 08       		.byte	0x8
+ 257 003a BB000000 		.4byte	.LASF1
+ 258 003e 02       		.uleb128 0x2
+ 259 003f 02       		.byte	0x2
+ 260 0040 05       		.byte	0x5
+ 261 0041 D9020000 		.4byte	.LASF2
+ 262 0045 03       		.uleb128 0x3
+ 263 0046 B6010000 		.4byte	.LASF4
+ 264 004a 02       		.byte	0x2
+ 265 004b 2B       		.byte	0x2b
+ 266 004c 50000000 		.4byte	0x50
+ 267 0050 02       		.uleb128 0x2
+ 268 0051 02       		.byte	0x2
+ 269 0052 07       		.byte	0x7
+ 270 0053 7B010000 		.4byte	.LASF5
+ 271 0057 03       		.uleb128 0x3
+ 272 0058 43000000 		.4byte	.LASF6
+ 273 005c 02       		.byte	0x2
+ 274 005d 3F       		.byte	0x3f
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 8
+
+
+ 275 005e 62000000 		.4byte	0x62
+ 276 0062 02       		.uleb128 0x2
+ 277 0063 04       		.byte	0x4
+ 278 0064 05       		.byte	0x5
+ 279 0065 56030000 		.4byte	.LASF7
+ 280 0069 02       		.uleb128 0x2
+ 281 006a 04       		.byte	0x4
+ 282 006b 07       		.byte	0x7
+ 283 006c 64010000 		.4byte	.LASF8
+ 284 0070 02       		.uleb128 0x2
+ 285 0071 08       		.byte	0x8
+ 286 0072 05       		.byte	0x5
+ 287 0073 8C020000 		.4byte	.LASF9
+ 288 0077 02       		.uleb128 0x2
+ 289 0078 08       		.byte	0x8
+ 290 0079 07       		.byte	0x7
+ 291 007a 22020000 		.4byte	.LASF10
+ 292 007e 04       		.uleb128 0x4
+ 293 007f 04       		.byte	0x4
+ 294 0080 05       		.byte	0x5
+ 295 0081 696E7400 		.ascii	"int\000"
+ 296 0085 02       		.uleb128 0x2
+ 297 0086 04       		.byte	0x4
+ 298 0087 07       		.byte	0x7
+ 299 0088 06020000 		.4byte	.LASF11
+ 300 008c 03       		.uleb128 0x3
+ 301 008d 39020000 		.4byte	.LASF12
+ 302 0091 03       		.byte	0x3
+ 303 0092 18       		.byte	0x18
+ 304 0093 2C000000 		.4byte	0x2c
+ 305 0097 03       		.uleb128 0x3
+ 306 0098 EE020000 		.4byte	.LASF13
+ 307 009c 03       		.byte	0x3
+ 308 009d 24       		.byte	0x24
+ 309 009e 45000000 		.4byte	0x45
+ 310 00a2 03       		.uleb128 0x3
+ 311 00a3 6F020000 		.4byte	.LASF14
+ 312 00a7 03       		.byte	0x3
+ 313 00a8 2C       		.byte	0x2c
+ 314 00a9 57000000 		.4byte	0x57
+ 315 00ad 02       		.uleb128 0x2
+ 316 00ae 04       		.byte	0x4
+ 317 00af 04       		.byte	0x4
+ 318 00b0 A9000000 		.4byte	.LASF15
+ 319 00b4 02       		.uleb128 0x2
+ 320 00b5 08       		.byte	0x8
+ 321 00b6 04       		.byte	0x4
+ 322 00b7 C1010000 		.4byte	.LASF16
+ 323 00bb 02       		.uleb128 0x2
+ 324 00bc 01       		.byte	0x1
+ 325 00bd 08       		.byte	0x8
+ 326 00be B2020000 		.4byte	.LASF17
+ 327 00c2 05       		.uleb128 0x5
+ 328 00c3 F2010000 		.4byte	.LASF18
+ 329 00c7 04       		.byte	0x4
+ 330 00c8 8B02     		.2byte	0x28b
+ 331 00ca 69000000 		.4byte	0x69
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 9
+
+
+ 332 00ce 02       		.uleb128 0x2
+ 333 00cf 08       		.byte	0x8
+ 334 00d0 04       		.byte	0x4
+ 335 00d1 7B030000 		.4byte	.LASF19
+ 336 00d5 02       		.uleb128 0x2
+ 337 00d6 04       		.byte	0x4
+ 338 00d7 07       		.byte	0x7
+ 339 00d8 77020000 		.4byte	.LASF20
+ 340 00dc 06       		.uleb128 0x6
+ 341 00dd 8C000000 		.4byte	0x8c
+ 342 00e1 06       		.uleb128 0x6
+ 343 00e2 97000000 		.4byte	0x97
+ 344 00e6 07       		.uleb128 0x7
+ 345 00e7 AC010000 		.4byte	.LASF21
+ 346 00eb 01       		.byte	0x1
+ 347 00ec 24       		.byte	0x24
+ 348 00ed 00000000 		.4byte	.LFB64
+ 349 00f1 3C000000 		.4byte	.LFE64-.LFB64
+ 350 00f5 01       		.uleb128 0x1
+ 351 00f6 9C       		.byte	0x9c
+ 352 00f7 39010000 		.4byte	0x139
+ 353 00fb 08       		.uleb128 0x8
+ 354 00fc 06000000 		.4byte	.LVL0
+ 355 0100 4C030000 		.4byte	0x34c
+ 356 0104 08       		.uleb128 0x8
+ 357 0105 12000000 		.4byte	.LVL1
+ 358 0109 57030000 		.4byte	0x357
+ 359 010d 09       		.uleb128 0x9
+ 360 010e 20000000 		.4byte	.LVL2
+ 361 0112 62030000 		.4byte	0x362
+ 362 0116 20010000 		.4byte	0x120
+ 363 011a 0A       		.uleb128 0xa
+ 364 011b 01       		.uleb128 0x1
+ 365 011c 50       		.byte	0x50
+ 366 011d 01       		.uleb128 0x1
+ 367 011e 31       		.byte	0x31
+ 368 011f 00       		.byte	0
+ 369 0120 08       		.uleb128 0x8
+ 370 0121 26000000 		.4byte	.LVL3
+ 371 0125 6D030000 		.4byte	0x36d
+ 372 0129 0B       		.uleb128 0xb
+ 373 012a 32000000 		.4byte	.LVL4
+ 374 012e 62030000 		.4byte	0x362
+ 375 0132 0A       		.uleb128 0xa
+ 376 0133 01       		.uleb128 0x1
+ 377 0134 50       		.byte	0x50
+ 378 0135 01       		.uleb128 0x1
+ 379 0136 30       		.byte	0x30
+ 380 0137 00       		.byte	0
+ 381 0138 00       		.byte	0
+ 382 0139 07       		.uleb128 0x7
+ 383 013a 7D000000 		.4byte	.LASF22
+ 384 013e 01       		.byte	0x1
+ 385 013f 43       		.byte	0x43
+ 386 0140 00000000 		.4byte	.LFB65
+ 387 0144 1C000000 		.4byte	.LFE65-.LFB65
+ 388 0148 01       		.uleb128 0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 10
+
+
+ 389 0149 9C       		.byte	0x9c
+ 390 014a 61010000 		.4byte	0x161
+ 391 014e 08       		.uleb128 0x8
+ 392 014f 0E000000 		.4byte	.LVL5
+ 393 0153 78030000 		.4byte	0x378
+ 394 0157 08       		.uleb128 0x8
+ 395 0158 14000000 		.4byte	.LVL6
+ 396 015c 83030000 		.4byte	0x383
+ 397 0160 00       		.byte	0
+ 398 0161 07       		.uleb128 0x7
+ 399 0162 E3020000 		.4byte	.LASF23
+ 400 0166 01       		.byte	0x1
+ 401 0167 5D       		.byte	0x5d
+ 402 0168 00000000 		.4byte	.LFB66
+ 403 016c 1C000000 		.4byte	.LFE66-.LFB66
+ 404 0170 01       		.uleb128 0x1
+ 405 0171 9C       		.byte	0x9c
+ 406 0172 89010000 		.4byte	0x189
+ 407 0176 08       		.uleb128 0x8
+ 408 0177 0E000000 		.4byte	.LVL7
+ 409 017b 8E030000 		.4byte	0x38e
+ 410 017f 08       		.uleb128 0x8
+ 411 0180 14000000 		.4byte	.LVL8
+ 412 0184 99030000 		.4byte	0x399
+ 413 0188 00       		.byte	0
+ 414 0189 07       		.uleb128 0x7
+ 415 018a 5F000000 		.4byte	.LASF24
+ 416 018e 01       		.byte	0x1
+ 417 018f 77       		.byte	0x77
+ 418 0190 00000000 		.4byte	.LFB67
+ 419 0194 1C000000 		.4byte	.LFE67-.LFB67
+ 420 0198 01       		.uleb128 0x1
+ 421 0199 9C       		.byte	0x9c
+ 422 019a C0010000 		.4byte	0x1c0
+ 423 019e 0C       		.uleb128 0xc
+ 424 019f 3D000000 		.4byte	.LASF55
+ 425 01a3 01       		.byte	0x1
+ 426 01a4 77       		.byte	0x77
+ 427 01a5 97000000 		.4byte	0x97
+ 428 01a9 00000000 		.4byte	.LLST0
+ 429 01ad 08       		.uleb128 0x8
+ 430 01ae 0E000000 		.4byte	.LVL10
+ 431 01b2 A4030000 		.4byte	0x3a4
+ 432 01b6 08       		.uleb128 0x8
+ 433 01b7 16000000 		.4byte	.LVL13
+ 434 01bb AF030000 		.4byte	0x3af
+ 435 01bf 00       		.byte	0
+ 436 01c0 0D       		.uleb128 0xd
+ 437 01c1 B7020000 		.4byte	.LASF25
+ 438 01c5 05       		.byte	0x5
+ 439 01c6 B1       		.byte	0xb1
+ 440 01c7 DC000000 		.4byte	0xdc
+ 441 01cb 05       		.uleb128 0x5
+ 442 01cc 03       		.byte	0x3
+ 443 01cd 02000000 		.4byte	buffer_index
+ 444 01d1 0D       		.uleb128 0xd
+ 445 01d2 1F000000 		.4byte	.LASF26
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 11
+
+
+ 446 01d6 05       		.byte	0x5
+ 447 01d7 B2       		.byte	0xb2
+ 448 01d8 DC000000 		.4byte	0xdc
+ 449 01dc 05       		.uleb128 0x5
+ 450 01dd 03       		.byte	0x3
+ 451 01de 01000000 		.4byte	connection_state
+ 452 01e2 0D       		.uleb128 0xd
+ 453 01e3 FB010000 		.4byte	.LASF27
+ 454 01e7 05       		.byte	0x5
+ 455 01e8 B3       		.byte	0xb3
+ 456 01e9 DC000000 		.4byte	0xdc
+ 457 01ed 05       		.uleb128 0x5
+ 458 01ee 03       		.byte	0x3
+ 459 01ef 00000000 		.4byte	input_flag
+ 460 01f3 0E       		.uleb128 0xe
+ 461 01f4 8E010000 		.4byte	.LASF28
+ 462 01f8 06       		.byte	0x6
+ 463 01f9 1207     		.2byte	0x712
+ 464 01fb FF010000 		.4byte	0x1ff
+ 465 01ff 06       		.uleb128 0x6
+ 466 0200 A2000000 		.4byte	0xa2
+ 467 0204 0F       		.uleb128 0xf
+ 468 0205 6C000000 		.4byte	.LASF29
+ 469 0209 07       		.byte	0x7
+ 470 020a 21       		.byte	0x21
+ 471 020b 97000000 		.4byte	0x97
+ 472 020f 05       		.uleb128 0x5
+ 473 0210 03       		.byte	0x3
+ 474 0211 00000000 		.4byte	dac_ground_value
+ 475 0215 0F       		.uleb128 0xf
+ 476 0216 87000000 		.4byte	.LASF30
+ 477 021a 05       		.byte	0x5
+ 478 021b 9C       		.byte	0x9c
+ 479 021c C2000000 		.4byte	0xc2
+ 480 0220 05       		.uleb128 0x5
+ 481 0221 03       		.byte	0x3
+ 482 0222 00000000 		.4byte	return_value
+ 483 0226 0F       		.uleb128 0xf
+ 484 0227 00000000 		.4byte	.LASF31
+ 485 022b 05       		.byte	0x5
+ 486 022c A1       		.byte	0xa1
+ 487 022d 97000000 		.4byte	0x97
+ 488 0231 05       		.uleb128 0x5
+ 489 0232 03       		.byte	0x3
+ 490 0233 00000000 		.4byte	lut_value
+ 491 0237 10       		.uleb128 0x10
+ 492 0238 E1000000 		.4byte	0xe1
+ 493 023c 48020000 		.4byte	0x248
+ 494 0240 11       		.uleb128 0x11
+ 495 0241 D5000000 		.4byte	0xd5
+ 496 0245 8C13     		.2byte	0x138c
+ 497 0247 00       		.byte	0
+ 498 0248 0F       		.uleb128 0xf
+ 499 0249 30000000 		.4byte	.LASF32
+ 500 024d 08       		.byte	0x8
+ 501 024e 2A       		.byte	0x2a
+ 502 024f 59020000 		.4byte	0x259
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 12
+
+
+ 503 0253 05       		.uleb128 0x5
+ 504 0254 03       		.byte	0x3
+ 505 0255 00000000 		.4byte	waveform_lut
+ 506 0259 06       		.uleb128 0x6
+ 507 025a 37020000 		.4byte	0x237
+ 508 025e 0F       		.uleb128 0xf
+ 509 025f 59020000 		.4byte	.LASF33
+ 510 0263 05       		.byte	0x5
+ 511 0264 A6       		.byte	0xa6
+ 512 0265 97000000 		.4byte	0x97
+ 513 0269 05       		.uleb128 0x5
+ 514 026a 03       		.byte	0x3
+ 515 026b 00000000 		.4byte	lut_index
+ 516 026f 0F       		.uleb128 0xf
+ 517 0270 0A000000 		.4byte	.LASF34
+ 518 0274 05       		.byte	0x5
+ 519 0275 A7       		.byte	0xa7
+ 520 0276 97000000 		.4byte	0x97
+ 521 027a 05       		.uleb128 0x5
+ 522 027b 03       		.byte	0x3
+ 523 027c 00000000 		.4byte	lut_length
+ 524 0280 10       		.uleb128 0x10
+ 525 0281 8C000000 		.4byte	0x8c
+ 526 0285 90020000 		.4byte	0x290
+ 527 0289 12       		.uleb128 0x12
+ 528 028a D5000000 		.4byte	0xd5
+ 529 028e 14       		.byte	0x14
+ 530 028f 00       		.byte	0
+ 531 0290 0F       		.uleb128 0xf
+ 532 0291 C8010000 		.4byte	.LASF35
+ 533 0295 05       		.byte	0x5
+ 534 0296 A9       		.byte	0xa9
+ 535 0297 80020000 		.4byte	0x280
+ 536 029b 05       		.uleb128 0x5
+ 537 029c 03       		.byte	0x3
+ 538 029d 00000000 		.4byte	tia_calibration_values
+ 539 02a1 0F       		.uleb128 0xf
+ 540 02a2 41020000 		.4byte	.LASF36
+ 541 02a6 05       		.byte	0x5
+ 542 02a7 AC       		.byte	0xac
+ 543 02a8 8C000000 		.4byte	0x8c
+ 544 02ac 05       		.uleb128 0x5
+ 545 02ad 03       		.byte	0x3
+ 546 02ae 00000000 		.4byte	selected_voltage_source
+ 547 02b2 10       		.uleb128 0x10
+ 548 02b3 DC000000 		.4byte	0xdc
+ 549 02b7 C2020000 		.4byte	0x2c2
+ 550 02bb 12       		.uleb128 0x12
+ 551 02bc D5000000 		.4byte	0xd5
+ 552 02c0 13       		.byte	0x13
+ 553 02c1 00       		.byte	0
+ 554 02c2 0F       		.uleb128 0xf
+ 555 02c3 63020000 		.4byte	.LASF37
+ 556 02c7 08       		.byte	0x8
+ 557 02c8 23       		.byte	0x23
+ 558 02c9 D3020000 		.4byte	0x2d3
+ 559 02cd 05       		.uleb128 0x5
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 13
+
+
+ 560 02ce 03       		.byte	0x3
+ 561 02cf 00000000 		.4byte	data_buffer
+ 562 02d3 06       		.uleb128 0x6
+ 563 02d4 B2020000 		.4byte	0x2b2
+ 564 02d8 0F       		.uleb128 0xf
+ 565 02d9 76010000 		.4byte	.LASF38
+ 566 02dd 08       		.byte	0x8
+ 567 02de 24       		.byte	0x24
+ 568 02df E9020000 		.4byte	0x2e9
+ 569 02e3 05       		.uleb128 0x5
+ 570 02e4 03       		.byte	0x3
+ 571 02e5 00000000 		.4byte	temp
+ 572 02e9 06       		.uleb128 0x6
+ 573 02ea B2020000 		.4byte	0x2b2
+ 574 02ee 10       		.uleb128 0x10
+ 575 02ef DC000000 		.4byte	0xdc
+ 576 02f3 FE020000 		.4byte	0x2fe
+ 577 02f7 12       		.uleb128 0x12
+ 578 02f8 D5000000 		.4byte	0xd5
+ 579 02fc 77       		.byte	0x77
+ 580 02fd 00       		.byte	0
+ 581 02fe 0F       		.uleb128 0xf
+ 582 02ff 57010000 		.4byte	.LASF39
+ 583 0303 08       		.byte	0x8
+ 584 0304 28       		.byte	0x28
+ 585 0305 0F030000 		.4byte	0x30f
+ 586 0309 05       		.uleb128 0x5
+ 587 030a 03       		.byte	0x3
+ 588 030b 00000000 		.4byte	data_to_send
+ 589 030f 06       		.uleb128 0x6
+ 590 0310 EE020000 		.4byte	0x2ee
+ 591 0314 10       		.uleb128 0x10
+ 592 0315 DC000000 		.4byte	0xdc
+ 593 0319 25030000 		.4byte	0x325
+ 594 031d 11       		.uleb128 0x11
+ 595 031e D5000000 		.4byte	0xd5
+ 596 0322 8713     		.2byte	0x1387
+ 597 0324 00       		.byte	0
+ 598 0325 0F       		.uleb128 0xf
+ 599 0326 A5030000 		.4byte	.LASF40
+ 600 032a 08       		.byte	0x8
+ 601 032b 27       		.byte	0x27
+ 602 032c 36030000 		.4byte	0x336
+ 603 0330 05       		.uleb128 0x5
+ 604 0331 03       		.byte	0x3
+ 605 0332 00000000 		.4byte	data_long
+ 606 0336 06       		.uleb128 0x6
+ 607 0337 14030000 		.4byte	0x314
+ 608 033b 0F       		.uleb128 0xf
+ 609 033c 9A020000 		.4byte	.LASF41
+ 610 0340 05       		.byte	0x5
+ 611 0341 BC       		.byte	0xbc
+ 612 0342 8C000000 		.4byte	0x8c
+ 613 0346 05       		.uleb128 0x5
+ 614 0347 03       		.byte	0x3
+ 615 0348 00000000 		.4byte	finished_procedure_flag
+ 616 034c 13       		.uleb128 0x13
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 14
+
+
+ 617 034d 5F030000 		.4byte	.LASF42
+ 618 0351 5F030000 		.4byte	.LASF42
+ 619 0355 09       		.byte	0x9
+ 620 0356 20       		.byte	0x20
+ 621 0357 13       		.uleb128 0x13
+ 622 0358 87030000 		.4byte	.LASF43
+ 623 035c 87030000 		.4byte	.LASF43
+ 624 0360 0A       		.byte	0xa
+ 625 0361 48       		.byte	0x48
+ 626 0362 13       		.uleb128 0x13
+ 627 0363 94000000 		.4byte	.LASF44
+ 628 0367 94000000 		.4byte	.LASF44
+ 629 036b 0B       		.byte	0xb
+ 630 036c 57       		.byte	0x57
+ 631 036d 13       		.uleb128 0x13
+ 632 036e 4D000000 		.4byte	.LASF45
+ 633 0372 4D000000 		.4byte	.LASF45
+ 634 0376 0C       		.byte	0xc
+ 635 0377 33       		.byte	0x33
+ 636 0378 13       		.uleb128 0x13
+ 637 0379 80020000 		.4byte	.LASF46
+ 638 037d 80020000 		.4byte	.LASF46
+ 639 0381 0A       		.byte	0xa
+ 640 0382 4B       		.byte	0x4b
+ 641 0383 13       		.uleb128 0x13
+ 642 0384 93030000 		.4byte	.LASF47
+ 643 0388 93030000 		.4byte	.LASF47
+ 644 038c 0C       		.byte	0xc
+ 645 038d 3D       		.byte	0x3d
+ 646 038e 13       		.uleb128 0x13
+ 647 038f 49030000 		.4byte	.LASF48
+ 648 0393 49030000 		.4byte	.LASF48
+ 649 0397 0A       		.byte	0xa
+ 650 0398 4C       		.byte	0x4c
+ 651 0399 13       		.uleb128 0x13
+ 652 039a DF010000 		.4byte	.LASF49
+ 653 039e DF010000 		.4byte	.LASF49
+ 654 03a2 0C       		.byte	0xc
+ 655 03a3 3E       		.byte	0x3e
+ 656 03a4 13       		.uleb128 0x13
+ 657 03a5 13020000 		.4byte	.LASF50
+ 658 03a9 13020000 		.4byte	.LASF50
+ 659 03ad 0A       		.byte	0xa
+ 660 03ae 4A       		.byte	0x4a
+ 661 03af 13       		.uleb128 0x13
+ 662 03b0 C4020000 		.4byte	.LASF51
+ 663 03b4 C4020000 		.4byte	.LASF51
+ 664 03b8 0C       		.byte	0xc
+ 665 03b9 37       		.byte	0x37
+ 666 03ba 00       		.byte	0
+ 667              		.section	.debug_abbrev,"",%progbits
+ 668              	.Ldebug_abbrev0:
+ 669 0000 01       		.uleb128 0x1
+ 670 0001 11       		.uleb128 0x11
+ 671 0002 01       		.byte	0x1
+ 672 0003 25       		.uleb128 0x25
+ 673 0004 0E       		.uleb128 0xe
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 15
+
+
+ 674 0005 13       		.uleb128 0x13
+ 675 0006 0B       		.uleb128 0xb
+ 676 0007 03       		.uleb128 0x3
+ 677 0008 0E       		.uleb128 0xe
+ 678 0009 1B       		.uleb128 0x1b
+ 679 000a 0E       		.uleb128 0xe
+ 680 000b 55       		.uleb128 0x55
+ 681 000c 17       		.uleb128 0x17
+ 682 000d 11       		.uleb128 0x11
+ 683 000e 01       		.uleb128 0x1
+ 684 000f 10       		.uleb128 0x10
+ 685 0010 17       		.uleb128 0x17
+ 686 0011 00       		.byte	0
+ 687 0012 00       		.byte	0
+ 688 0013 02       		.uleb128 0x2
+ 689 0014 24       		.uleb128 0x24
+ 690 0015 00       		.byte	0
+ 691 0016 0B       		.uleb128 0xb
+ 692 0017 0B       		.uleb128 0xb
+ 693 0018 3E       		.uleb128 0x3e
+ 694 0019 0B       		.uleb128 0xb
+ 695 001a 03       		.uleb128 0x3
+ 696 001b 0E       		.uleb128 0xe
+ 697 001c 00       		.byte	0
+ 698 001d 00       		.byte	0
+ 699 001e 03       		.uleb128 0x3
+ 700 001f 16       		.uleb128 0x16
+ 701 0020 00       		.byte	0
+ 702 0021 03       		.uleb128 0x3
+ 703 0022 0E       		.uleb128 0xe
+ 704 0023 3A       		.uleb128 0x3a
+ 705 0024 0B       		.uleb128 0xb
+ 706 0025 3B       		.uleb128 0x3b
+ 707 0026 0B       		.uleb128 0xb
+ 708 0027 49       		.uleb128 0x49
+ 709 0028 13       		.uleb128 0x13
+ 710 0029 00       		.byte	0
+ 711 002a 00       		.byte	0
+ 712 002b 04       		.uleb128 0x4
+ 713 002c 24       		.uleb128 0x24
+ 714 002d 00       		.byte	0
+ 715 002e 0B       		.uleb128 0xb
+ 716 002f 0B       		.uleb128 0xb
+ 717 0030 3E       		.uleb128 0x3e
+ 718 0031 0B       		.uleb128 0xb
+ 719 0032 03       		.uleb128 0x3
+ 720 0033 08       		.uleb128 0x8
+ 721 0034 00       		.byte	0
+ 722 0035 00       		.byte	0
+ 723 0036 05       		.uleb128 0x5
+ 724 0037 16       		.uleb128 0x16
+ 725 0038 00       		.byte	0
+ 726 0039 03       		.uleb128 0x3
+ 727 003a 0E       		.uleb128 0xe
+ 728 003b 3A       		.uleb128 0x3a
+ 729 003c 0B       		.uleb128 0xb
+ 730 003d 3B       		.uleb128 0x3b
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 16
+
+
+ 731 003e 05       		.uleb128 0x5
+ 732 003f 49       		.uleb128 0x49
+ 733 0040 13       		.uleb128 0x13
+ 734 0041 00       		.byte	0
+ 735 0042 00       		.byte	0
+ 736 0043 06       		.uleb128 0x6
+ 737 0044 35       		.uleb128 0x35
+ 738 0045 00       		.byte	0
+ 739 0046 49       		.uleb128 0x49
+ 740 0047 13       		.uleb128 0x13
+ 741 0048 00       		.byte	0
+ 742 0049 00       		.byte	0
+ 743 004a 07       		.uleb128 0x7
+ 744 004b 2E       		.uleb128 0x2e
+ 745 004c 01       		.byte	0x1
+ 746 004d 3F       		.uleb128 0x3f
+ 747 004e 19       		.uleb128 0x19
+ 748 004f 03       		.uleb128 0x3
+ 749 0050 0E       		.uleb128 0xe
+ 750 0051 3A       		.uleb128 0x3a
+ 751 0052 0B       		.uleb128 0xb
+ 752 0053 3B       		.uleb128 0x3b
+ 753 0054 0B       		.uleb128 0xb
+ 754 0055 27       		.uleb128 0x27
+ 755 0056 19       		.uleb128 0x19
+ 756 0057 11       		.uleb128 0x11
+ 757 0058 01       		.uleb128 0x1
+ 758 0059 12       		.uleb128 0x12
+ 759 005a 06       		.uleb128 0x6
+ 760 005b 40       		.uleb128 0x40
+ 761 005c 18       		.uleb128 0x18
+ 762 005d 9742     		.uleb128 0x2117
+ 763 005f 19       		.uleb128 0x19
+ 764 0060 01       		.uleb128 0x1
+ 765 0061 13       		.uleb128 0x13
+ 766 0062 00       		.byte	0
+ 767 0063 00       		.byte	0
+ 768 0064 08       		.uleb128 0x8
+ 769 0065 898201   		.uleb128 0x4109
+ 770 0068 00       		.byte	0
+ 771 0069 11       		.uleb128 0x11
+ 772 006a 01       		.uleb128 0x1
+ 773 006b 31       		.uleb128 0x31
+ 774 006c 13       		.uleb128 0x13
+ 775 006d 00       		.byte	0
+ 776 006e 00       		.byte	0
+ 777 006f 09       		.uleb128 0x9
+ 778 0070 898201   		.uleb128 0x4109
+ 779 0073 01       		.byte	0x1
+ 780 0074 11       		.uleb128 0x11
+ 781 0075 01       		.uleb128 0x1
+ 782 0076 31       		.uleb128 0x31
+ 783 0077 13       		.uleb128 0x13
+ 784 0078 01       		.uleb128 0x1
+ 785 0079 13       		.uleb128 0x13
+ 786 007a 00       		.byte	0
+ 787 007b 00       		.byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 17
+
+
+ 788 007c 0A       		.uleb128 0xa
+ 789 007d 8A8201   		.uleb128 0x410a
+ 790 0080 00       		.byte	0
+ 791 0081 02       		.uleb128 0x2
+ 792 0082 18       		.uleb128 0x18
+ 793 0083 9142     		.uleb128 0x2111
+ 794 0085 18       		.uleb128 0x18
+ 795 0086 00       		.byte	0
+ 796 0087 00       		.byte	0
+ 797 0088 0B       		.uleb128 0xb
+ 798 0089 898201   		.uleb128 0x4109
+ 799 008c 01       		.byte	0x1
+ 800 008d 11       		.uleb128 0x11
+ 801 008e 01       		.uleb128 0x1
+ 802 008f 31       		.uleb128 0x31
+ 803 0090 13       		.uleb128 0x13
+ 804 0091 00       		.byte	0
+ 805 0092 00       		.byte	0
+ 806 0093 0C       		.uleb128 0xc
+ 807 0094 05       		.uleb128 0x5
+ 808 0095 00       		.byte	0
+ 809 0096 03       		.uleb128 0x3
+ 810 0097 0E       		.uleb128 0xe
+ 811 0098 3A       		.uleb128 0x3a
+ 812 0099 0B       		.uleb128 0xb
+ 813 009a 3B       		.uleb128 0x3b
+ 814 009b 0B       		.uleb128 0xb
+ 815 009c 49       		.uleb128 0x49
+ 816 009d 13       		.uleb128 0x13
+ 817 009e 02       		.uleb128 0x2
+ 818 009f 17       		.uleb128 0x17
+ 819 00a0 00       		.byte	0
+ 820 00a1 00       		.byte	0
+ 821 00a2 0D       		.uleb128 0xd
+ 822 00a3 34       		.uleb128 0x34
+ 823 00a4 00       		.byte	0
+ 824 00a5 03       		.uleb128 0x3
+ 825 00a6 0E       		.uleb128 0xe
+ 826 00a7 3A       		.uleb128 0x3a
+ 827 00a8 0B       		.uleb128 0xb
+ 828 00a9 3B       		.uleb128 0x3b
+ 829 00aa 0B       		.uleb128 0xb
+ 830 00ab 49       		.uleb128 0x49
+ 831 00ac 13       		.uleb128 0x13
+ 832 00ad 02       		.uleb128 0x2
+ 833 00ae 18       		.uleb128 0x18
+ 834 00af 00       		.byte	0
+ 835 00b0 00       		.byte	0
+ 836 00b1 0E       		.uleb128 0xe
+ 837 00b2 34       		.uleb128 0x34
+ 838 00b3 00       		.byte	0
+ 839 00b4 03       		.uleb128 0x3
+ 840 00b5 0E       		.uleb128 0xe
+ 841 00b6 3A       		.uleb128 0x3a
+ 842 00b7 0B       		.uleb128 0xb
+ 843 00b8 3B       		.uleb128 0x3b
+ 844 00b9 05       		.uleb128 0x5
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 18
+
+
+ 845 00ba 49       		.uleb128 0x49
+ 846 00bb 13       		.uleb128 0x13
+ 847 00bc 3F       		.uleb128 0x3f
+ 848 00bd 19       		.uleb128 0x19
+ 849 00be 3C       		.uleb128 0x3c
+ 850 00bf 19       		.uleb128 0x19
+ 851 00c0 00       		.byte	0
+ 852 00c1 00       		.byte	0
+ 853 00c2 0F       		.uleb128 0xf
+ 854 00c3 34       		.uleb128 0x34
+ 855 00c4 00       		.byte	0
+ 856 00c5 03       		.uleb128 0x3
+ 857 00c6 0E       		.uleb128 0xe
+ 858 00c7 3A       		.uleb128 0x3a
+ 859 00c8 0B       		.uleb128 0xb
+ 860 00c9 3B       		.uleb128 0x3b
+ 861 00ca 0B       		.uleb128 0xb
+ 862 00cb 49       		.uleb128 0x49
+ 863 00cc 13       		.uleb128 0x13
+ 864 00cd 3F       		.uleb128 0x3f
+ 865 00ce 19       		.uleb128 0x19
+ 866 00cf 02       		.uleb128 0x2
+ 867 00d0 18       		.uleb128 0x18
+ 868 00d1 00       		.byte	0
+ 869 00d2 00       		.byte	0
+ 870 00d3 10       		.uleb128 0x10
+ 871 00d4 01       		.uleb128 0x1
+ 872 00d5 01       		.byte	0x1
+ 873 00d6 49       		.uleb128 0x49
+ 874 00d7 13       		.uleb128 0x13
+ 875 00d8 01       		.uleb128 0x1
+ 876 00d9 13       		.uleb128 0x13
+ 877 00da 00       		.byte	0
+ 878 00db 00       		.byte	0
+ 879 00dc 11       		.uleb128 0x11
+ 880 00dd 21       		.uleb128 0x21
+ 881 00de 00       		.byte	0
+ 882 00df 49       		.uleb128 0x49
+ 883 00e0 13       		.uleb128 0x13
+ 884 00e1 2F       		.uleb128 0x2f
+ 885 00e2 05       		.uleb128 0x5
+ 886 00e3 00       		.byte	0
+ 887 00e4 00       		.byte	0
+ 888 00e5 12       		.uleb128 0x12
+ 889 00e6 21       		.uleb128 0x21
+ 890 00e7 00       		.byte	0
+ 891 00e8 49       		.uleb128 0x49
+ 892 00e9 13       		.uleb128 0x13
+ 893 00ea 2F       		.uleb128 0x2f
+ 894 00eb 0B       		.uleb128 0xb
+ 895 00ec 00       		.byte	0
+ 896 00ed 00       		.byte	0
+ 897 00ee 13       		.uleb128 0x13
+ 898 00ef 2E       		.uleb128 0x2e
+ 899 00f0 00       		.byte	0
+ 900 00f1 3F       		.uleb128 0x3f
+ 901 00f2 19       		.uleb128 0x19
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 19
+
+
+ 902 00f3 3C       		.uleb128 0x3c
+ 903 00f4 19       		.uleb128 0x19
+ 904 00f5 6E       		.uleb128 0x6e
+ 905 00f6 0E       		.uleb128 0xe
+ 906 00f7 03       		.uleb128 0x3
+ 907 00f8 0E       		.uleb128 0xe
+ 908 00f9 3A       		.uleb128 0x3a
+ 909 00fa 0B       		.uleb128 0xb
+ 910 00fb 3B       		.uleb128 0x3b
+ 911 00fc 0B       		.uleb128 0xb
+ 912 00fd 00       		.byte	0
+ 913 00fe 00       		.byte	0
+ 914 00ff 00       		.byte	0
+ 915              		.section	.debug_loc,"",%progbits
+ 916              	.Ldebug_loc0:
+ 917              	.LLST0:
+ 918 0000 00000000 		.4byte	.LVL9
+ 919 0004 0D000000 		.4byte	.LVL10-1
+ 920 0008 0100     		.2byte	0x1
+ 921 000a 50       		.byte	0x50
+ 922 000b 0D000000 		.4byte	.LVL10-1
+ 923 000f 10000000 		.4byte	.LVL11
+ 924 0013 0400     		.2byte	0x4
+ 925 0015 F3       		.byte	0xf3
+ 926 0016 01       		.uleb128 0x1
+ 927 0017 50       		.byte	0x50
+ 928 0018 9F       		.byte	0x9f
+ 929 0019 10000000 		.4byte	.LVL11
+ 930 001d 12000000 		.4byte	.LVL12
+ 931 0021 0100     		.2byte	0x1
+ 932 0023 50       		.byte	0x50
+ 933 0024 12000000 		.4byte	.LVL12
+ 934 0028 1C000000 		.4byte	.LFE67
+ 935 002c 0400     		.2byte	0x4
+ 936 002e F3       		.byte	0xf3
+ 937 002f 01       		.uleb128 0x1
+ 938 0030 50       		.byte	0x50
+ 939 0031 9F       		.byte	0x9f
+ 940 0032 00000000 		.4byte	0
+ 941 0036 00000000 		.4byte	0
+ 942              		.section	.debug_aranges,"",%progbits
+ 943 0000 34000000 		.4byte	0x34
+ 944 0004 0200     		.2byte	0x2
+ 945 0006 00000000 		.4byte	.Ldebug_info0
+ 946 000a 04       		.byte	0x4
+ 947 000b 00       		.byte	0
+ 948 000c 0000     		.2byte	0
+ 949 000e 0000     		.2byte	0
+ 950 0010 00000000 		.4byte	.LFB64
+ 951 0014 3C000000 		.4byte	.LFE64-.LFB64
+ 952 0018 00000000 		.4byte	.LFB65
+ 953 001c 1C000000 		.4byte	.LFE65-.LFB65
+ 954 0020 00000000 		.4byte	.LFB66
+ 955 0024 1C000000 		.4byte	.LFE66-.LFB66
+ 956 0028 00000000 		.4byte	.LFB67
+ 957 002c 1C000000 		.4byte	.LFE67-.LFB67
+ 958 0030 00000000 		.4byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 20
+
+
+ 959 0034 00000000 		.4byte	0
+ 960              		.section	.debug_ranges,"",%progbits
+ 961              	.Ldebug_ranges0:
+ 962 0000 00000000 		.4byte	.LFB64
+ 963 0004 3C000000 		.4byte	.LFE64
+ 964 0008 00000000 		.4byte	.LFB65
+ 965 000c 1C000000 		.4byte	.LFE65
+ 966 0010 00000000 		.4byte	.LFB66
+ 967 0014 1C000000 		.4byte	.LFE66
+ 968 0018 00000000 		.4byte	.LFB67
+ 969 001c 1C000000 		.4byte	.LFE67
+ 970 0020 00000000 		.4byte	0
+ 971 0024 00000000 		.4byte	0
+ 972              		.section	.debug_line,"",%progbits
+ 973              	.Ldebug_line0:
+ 974 0000 27020000 		.section	.debug_str,"MS",%progbits,1
+ 974      0200D101 
+ 974      00000201 
+ 974      FB0E0D00 
+ 974      01010101 
+ 975              	.LASF31:
+ 976 0000 6C75745F 		.ascii	"lut_value\000"
+ 976      76616C75 
+ 976      6500
+ 977              	.LASF34:
+ 978 000a 6C75745F 		.ascii	"lut_length\000"
+ 978      6C656E67 
+ 978      746800
+ 979              	.LASF3:
+ 980 0015 5F5F7569 		.ascii	"__uint8_t\000"
+ 980      6E74385F 
+ 980      7400
+ 981              	.LASF26:
+ 982 001f 636F6E6E 		.ascii	"connection_state\000"
+ 982      65637469 
+ 982      6F6E5F73 
+ 982      74617465 
+ 982      00
+ 983              	.LASF32:
+ 984 0030 77617665 		.ascii	"waveform_lut\000"
+ 984      666F726D 
+ 984      5F6C7574 
+ 984      00
+ 985              	.LASF55:
+ 986 003d 76616C75 		.ascii	"value\000"
+ 986      6500
+ 987              	.LASF6:
+ 988 0043 5F5F696E 		.ascii	"__int32_t\000"
+ 988      7433325F 
+ 988      7400
+ 989              	.LASF45:
+ 990 004d 56444143 		.ascii	"VDAC_source_Start\000"
+ 990      5F736F75 
+ 990      7263655F 
+ 990      53746172 
+ 990      7400
+ 991              	.LASF24:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 21
+
+
+ 992 005f 4441435F 		.ascii	"DAC_SetValue\000"
+ 992      53657456 
+ 992      616C7565 
+ 992      00
+ 993              	.LASF29:
+ 994 006c 6461635F 		.ascii	"dac_ground_value\000"
+ 994      67726F75 
+ 994      6E645F76 
+ 994      616C7565 
+ 994      00
+ 995              	.LASF22:
+ 996 007d 4441435F 		.ascii	"DAC_Sleep\000"
+ 996      536C6565 
+ 996      7000
+ 997              	.LASF30:
+ 998 0087 72657475 		.ascii	"return_value\000"
+ 998      726E5F76 
+ 998      616C7565 
+ 998      00
+ 999              	.LASF44:
+ 1000 0094 414D7578 		.ascii	"AMux_V_source_Select\000"
+ 1000      5F565F73 
+ 1000      6F757263 
+ 1000      655F5365 
+ 1000      6C656374 
+ 1001              	.LASF15:
+ 1002 00a9 666C6F61 		.ascii	"float\000"
+ 1002      7400
+ 1003              	.LASF0:
+ 1004 00af 7369676E 		.ascii	"signed char\000"
+ 1004      65642063 
+ 1004      68617200 
+ 1005              	.LASF1:
+ 1006 00bb 756E7369 		.ascii	"unsigned char\000"
+ 1006      676E6564 
+ 1006      20636861 
+ 1006      7200
+ 1007              	.LASF52:
+ 1008 00c9 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 1008      43313120 
+ 1008      352E342E 
+ 1008      31203230 
+ 1008      31363036 
+ 1009 00fc 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m3 -mthumb -g -O"
+ 1009      20726576 
+ 1009      6973696F 
+ 1009      6E203233 
+ 1009      37373135 
+ 1010 012f 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 1010      66756E63 
+ 1010      74696F6E 
+ 1010      2D736563 
+ 1010      74696F6E 
+ 1011              	.LASF39:
+ 1012 0157 64617461 		.ascii	"data_to_send\000"
+ 1012      5F746F5F 
+ 1012      73656E64 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 22
+
+
+ 1012      00
+ 1013              	.LASF8:
+ 1014 0164 6C6F6E67 		.ascii	"long unsigned int\000"
+ 1014      20756E73 
+ 1014      69676E65 
+ 1014      6420696E 
+ 1014      7400
+ 1015              	.LASF38:
+ 1016 0176 74656D70 		.ascii	"temp\000"
+ 1016      00
+ 1017              	.LASF5:
+ 1018 017b 73686F72 		.ascii	"short unsigned int\000"
+ 1018      7420756E 
+ 1018      7369676E 
+ 1018      65642069 
+ 1018      6E7400
+ 1019              	.LASF28:
+ 1020 018e 49544D5F 		.ascii	"ITM_RxBuffer\000"
+ 1020      52784275 
+ 1020      66666572 
+ 1020      00
+ 1021              	.LASF53:
+ 1022 019b 4441435F 		.ascii	"DAC_management.c\000"
+ 1022      6D616E61 
+ 1022      67656D65 
+ 1022      6E742E63 
+ 1022      00
+ 1023              	.LASF21:
+ 1024 01ac 4441435F 		.ascii	"DAC_Start\000"
+ 1024      53746172 
+ 1024      7400
+ 1025              	.LASF4:
+ 1026 01b6 5F5F7569 		.ascii	"__uint16_t\000"
+ 1026      6E743136 
+ 1026      5F7400
+ 1027              	.LASF16:
+ 1028 01c1 646F7562 		.ascii	"double\000"
+ 1028      6C6500
+ 1029              	.LASF35:
+ 1030 01c8 7469615F 		.ascii	"tia_calibration_values\000"
+ 1030      63616C69 
+ 1030      62726174 
+ 1030      696F6E5F 
+ 1030      76616C75 
+ 1031              	.LASF49:
+ 1032 01df 56444143 		.ascii	"VDAC_source_Wakeup\000"
+ 1032      5F736F75 
+ 1032      7263655F 
+ 1032      57616B65 
+ 1032      757000
+ 1033              	.LASF18:
+ 1034 01f2 63797374 		.ascii	"cystatus\000"
+ 1034      61747573 
+ 1034      00
+ 1035              	.LASF27:
+ 1036 01fb 696E7075 		.ascii	"input_flag\000"
+ 1036      745F666C 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 23
+
+
+ 1036      616700
+ 1037              	.LASF11:
+ 1038 0206 756E7369 		.ascii	"unsigned int\000"
+ 1038      676E6564 
+ 1038      20696E74 
+ 1038      00
+ 1039              	.LASF50:
+ 1040 0213 44564441 		.ascii	"DVDAC_SetValue\000"
+ 1040      435F5365 
+ 1040      7456616C 
+ 1040      756500
+ 1041              	.LASF10:
+ 1042 0222 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 1042      206C6F6E 
+ 1042      6720756E 
+ 1042      7369676E 
+ 1042      65642069 
+ 1043              	.LASF12:
+ 1044 0239 75696E74 		.ascii	"uint8_t\000"
+ 1044      385F7400 
+ 1045              	.LASF36:
+ 1046 0241 73656C65 		.ascii	"selected_voltage_source\000"
+ 1046      63746564 
+ 1046      5F766F6C 
+ 1046      74616765 
+ 1046      5F736F75 
+ 1047              	.LASF33:
+ 1048 0259 6C75745F 		.ascii	"lut_index\000"
+ 1048      696E6465 
+ 1048      7800
+ 1049              	.LASF37:
+ 1050 0263 64617461 		.ascii	"data_buffer\000"
+ 1050      5F627566 
+ 1050      66657200 
+ 1051              	.LASF14:
+ 1052 026f 696E7433 		.ascii	"int32_t\000"
+ 1052      325F7400 
+ 1053              	.LASF20:
+ 1054 0277 73697A65 		.ascii	"sizetype\000"
+ 1054      74797065 
+ 1054      00
+ 1055              	.LASF46:
+ 1056 0280 44564441 		.ascii	"DVDAC_Sleep\000"
+ 1056      435F536C 
+ 1056      65657000 
+ 1057              	.LASF9:
+ 1058 028c 6C6F6E67 		.ascii	"long long int\000"
+ 1058      206C6F6E 
+ 1058      6720696E 
+ 1058      7400
+ 1059              	.LASF41:
+ 1060 029a 66696E69 		.ascii	"finished_procedure_flag\000"
+ 1060      73686564 
+ 1060      5F70726F 
+ 1060      63656475 
+ 1060      72655F66 
+ 1061              	.LASF17:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 24
+
+
+ 1062 02b2 63686172 		.ascii	"char\000"
+ 1062      00
+ 1063              	.LASF25:
+ 1064 02b7 62756666 		.ascii	"buffer_index\000"
+ 1064      65725F69 
+ 1064      6E646578 
+ 1064      00
+ 1065              	.LASF51:
+ 1066 02c4 56444143 		.ascii	"VDAC_source_SetValue\000"
+ 1066      5F736F75 
+ 1066      7263655F 
+ 1066      53657456 
+ 1066      616C7565 
+ 1067              	.LASF2:
+ 1068 02d9 73686F72 		.ascii	"short int\000"
+ 1068      7420696E 
+ 1068      7400
+ 1069              	.LASF23:
+ 1070 02e3 4441435F 		.ascii	"DAC_Wakeup\000"
+ 1070      57616B65 
+ 1070      757000
+ 1071              	.LASF13:
+ 1072 02ee 75696E74 		.ascii	"uint16_t\000"
+ 1072      31365F74 
+ 1072      00
+ 1073              	.LASF54:
+ 1074 02f7 5C5C4D61 		.ascii	"\\\\Mac\\Home\\Desktop\\LAB_TEBS\\_Progetto\\TEBS_G"
+ 1074      635C486F 
+ 1074      6D655C44 
+ 1074      65736B74 
+ 1074      6F705C4C 
+ 1075 0323 69744875 		.ascii	"itHub\\PSoC_Project\\PSoC_Project.cydsn\000"
+ 1075      625C5053 
+ 1075      6F435F50 
+ 1075      726F6A65 
+ 1075      63745C50 
+ 1076              	.LASF48:
+ 1077 0349 44564441 		.ascii	"DVDAC_Wakeup\000"
+ 1077      435F5761 
+ 1077      6B657570 
+ 1077      00
+ 1078              	.LASF7:
+ 1079 0356 6C6F6E67 		.ascii	"long int\000"
+ 1079      20696E74 
+ 1079      00
+ 1080              	.LASF42:
+ 1081 035f 68656C70 		.ascii	"helper_check_voltage_source\000"
+ 1081      65725F63 
+ 1081      6865636B 
+ 1081      5F766F6C 
+ 1081      74616765 
+ 1082              	.LASF19:
+ 1083 037b 6C6F6E67 		.ascii	"long double\000"
+ 1083      20646F75 
+ 1083      626C6500 
+ 1084              	.LASF43:
+ 1085 0387 44564441 		.ascii	"DVDAC_Start\000"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjG21mV.s 			page 25
+
+
+ 1085      435F5374 
+ 1085      61727400 
+ 1086              	.LASF47:
+ 1087 0393 56444143 		.ascii	"VDAC_source_Sleep\000"
+ 1087      5F736F75 
+ 1087      7263655F 
+ 1087      536C6565 
+ 1087      7000
+ 1088              	.LASF40:
+ 1089 03a5 64617461 		.ascii	"data_long\000"
+ 1089      5F6C6F6E 
+ 1089      6700
+ 1090              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran

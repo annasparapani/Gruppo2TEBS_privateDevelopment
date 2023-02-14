@@ -1,0 +1,53 @@
+--------------- Build Started: 02/11/2023 13:16:14 Project: PSoC_Project, Configuration: ARM GCC 5.4-2016-q2-update Debug ---------------
+The code generation step is up to date.
+arm-none-eabi-gcc.exe -mcpu=cortex-m3 -mthumb -I. -IGenerated_Source\PSoC5 -Wa,-alh=.\CortexM3\ARM_GCC_541\Debug/BT_protocols.lst -g -D DEBUG -D CY_CORE_ID=0 -Wall -ffunction-sections -ffat-lto-objects -Og -c BT_protocols.c -o .\CortexM3\ARM_GCC_541\Debug\BT_protocols.o
+BT_protocols.c: In function 'writeBT':
+BT_protocols.c:53:22: warning: passing argument 1 of 'UART_BT_PutArray' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+     UART_BT_PutArray(data_to_send, sending_size+1); // pass the data_buffer[0] address and the buffer size 
+                      ^
+In file included from Generated_Source\PSoC5/project.h:42:0,
+                 from BT_protocols.c:15:
+Generated_Source\PSoC5/UART_BT.h:140:10: note: expected 'const uint8 * {aka const unsigned char *}' but argument is of type 'volatile uint8_t * {aka volatile unsigned char *}'
+     void UART_BT_PutArray(const uint8 string[], uint8 byteCount)
+          ^
+BT_protocols.c: In function 'BT_sending_manager':
+BT_protocols.c:89:34: warning: passing argument 1 of 'UART_BT_PutArray' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+                 UART_BT_PutArray(data_to_send, DATA_MAX_SENDING_SIZE); // pass the data_buffer[0] address and the buffer size 
+                                  ^
+In file included from Generated_Source\PSoC5/project.h:42:0,
+                 from BT_protocols.c:15:
+Generated_Source\PSoC5/UART_BT.h:140:10: note: expected 'const uint8 * {aka const unsigned char *}' but argument is of type 'volatile uint8_t * {aka volatile unsigned char *}'
+     void UART_BT_PutArray(const uint8 string[], uint8 byteCount)
+          ^
+BT_protocols.c:106:22: warning: passing argument 1 of 'UART_BT_PutArray' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+     UART_BT_PutArray(data_to_send, (index%DATA_MAX_SENDING_SIZE)+2); // pass the data_buffer[0] address and the buffer size 
+                      ^
+In file included from Generated_Source\PSoC5/project.h:42:0,
+                 from BT_protocols.c:15:
+Generated_Source\PSoC5/UART_BT.h:140:10: note: expected 'const uint8 * {aka const unsigned char *}' but argument is of type 'volatile uint8_t * {aka volatile unsigned char *}'
+     void UART_BT_PutArray(const uint8 string[], uint8 byteCount)
+          ^
+BT_protocols.c: In function 'sendMeasures':
+BT_protocols.c:117:24: warning: passing argument 1 of 'BT_sending_manager' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+     BT_sending_manager(data_long, lut_length*2); // send the measured voltages  
+                        ^
+BT_protocols.c:80:6: note: expected 'uint8_t * {aka unsigned char *}' but argument is of type 'volatile uint8_t * {aka volatile unsigned char *}'
+ void BT_sending_manager(uint8_t* data_long_BT_man, int sending_size){
+      ^
+BT_protocols.c:131:24: warning: passing argument 1 of 'BT_sending_manager' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+     BT_sending_manager(data_long, lut_length*2); // incompatible pointers, if it's an issue copy 
+                        ^
+BT_protocols.c:80:6: note: expected 'uint8_t * {aka unsigned char *}' but argument is of type 'volatile uint8_t * {aka volatile unsigned char *}'
+ void BT_sending_manager(uint8_t* data_long_BT_man, int sending_size){
+      ^
+arm-none-eabi-ar.exe -rs .\CortexM3\ARM_GCC_541\Debug\PSoC_Project.a .\CortexM3\ARM_GCC_541\Debug\EEPROM.o .\CortexM3\ARM_GCC_541\Debug\TIA_resistor1.o .\CortexM3\ARM_GCC_541\Debug\isr_dac.o .\CortexM3\ARM_GCC_541\Debug\isr_adc.o .\CortexM3\ARM_GCC_541\Debug\isr_adcAmp.o .\CortexM3\ARM_GCC_541\Debug\AMux_TIA_resistor_bypass.o .\CortexM3\ARM_GCC_541\Debug\TIA_end_pin.o .\CortexM3\ARM_GCC_541\Debug\Working_Electrode.o .\CortexM3\ARM_GCC_541\Debug\IDAC_calibrate.o .\CortexM3\ARM_GCC_541\Debug\IDAC_calibrate_PM.o .\CortexM3\ARM_GCC_541\Debug\AMux_TIA_input.o .\CortexM3\ARM_GCC_541\Debug\VDAC_TIA.o .\CortexM3\ARM_GCC_541\Debug\VDAC_TIA_PM.o .\CortexM3\ARM_GCC_541\Debug\TIA.o .\CortexM3\ARM_GCC_541\Debug\TIA_PM.o .\CortexM3\ARM_GCC_541\Debug\Pin_DVDAC_cap.o .\CortexM3\ARM_GCC_541\Debug\Reference_Electrode.o .\CortexM3\ARM_GCC_541\Debug\UART_BT.o .\CortexM3\ARM_GCC_541\Debug\UART_BT_PM.o .\CortexM3\ARM_GCC_541\Debug\UART_BT_INT.o .\CortexM3\ARM_GCC_541\Debug\UART_BT_BOOT.o .\CortexM3\ARM_GCC_541\Debug\Counter_Electrode.o .\CortexM3\ARM_GCC_541\Debug\Opamp_Aux.o .\CortexM3\ARM_GCC_541\Debug\Opamp_Aux_PM.o .\CortexM3\ARM_GCC_541\Debug\AMux_electrode.o .\CortexM3\ARM_GCC_541\Debug\AMux_V_source.o .\CortexM3\ARM_GCC_541\Debug\DVDAC.o .\CortexM3\ARM_GCC_541\Debug\DVDAC_PM.o .\CortexM3\ARM_GCC_541\Debug\VDAC_source.o .\CortexM3\ARM_GCC_541\Debug\VDAC_source_PM.o .\CortexM3\ARM_GCC_541\Debug\Clock_PWM.o .\CortexM3\ARM_GCC_541\Debug\PWM_isr.o .\CortexM3\ARM_GCC_541\Debug\PWM_isr_PM.o .\CortexM3\ARM_GCC_541\Debug\UART_BT_IntClock.o .\CortexM3\ARM_GCC_541\Debug\DVDAC_DMA_dma.o .\CortexM3\ARM_GCC_541\Debug\DVDAC_VDAC8.o .\CortexM3\ARM_GCC_541\Debug\DVDAC_VDAC8_PM.o .\CortexM3\ARM_GCC_541\Debug\DVDAC_IntClock.o .\CortexM3\ARM_GCC_541\Debug\CyDmac.o .\CortexM3\ARM_GCC_541\Debug\CyFlash.o .\CortexM3\ARM_GCC_541\Debug\CyLib.o .\CortexM3\ARM_GCC_541\Debug\cyPm.o .\CortexM3\ARM_GCC_541\Debug\CySpc.o .\CortexM3\ARM_GCC_541\Debug\cyutils.o .\CortexM3\ARM_GCC_541\Debug\cy_em_eeprom.o .\CortexM3\ARM_GCC_541\Debug\ADC_SigDel.o .\CortexM3\ARM_GCC_541\Debug\ADC_SigDel_PM.o .\CortexM3\ARM_GCC_541\Debug\ADC_SigDel_INT.o .\CortexM3\ARM_GCC_541\Debug\ADC_SigDel_Ext_CP_Clk.o .\CortexM3\ARM_GCC_541\Debug\ADC_SigDel_IRQ.o .\CortexM3\ARM_GCC_541\Debug\ADC_SigDel_theACLK.o .\CortexM3\ARM_GCC_541\Debug\isr_UART_BT_RX.o .\CortexM3\ARM_GCC_541\Debug\LED_DAC.o .\CortexM3\ARM_GCC_541\Debug\LED_ADC.o .\CortexM3\ARM_GCC_541\Debug\CyBootAsmGnu.o
+arm-none-eabi-ar.exe: creating .\CortexM3\ARM_GCC_541\Debug\PSoC_Project.a
+arm-none-eabi-gcc.exe -Wl,--start-group -o \\.psf\Home\Desktop\LAB_TEBS\_Progetto\TEBS_GitHub\PSoC_Project\PSoC_Project.cydsn\CortexM3\ARM_GCC_541\Debug\PSoC_Project.elf .\CortexM3\ARM_GCC_541\Debug\main.o .\CortexM3\ARM_GCC_541\Debug\TIA_calibrate.o .\CortexM3\ARM_GCC_541\Debug\user_inputs.o .\CortexM3\ARM_GCC_541\Debug\hardware_management.o .\CortexM3\ARM_GCC_541\Debug\parametric_lut.o .\CortexM3\ARM_GCC_541\Debug\DAC_management.o .\CortexM3\ARM_GCC_541\Debug\BT_protocols.o .\CortexM3\ARM_GCC_541\Debug\cyfitter_cfg.o .\CortexM3\ARM_GCC_541\Debug\cymetadata.o .\CortexM3\ARM_GCC_541\Debug\Cm3Start.o .\CortexM3\ARM_GCC_541\Debug\PSoC_Project.a "C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\cycomponentlibrary\CyComponentLibrary.cylib\CortexM3\ARM_GCC_541\Debug\CyComponentLibrary.a" -mcpu=cortex-m3 -mthumb -L Generated_Source\PSoC5 -Wl,-Map,.\CortexM3\ARM_GCC_541\Debug/PSoC_Project.map -T Generated_Source\PSoC5\cm3gcc.ld -specs=nano.specs -Wl,--gc-sections -g -ffunction-sections -Og -ffat-lto-objects -Wl,--end-group
+cyelftool.exe -C \\.psf\Home\Desktop\LAB_TEBS\_Progetto\TEBS_GitHub\PSoC_Project\PSoC_Project.cydsn\CortexM3\ARM_GCC_541\Debug\PSoC_Project.elf --flash_row_size 256 --flash_size 262144 --flash_offset 0x00000000
+No ELF section .cychecksum found, creating one
+Application checksum calculated and stored in ELF section .cychecksum
+Checksum calculated and stored in ELF section .cymeta
+cyelftool.exe -S \\.psf\Home\Desktop\LAB_TEBS\_Progetto\TEBS_GitHub\PSoC_Project\PSoC_Project.cydsn\CortexM3\ARM_GCC_541\Debug\PSoC_Project.elf
+Flash used: 18976 of 262144 bytes (7,2%).
+SRAM used: 17905 of 65536 bytes (27,3%). Stack: 2048 bytes. Heap: 128 bytes.
+--------------- Build Succeeded: 02/11/2023 13:16:17 ---------------

@@ -1,0 +1,3208 @@
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"hardware_management.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.helper_Writebyte_EEPROM,"ax",%progbits
+  20              		.align	2
+  21              		.global	helper_Writebyte_EEPROM
+  22              		.thumb
+  23              		.thumb_func
+  24              		.type	helper_Writebyte_EEPROM, %function
+  25              	helper_Writebyte_EEPROM:
+  26              	.LFB66:
+  27              		.file 1 "hardware_management.c"
+   1:hardware_management.c **** /*******************************************************************************
+   2:hardware_management.c **** * File Name: helper_functions.c
+   3:hardware_management.c **** *
+   4:hardware_management.c **** * Description:
+   5:hardware_management.c **** *  Functions used by main.
+   6:hardware_management.c **** *  basically EEPROM functions at this point.
+   7:hardware_management.c **** *
+   8:hardware_management.c **** **********************************************************************************
+   9:hardware_management.c ****  * Copyright Naresuan University, Phitsanulok Thailand
+  10:hardware_management.c ****  * Released under Creative Commons Attribution-ShareAlike  3.0 (CC BY-SA 3.0 US)
+  11:hardware_management.c **** *********************************************************************************/
+  12:hardware_management.c **** 
+  13:hardware_management.c **** #include "hardware_management.h"
+  14:hardware_management.c **** 
+  15:hardware_management.c **** /******************************************************************************
+  16:hardware_management.c **** * Function Name: helper_check_voltage_source
+  17:hardware_management.c **** *******************************************************************************
+  18:hardware_management.c **** *
+  19:hardware_management.c **** * Summary:
+  20:hardware_management.c **** *  Look in the EEPROM to for what Voltage source is selected
+  21:hardware_management.c ****   # TODO: dont look in eeprom first, check selected_voltage_source before going to the eeprom
+  22:hardware_management.c **** *
+  23:hardware_management.c **** * Parameters:
+  24:hardware_management.c **** *
+  25:hardware_management.c **** * Return:
+  26:hardware_management.c **** *  VDAC_NOT_SET [0] - if no voltage source has been selected yet
+  27:hardware_management.c **** *  VDAC_IS_VDAC [1] - user indicated no external capacitor is installed, 
+  28:hardware_management.c **** *                     so 8-bit VDAC should be used
+  29:hardware_management.c **** *  VDAC_IS_DVDAC [2] - user has indicated and external capacitor is installed
+  30:hardware_management.c **** *                      so the dithering VDAC (DVDAC) should be set
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 2
+
+
+  31:hardware_management.c **** *
+  32:hardware_management.c **** * Global variables:
+  33:hardware_management.c **** *  OUT_ENDPOINT:  number that is the endpoint coming out of the computer
+  34:hardware_management.c **** *
+  35:hardware_management.c **** *******************************************************************************/
+  36:hardware_management.c **** 
+  37:hardware_management.c **** uint8_t helper_check_voltage_source(void) {
+  38:hardware_management.c ****     // start eeprom and read the value at voltage source address
+  39:hardware_management.c ****     return helper_Readbyte_EEPROM(VDAC_ADDRESS);
+  40:hardware_management.c **** }
+  41:hardware_management.c **** 
+  42:hardware_management.c **** /******************************************************************************
+  43:hardware_management.c **** * Function Name: helper_set_voltage_source
+  44:hardware_management.c **** *******************************************************************************
+  45:hardware_management.c **** *
+  46:hardware_management.c **** * Summary:
+  47:hardware_management.c **** *  Set the voltage source.  Connects the analog mux to the correct channel and 
+  48:hardware_management.c **** *  stops the other voltage source if it was on and starts and puts to sleep the DAC
+  49:hardware_management.c **** *
+  50:hardware_management.c **** * Parameters:
+  51:hardware_management.c **** *  uint8 voltage_source: which voltage source has been selected
+  52:hardware_management.c **** *
+  53:hardware_management.c **** * Global variables:
+  54:hardware_management.c **** *  selected_voltage_source:  which DAC is to be used
+  55:hardware_management.c **** *
+  56:hardware_management.c **** *******************************************************************************/
+  57:hardware_management.c **** 
+  58:hardware_management.c **** void helper_set_voltage_source(uint8_t voltage_source) {
+  59:hardware_management.c ****     selected_voltage_source = voltage_source;
+  60:hardware_management.c ****     helper_Writebyte_EEPROM(voltage_source, VDAC_ADDRESS);
+  61:hardware_management.c ****     
+  62:hardware_management.c ****     if (selected_voltage_source == VDAC_IS_DVDAC) {
+  63:hardware_management.c ****         VDAC_source_Stop();  // in case the other DAC is on, turn it off
+  64:hardware_management.c ****         
+  65:hardware_management.c ****     }
+  66:hardware_management.c ****     else {
+  67:hardware_management.c ****         DVDAC_Stop();  // in case the other DAC is on, turn it off
+  68:hardware_management.c ****     }
+  69:hardware_management.c ****     DAC_Start();
+  70:hardware_management.c ****     DAC_Sleep();
+  71:hardware_management.c **** }
+  72:hardware_management.c **** 
+  73:hardware_management.c **** 
+  74:hardware_management.c **** 
+  75:hardware_management.c **** /******************************************************************************
+  76:hardware_management.c **** * Function Name: helper_Writebyte_EEPROM
+  77:hardware_management.c **** *******************************************************************************
+  78:hardware_management.c **** *
+  79:hardware_management.c **** * Summary:
+  80:hardware_management.c **** *    Start the eepromm, update the temperature and write a byte to it
+  81:hardware_management.c **** *
+  82:hardware_management.c **** * Parameters:
+  83:hardware_management.c **** *     data: the byte to write in
+  84:hardware_management.c **** *     address: the address to write the data at
+  85:hardware_management.c **** *
+  86:hardware_management.c **** * Return:
+  87:hardware_management.c **** *
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 3
+
+
+  88:hardware_management.c **** *******************************************************************************/
+  89:hardware_management.c **** 
+  90:hardware_management.c **** uint8_t helper_Writebyte_EEPROM(uint8_t data, uint16_t address) {
+  28              		.loc 1 90 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 38B5     		push	{r3, r4, r5, lr}
+  34              		.cfi_def_cfa_offset 16
+  35              		.cfi_offset 3, -16
+  36              		.cfi_offset 4, -12
+  37              		.cfi_offset 5, -8
+  38              		.cfi_offset 14, -4
+  39 0002 0446     		mov	r4, r0
+  40 0004 0D46     		mov	r5, r1
+  91:hardware_management.c ****     EEPROM_Start();
+  41              		.loc 1 91 0
+  42 0006 FFF7FEFF 		bl	EEPROM_Start
+  43              	.LVL1:
+  92:hardware_management.c ****     CyDelayUs(10);
+  44              		.loc 1 92 0
+  45 000a 0A20     		movs	r0, #10
+  46 000c FFF7FEFF 		bl	CyDelayUs
+  47              	.LVL2:
+  93:hardware_management.c ****     EEPROM_UpdateTemperature();
+  48              		.loc 1 93 0
+  49 0010 FFF7FEFF 		bl	EEPROM_UpdateTemperature
+  50              	.LVL3:
+  94:hardware_management.c ****     uint8_t write_results = EEPROM_WriteByte(data, address);
+  51              		.loc 1 94 0
+  52 0014 2946     		mov	r1, r5
+  53 0016 2046     		mov	r0, r4
+  54 0018 FFF7FEFF 		bl	EEPROM_WriteByte
+  55              	.LVL4:
+  56 001c C4B2     		uxtb	r4, r0
+  57              	.LVL5:
+  95:hardware_management.c ****     EEPROM_Stop();
+  58              		.loc 1 95 0
+  59 001e FFF7FEFF 		bl	EEPROM_Stop
+  60              	.LVL6:
+  96:hardware_management.c ****     return write_results;
+  97:hardware_management.c **** }
+  61              		.loc 1 97 0
+  62 0022 2046     		mov	r0, r4
+  63 0024 38BD     		pop	{r3, r4, r5, pc}
+  64              		.cfi_endproc
+  65              	.LFE66:
+  66              		.size	helper_Writebyte_EEPROM, .-helper_Writebyte_EEPROM
+  67 0026 00BF     		.section	.text.helper_set_voltage_source,"ax",%progbits
+  68              		.align	2
+  69              		.global	helper_set_voltage_source
+  70              		.thumb
+  71              		.thumb_func
+  72              		.type	helper_set_voltage_source, %function
+  73              	helper_set_voltage_source:
+  74              	.LFB65:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 4
+
+
+  58:hardware_management.c ****     selected_voltage_source = voltage_source;
+  75              		.loc 1 58 0
+  76              		.cfi_startproc
+  77              		@ args = 0, pretend = 0, frame = 0
+  78              		@ frame_needed = 0, uses_anonymous_args = 0
+  79              	.LVL7:
+  80 0000 10B5     		push	{r4, lr}
+  81              		.cfi_def_cfa_offset 8
+  82              		.cfi_offset 4, -8
+  83              		.cfi_offset 14, -4
+  59:hardware_management.c ****     helper_Writebyte_EEPROM(voltage_source, VDAC_ADDRESS);
+  84              		.loc 1 59 0
+  85 0002 094C     		ldr	r4, .L7
+  86 0004 2070     		strb	r0, [r4]
+  60:hardware_management.c ****     
+  87              		.loc 1 60 0
+  88 0006 0021     		movs	r1, #0
+  89 0008 FFF7FEFF 		bl	helper_Writebyte_EEPROM
+  90              	.LVL8:
+  62:hardware_management.c ****         VDAC_source_Stop();  // in case the other DAC is on, turn it off
+  91              		.loc 1 62 0
+  92 000c 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+  93 000e 022B     		cmp	r3, #2
+  94 0010 02D1     		bne	.L4
+  63:hardware_management.c ****         
+  95              		.loc 1 63 0
+  96 0012 FFF7FEFF 		bl	VDAC_source_Stop
+  97              	.LVL9:
+  98 0016 01E0     		b	.L5
+  99              	.L4:
+  67:hardware_management.c ****     }
+ 100              		.loc 1 67 0
+ 101 0018 FFF7FEFF 		bl	DVDAC_Stop
+ 102              	.LVL10:
+ 103              	.L5:
+  69:hardware_management.c ****     DAC_Sleep();
+ 104              		.loc 1 69 0
+ 105 001c FFF7FEFF 		bl	DAC_Start
+ 106              	.LVL11:
+  70:hardware_management.c **** }
+ 107              		.loc 1 70 0
+ 108 0020 FFF7FEFF 		bl	DAC_Sleep
+ 109              	.LVL12:
+ 110 0024 10BD     		pop	{r4, pc}
+ 111              	.L8:
+ 112 0026 00BF     		.align	2
+ 113              	.L7:
+ 114 0028 00000000 		.word	selected_voltage_source
+ 115              		.cfi_endproc
+ 116              	.LFE65:
+ 117              		.size	helper_set_voltage_source, .-helper_set_voltage_source
+ 118              		.section	.text.helper_Readbyte_EEPROM,"ax",%progbits
+ 119              		.align	2
+ 120              		.global	helper_Readbyte_EEPROM
+ 121              		.thumb
+ 122              		.thumb_func
+ 123              		.type	helper_Readbyte_EEPROM, %function
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 5
+
+
+ 124              	helper_Readbyte_EEPROM:
+ 125              	.LFB67:
+  98:hardware_management.c **** 
+  99:hardware_management.c **** /******************************************************************************
+ 100:hardware_management.c **** * Function Name: helper_Readbyte_EEPROM
+ 101:hardware_management.c **** *******************************************************************************
+ 102:hardware_management.c **** *
+ 103:hardware_management.c **** * Summary:
+ 104:hardware_management.c **** *    Start the eepromm, update the temperature and read a byte to it
+ 105:hardware_management.c **** *
+ 106:hardware_management.c **** * Parameters:
+ 107:hardware_management.c **** *     address: the address to read the data from
+ 108:hardware_management.c **** *
+ 109:hardware_management.c **** * Return:
+ 110:hardware_management.c **** *     data that was read
+ 111:hardware_management.c **** *
+ 112:hardware_management.c **** *******************************************************************************/
+ 113:hardware_management.c **** 
+ 114:hardware_management.c **** uint8_t helper_Readbyte_EEPROM(uint16_t address) {
+ 126              		.loc 1 114 0
+ 127              		.cfi_startproc
+ 128              		@ args = 0, pretend = 0, frame = 0
+ 129              		@ frame_needed = 0, uses_anonymous_args = 0
+ 130              	.LVL13:
+ 131 0000 10B5     		push	{r4, lr}
+ 132              		.cfi_def_cfa_offset 8
+ 133              		.cfi_offset 4, -8
+ 134              		.cfi_offset 14, -4
+ 135 0002 0446     		mov	r4, r0
+ 115:hardware_management.c ****     EEPROM_Start();
+ 136              		.loc 1 115 0
+ 137 0004 FFF7FEFF 		bl	EEPROM_Start
+ 138              	.LVL14:
+ 116:hardware_management.c ****     CyDelayUs(10);
+ 139              		.loc 1 116 0
+ 140 0008 0A20     		movs	r0, #10
+ 141 000a FFF7FEFF 		bl	CyDelayUs
+ 142              	.LVL15:
+ 117:hardware_management.c ****     EEPROM_UpdateTemperature();
+ 143              		.loc 1 117 0
+ 144 000e FFF7FEFF 		bl	EEPROM_UpdateTemperature
+ 145              	.LVL16:
+ 118:hardware_management.c ****     CyDelayUs(10);
+ 146              		.loc 1 118 0
+ 147 0012 0A20     		movs	r0, #10
+ 148 0014 FFF7FEFF 		bl	CyDelayUs
+ 149              	.LVL17:
+ 119:hardware_management.c ****     uint8_t data = EEPROM_ReadByte(address);
+ 150              		.loc 1 119 0
+ 151 0018 2046     		mov	r0, r4
+ 152 001a FFF7FEFF 		bl	EEPROM_ReadByte
+ 153              	.LVL18:
+ 154 001e 0446     		mov	r4, r0
+ 155              	.LVL19:
+ 120:hardware_management.c ****     EEPROM_Stop();
+ 156              		.loc 1 120 0
+ 157 0020 FFF7FEFF 		bl	EEPROM_Stop
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 6
+
+
+ 158              	.LVL20:
+ 121:hardware_management.c ****     return data;
+ 122:hardware_management.c **** }
+ 159              		.loc 1 122 0
+ 160 0024 2046     		mov	r0, r4
+ 161 0026 10BD     		pop	{r4, pc}
+ 162              		.cfi_endproc
+ 163              	.LFE67:
+ 164              		.size	helper_Readbyte_EEPROM, .-helper_Readbyte_EEPROM
+ 165              		.section	.text.helper_check_voltage_source,"ax",%progbits
+ 166              		.align	2
+ 167              		.global	helper_check_voltage_source
+ 168              		.thumb
+ 169              		.thumb_func
+ 170              		.type	helper_check_voltage_source, %function
+ 171              	helper_check_voltage_source:
+ 172              	.LFB64:
+  37:hardware_management.c ****     // start eeprom and read the value at voltage source address
+ 173              		.loc 1 37 0
+ 174              		.cfi_startproc
+ 175              		@ args = 0, pretend = 0, frame = 0
+ 176              		@ frame_needed = 0, uses_anonymous_args = 0
+ 177 0000 08B5     		push	{r3, lr}
+ 178              		.cfi_def_cfa_offset 8
+ 179              		.cfi_offset 3, -8
+ 180              		.cfi_offset 14, -4
+  39:hardware_management.c **** }
+ 181              		.loc 1 39 0
+ 182 0002 0020     		movs	r0, #0
+ 183 0004 FFF7FEFF 		bl	helper_Readbyte_EEPROM
+ 184              	.LVL21:
+  40:hardware_management.c **** 
+ 185              		.loc 1 40 0
+ 186 0008 08BD     		pop	{r3, pc}
+ 187              		.cfi_endproc
+ 188              	.LFE64:
+ 189              		.size	helper_check_voltage_source, .-helper_check_voltage_source
+ 190 000a 00BF     		.section	.text.helper_HardwareStart,"ax",%progbits
+ 191              		.align	2
+ 192              		.global	helper_HardwareStart
+ 193              		.thumb
+ 194              		.thumb_func
+ 195              		.type	helper_HardwareStart, %function
+ 196              	helper_HardwareStart:
+ 197              	.LFB69:
+ 123:hardware_management.c **** 
+ 124:hardware_management.c **** /******************************************************************************
+ 125:hardware_management.c **** * Function Name: helper_HardwareSetup
+ 126:hardware_management.c **** *******************************************************************************
+ 127:hardware_management.c **** *
+ 128:hardware_management.c **** * Summary:
+ 129:hardware_management.c **** *    Setup all the hardware needed for an experiment.  This will start all the hardware
+ 130:hardware_management.c **** *    and then put them to sleep so they can be awoke for an experiment.  Connect all the 
+ 131:hardware_management.c **** *    defualt analog muxes
+ 132:hardware_management.c **** *
+ 133:hardware_management.c **** *******************************************************************************/
+ 134:hardware_management.c **** 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 7
+
+
+ 135:hardware_management.c **** 
+ 136:hardware_management.c **** void helper_HardwareSetup(void) {
+ 137:hardware_management.c ****     
+ 138:hardware_management.c ****     helper_HardwareStart();
+ 139:hardware_management.c ****     helper_HardwareSleep();
+ 140:hardware_management.c **** 
+ 141:hardware_management.c ****     AMux_electrode_Init();
+ 142:hardware_management.c ****     AMux_TIA_input_Init();
+ 143:hardware_management.c ****     AMux_TIA_resistor_bypass_Init();
+ 144:hardware_management.c ****     AMux_V_source_Init();
+ 145:hardware_management.c ****     AMux_TIA_resistor_bypass_Init();
+ 146:hardware_management.c ****     DAC_Start();  // DAC has to be started after the AMux_V_source because it will set it based wha
+ 147:hardware_management.c ****     
+ 148:hardware_management.c ****     // iniatialize the analog muxes connections 
+ 149:hardware_management.c ****     AMux_electrode_Select(two_electrode_config_ch);  // start with 3 electrode configuration
+ 150:hardware_management.c ****     AMux_TIA_input_Select(AMux_TIA_working_electrode_ch);  // Connect the working electrode
+ 151:hardware_management.c ****     AMux_TIA_resistor_bypass_Select(0);  // Start with no extra TIA resistor
+ 152:hardware_management.c ****     //TIA_resistor_value_index=1; // when starting set by default the R of the TIA to 20kOhm 
+ 153:hardware_management.c **** }
+ 154:hardware_management.c **** 
+ 155:hardware_management.c **** /******************************************************************************
+ 156:hardware_management.c **** * Function Name: helper_HardwareStart
+ 157:hardware_management.c **** *******************************************************************************
+ 158:hardware_management.c **** *
+ 159:hardware_management.c **** * Summary:
+ 160:hardware_management.c **** *    Start all the hardware needed for an experiment.
+ 161:hardware_management.c **** *
+ 162:hardware_management.c **** *******************************************************************************/
+ 163:hardware_management.c **** 
+ 164:hardware_management.c **** void helper_HardwareStart(void){  // start all the components that have to be on for a reading
+ 198              		.loc 1 164 0
+ 199              		.cfi_startproc
+ 200              		@ args = 0, pretend = 0, frame = 0
+ 201              		@ frame_needed = 0, uses_anonymous_args = 0
+ 202 0000 08B5     		push	{r3, lr}
+ 203              		.cfi_def_cfa_offset 8
+ 204              		.cfi_offset 3, -8
+ 205              		.cfi_offset 14, -4
+ 165:hardware_management.c ****     ADC_SigDel_Start();
+ 206              		.loc 1 165 0
+ 207 0002 FFF7FEFF 		bl	ADC_SigDel_Start
+ 208              	.LVL22:
+ 166:hardware_management.c ****     TIA_Start();
+ 209              		.loc 1 166 0
+ 210 0006 FFF7FEFF 		bl	TIA_Start
+ 211              	.LVL23:
+ 167:hardware_management.c ****     VDAC_TIA_Start();
+ 212              		.loc 1 167 0
+ 213 000a FFF7FEFF 		bl	VDAC_TIA_Start
+ 214              	.LVL24:
+ 168:hardware_management.c ****     Opamp_Aux_Start();
+ 215              		.loc 1 168 0
+ 216 000e FFF7FEFF 		bl	Opamp_Aux_Start
+ 217              	.LVL25:
+ 169:hardware_management.c ****     PWM_isr_Start();
+ 218              		.loc 1 169 0
+ 219 0012 FFF7FEFF 		bl	PWM_isr_Start
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 8
+
+
+ 220              	.LVL26:
+ 221 0016 08BD     		pop	{r3, pc}
+ 222              		.cfi_endproc
+ 223              	.LFE69:
+ 224              		.size	helper_HardwareStart, .-helper_HardwareStart
+ 225              		.section	.text.helper_HardwareWakeup,"ax",%progbits
+ 226              		.align	2
+ 227              		.global	helper_HardwareWakeup
+ 228              		.thumb
+ 229              		.thumb_func
+ 230              		.type	helper_HardwareWakeup, %function
+ 231              	helper_HardwareWakeup:
+ 232              	.LFB70:
+ 170:hardware_management.c **** }
+ 171:hardware_management.c **** 
+ 172:hardware_management.c **** /******************************************************************************
+ 173:hardware_management.c **** * Function Name: helper_HardwareWakeup
+ 174:hardware_management.c **** *******************************************************************************
+ 175:hardware_management.c **** *
+ 176:hardware_management.c **** * Summary:
+ 177:hardware_management.c **** *    Start all the hardware needed for an experiment.
+ 178:hardware_management.c **** *
+ 179:hardware_management.c **** *******************************************************************************/
+ 180:hardware_management.c **** 
+ 181:hardware_management.c **** void helper_HardwareWakeup(void){  // wakeup all the components that have to be on for a reading
+ 233              		.loc 1 181 0
+ 234              		.cfi_startproc
+ 235              		@ args = 0, pretend = 0, frame = 0
+ 236              		@ frame_needed = 0, uses_anonymous_args = 0
+ 237 0000 08B5     		push	{r3, lr}
+ 238              		.cfi_def_cfa_offset 8
+ 239              		.cfi_offset 3, -8
+ 240              		.cfi_offset 14, -4
+ 182:hardware_management.c ****     ADC_SigDel_Wakeup();
+ 241              		.loc 1 182 0
+ 242 0002 FFF7FEFF 		bl	ADC_SigDel_Wakeup
+ 243              	.LVL27:
+ 183:hardware_management.c ****     TIA_Wakeup();
+ 244              		.loc 1 183 0
+ 245 0006 FFF7FEFF 		bl	TIA_Wakeup
+ 246              	.LVL28:
+ 184:hardware_management.c ****     VDAC_TIA_Wakeup();
+ 247              		.loc 1 184 0
+ 248 000a FFF7FEFF 		bl	VDAC_TIA_Wakeup
+ 249              	.LVL29:
+ 185:hardware_management.c ****     DAC_Wakeup();
+ 250              		.loc 1 185 0
+ 251 000e FFF7FEFF 		bl	DAC_Wakeup
+ 252              	.LVL30:
+ 186:hardware_management.c ****     CyDelay(1);
+ 253              		.loc 1 186 0
+ 254 0012 0120     		movs	r0, #1
+ 255 0014 FFF7FEFF 		bl	CyDelay
+ 256              	.LVL31:
+ 187:hardware_management.c ****     DAC_SetValue(lut_value);
+ 257              		.loc 1 187 0
+ 258 0018 054B     		ldr	r3, .L17
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 9
+
+
+ 259 001a 1888     		ldrh	r0, [r3]
+ 260 001c FFF7FEFF 		bl	DAC_SetValue
+ 261              	.LVL32:
+ 188:hardware_management.c ****     CyDelay(10);
+ 262              		.loc 1 188 0
+ 263 0020 0A20     		movs	r0, #10
+ 264 0022 FFF7FEFF 		bl	CyDelay
+ 265              	.LVL33:
+ 189:hardware_management.c ****     Opamp_Aux_Wakeup();
+ 266              		.loc 1 189 0
+ 267 0026 FFF7FEFF 		bl	Opamp_Aux_Wakeup
+ 268              	.LVL34:
+ 190:hardware_management.c ****     
+ 191:hardware_management.c ****     PWM_isr_Wakeup();
+ 269              		.loc 1 191 0
+ 270 002a FFF7FEFF 		bl	PWM_isr_Wakeup
+ 271              	.LVL35:
+ 272 002e 08BD     		pop	{r3, pc}
+ 273              	.L18:
+ 274              		.align	2
+ 275              	.L17:
+ 276 0030 00000000 		.word	lut_value
+ 277              		.cfi_endproc
+ 278              	.LFE70:
+ 279              		.size	helper_HardwareWakeup, .-helper_HardwareWakeup
+ 280              		.section	.text.helper_HardwareSleep,"ax",%progbits
+ 281              		.align	2
+ 282              		.global	helper_HardwareSleep
+ 283              		.thumb
+ 284              		.thumb_func
+ 285              		.type	helper_HardwareSleep, %function
+ 286              	helper_HardwareSleep:
+ 287              	.LFB71:
+ 192:hardware_management.c ****     
+ 193:hardware_management.c **** }
+ 194:hardware_management.c **** 
+ 195:hardware_management.c **** /******************************************************************************
+ 196:hardware_management.c **** * Function Name: helper_HardwareSleep
+ 197:hardware_management.c **** *******************************************************************************
+ 198:hardware_management.c **** *
+ 199:hardware_management.c **** * Summary:
+ 200:hardware_management.c **** *    Put to sleep all the hardware needed for an experiment.
+ 201:hardware_management.c **** *
+ 202:hardware_management.c **** *******************************************************************************/
+ 203:hardware_management.c **** 
+ 204:hardware_management.c **** void helper_HardwareSleep(void){  // put to sleep all the components that have to be on for a readi
+ 288              		.loc 1 204 0
+ 289              		.cfi_startproc
+ 290              		@ args = 0, pretend = 0, frame = 0
+ 291              		@ frame_needed = 0, uses_anonymous_args = 0
+ 292 0000 08B5     		push	{r3, lr}
+ 293              		.cfi_def_cfa_offset 8
+ 294              		.cfi_offset 3, -8
+ 295              		.cfi_offset 14, -4
+ 205:hardware_management.c ****     ADC_SigDel_Sleep();
+ 296              		.loc 1 205 0
+ 297 0002 FFF7FEFF 		bl	ADC_SigDel_Sleep
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 10
+
+
+ 298              	.LVL36:
+ 206:hardware_management.c ****     DAC_Sleep();
+ 299              		.loc 1 206 0
+ 300 0006 FFF7FEFF 		bl	DAC_Sleep
+ 301              	.LVL37:
+ 207:hardware_management.c ****     TIA_Sleep();
+ 302              		.loc 1 207 0
+ 303 000a FFF7FEFF 		bl	TIA_Sleep
+ 304              	.LVL38:
+ 208:hardware_management.c ****     VDAC_TIA_Sleep();
+ 305              		.loc 1 208 0
+ 306 000e FFF7FEFF 		bl	VDAC_TIA_Sleep
+ 307              	.LVL39:
+ 209:hardware_management.c ****     Opamp_Aux_Sleep();
+ 308              		.loc 1 209 0
+ 309 0012 FFF7FEFF 		bl	Opamp_Aux_Sleep
+ 310              	.LVL40:
+ 210:hardware_management.c ****     PWM_isr_Sleep();
+ 311              		.loc 1 210 0
+ 312 0016 FFF7FEFF 		bl	PWM_isr_Sleep
+ 313              	.LVL41:
+ 314 001a 08BD     		pop	{r3, pc}
+ 315              		.cfi_endproc
+ 316              	.LFE71:
+ 317              		.size	helper_HardwareSleep, .-helper_HardwareSleep
+ 318              		.section	.text.helper_HardwareSetup,"ax",%progbits
+ 319              		.align	2
+ 320              		.global	helper_HardwareSetup
+ 321              		.thumb
+ 322              		.thumb_func
+ 323              		.type	helper_HardwareSetup, %function
+ 324              	helper_HardwareSetup:
+ 325              	.LFB68:
+ 136:hardware_management.c ****     
+ 326              		.loc 1 136 0
+ 327              		.cfi_startproc
+ 328              		@ args = 0, pretend = 0, frame = 0
+ 329              		@ frame_needed = 0, uses_anonymous_args = 0
+ 330 0000 08B5     		push	{r3, lr}
+ 331              		.cfi_def_cfa_offset 8
+ 332              		.cfi_offset 3, -8
+ 333              		.cfi_offset 14, -4
+ 138:hardware_management.c ****     helper_HardwareSleep();
+ 334              		.loc 1 138 0
+ 335 0002 FFF7FEFF 		bl	helper_HardwareStart
+ 336              	.LVL42:
+ 139:hardware_management.c **** 
+ 337              		.loc 1 139 0
+ 338 0006 FFF7FEFF 		bl	helper_HardwareSleep
+ 339              	.LVL43:
+ 141:hardware_management.c ****     AMux_TIA_input_Init();
+ 340              		.loc 1 141 0
+ 341 000a FFF7FEFF 		bl	AMux_electrode_Start
+ 342              	.LVL44:
+ 142:hardware_management.c ****     AMux_TIA_resistor_bypass_Init();
+ 343              		.loc 1 142 0
+ 344 000e FFF7FEFF 		bl	AMux_TIA_input_Start
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 11
+
+
+ 345              	.LVL45:
+ 143:hardware_management.c ****     AMux_V_source_Init();
+ 346              		.loc 1 143 0
+ 347 0012 FFF7FEFF 		bl	AMux_TIA_resistor_bypass_Start
+ 348              	.LVL46:
+ 144:hardware_management.c ****     AMux_TIA_resistor_bypass_Init();
+ 349              		.loc 1 144 0
+ 350 0016 FFF7FEFF 		bl	AMux_V_source_Start
+ 351              	.LVL47:
+ 145:hardware_management.c ****     DAC_Start();  // DAC has to be started after the AMux_V_source because it will set it based wha
+ 352              		.loc 1 145 0
+ 353 001a FFF7FEFF 		bl	AMux_TIA_resistor_bypass_Start
+ 354              	.LVL48:
+ 146:hardware_management.c ****     
+ 355              		.loc 1 146 0
+ 356 001e FFF7FEFF 		bl	DAC_Start
+ 357              	.LVL49:
+ 149:hardware_management.c ****     AMux_TIA_input_Select(AMux_TIA_working_electrode_ch);  // Connect the working electrode
+ 358              		.loc 1 149 0
+ 359 0022 0020     		movs	r0, #0
+ 360 0024 FFF7FEFF 		bl	AMux_electrode_Select
+ 361              	.LVL50:
+ 150:hardware_management.c ****     AMux_TIA_resistor_bypass_Select(0);  // Start with no extra TIA resistor
+ 362              		.loc 1 150 0
+ 363 0028 0120     		movs	r0, #1
+ 364 002a FFF7FEFF 		bl	AMux_TIA_input_Select
+ 365              	.LVL51:
+ 151:hardware_management.c ****     //TIA_resistor_value_index=1; // when starting set by default the R of the TIA to 20kOhm 
+ 366              		.loc 1 151 0
+ 367 002e 0020     		movs	r0, #0
+ 368 0030 FFF7FEFF 		bl	AMux_TIA_resistor_bypass_Select
+ 369              	.LVL52:
+ 370 0034 08BD     		pop	{r3, pc}
+ 371              		.cfi_endproc
+ 372              	.LFE68:
+ 373              		.size	helper_HardwareSetup, .-helper_HardwareSetup
+ 374 0036 00BF     		.section	.text.helper_Convert2Dec,"ax",%progbits
+ 375              		.align	2
+ 376              		.global	helper_Convert2Dec
+ 377              		.thumb
+ 378              		.thumb_func
+ 379              		.type	helper_Convert2Dec, %function
+ 380              	helper_Convert2Dec:
+ 381              	.LFB72:
+ 211:hardware_management.c ****     
+ 212:hardware_management.c **** }
+ 213:hardware_management.c **** 
+ 214:hardware_management.c **** 
+ 215:hardware_management.c **** /* ** NOT USED ***
+ 216:hardware_management.c **** void make_run_params(const uint8_t data_buffer[], const uint8_t use_swv,
+ 217:hardware_management.c ****                      struct RunParams *run_params) {
+ 218:hardware_management.c ****     run_params->start_value = helper_Convert2Dec(&data_buffer[2], 4);
+ 219:hardware_management.c ****     run_params->end_value = helper_Convert2Dec(&data_buffer[7], 4);
+ 220:hardware_management.c ****     run_params->timer_period = helper_Convert2Dec(&data_buffer[12], 5);
+ 221:hardware_management.c ****     if (use_swv == true) {
+ 222:hardware_management.c ****         run_params->use_swv = true;
+ 223:hardware_management.c ****         run_params->swv_inc = helper_Convert2Dec(&data_buffer[18], 4);
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 12
+
+
+ 224:hardware_management.c ****         run_params->swv_pulse_height = helper_Convert2Dec(&data_buffer[23], 4);
+ 225:hardware_management.c ****         run_params->sweep_type = data_buffer[28];
+ 226:hardware_management.c ****         run_params->start_volt_type = data_buffer[29];
+ 227:hardware_management.c ****     }
+ 228:hardware_management.c ****     else {
+ 229:hardware_management.c ****         run_params->sweep_type = data_buffer[18];
+ 230:hardware_management.c ****         run_params->start_volt_type = data_buffer[19];
+ 231:hardware_management.c ****     }
+ 232:hardware_management.c ****     
+ 233:hardware_management.c **** }*/
+ 234:hardware_management.c **** 
+ 235:hardware_management.c **** 
+ 236:hardware_management.c **** uint16_t helper_Convert2Dec(const uint8_t array[], const uint8_t len){
+ 382              		.loc 1 236 0
+ 383              		.cfi_startproc
+ 384              		@ args = 0, pretend = 0, frame = 0
+ 385              		@ frame_needed = 0, uses_anonymous_args = 0
+ 386              		@ link register save eliminated.
+ 387              	.LVL53:
+ 388 0000 30B4     		push	{r4, r5}
+ 389              		.cfi_def_cfa_offset 8
+ 390              		.cfi_offset 4, -8
+ 391              		.cfi_offset 5, -4
+ 392              	.LVL54:
+ 393              	.LBB2:
+ 237:hardware_management.c ****     uint16_t num = 0;
+ 238:hardware_management.c ****     for (int i = 0; i < len; i++){
+ 394              		.loc 1 238 0
+ 395 0002 0024     		movs	r4, #0
+ 396              	.LBE2:
+ 237:hardware_management.c ****     uint16_t num = 0;
+ 397              		.loc 1 237 0
+ 398 0004 2346     		mov	r3, r4
+ 399              	.LBB3:
+ 400              		.loc 1 238 0
+ 401 0006 08E0     		b	.L24
+ 402              	.LVL55:
+ 403              	.L25:
+ 239:hardware_management.c ****         num = num * 10 + (array[i] - '0');
+ 404              		.loc 1 239 0 discriminator 3
+ 405 0008 025D     		ldrb	r2, [r0, r4]	@ zero_extendqisi2
+ 406 000a 03EB8303 		add	r3, r3, r3, lsl #2
+ 407              	.LVL56:
+ 408 000e 5D00     		lsls	r5, r3, #1
+ 409 0010 AB18     		adds	r3, r5, r2
+ 410 0012 9BB2     		uxth	r3, r3
+ 411 0014 303B     		subs	r3, r3, #48
+ 412 0016 9BB2     		uxth	r3, r3
+ 413              	.LVL57:
+ 238:hardware_management.c ****         num = num * 10 + (array[i] - '0');
+ 414              		.loc 1 238 0 discriminator 3
+ 415 0018 0134     		adds	r4, r4, #1
+ 416              	.LVL58:
+ 417              	.L24:
+ 238:hardware_management.c ****         num = num * 10 + (array[i] - '0');
+ 418              		.loc 1 238 0 is_stmt 0 discriminator 1
+ 419 001a 8C42     		cmp	r4, r1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 13
+
+
+ 420 001c F4DB     		blt	.L25
+ 421              	.LBE3:
+ 240:hardware_management.c ****     }
+ 241:hardware_management.c ****     return num;
+ 242:hardware_management.c **** }
+ 422              		.loc 1 242 0 is_stmt 1
+ 423 001e 1846     		mov	r0, r3
+ 424              	.LVL59:
+ 425 0020 30BC     		pop	{r4, r5}
+ 426              		.cfi_restore 5
+ 427              		.cfi_restore 4
+ 428              		.cfi_def_cfa_offset 0
+ 429              	.LVL60:
+ 430 0022 7047     		bx	lr
+ 431              		.cfi_endproc
+ 432              	.LFE72:
+ 433              		.size	helper_Convert2Dec, .-helper_Convert2Dec
+ 434              		.section	.text.initialize_default_values,"ax",%progbits
+ 435              		.align	2
+ 436              		.global	initialize_default_values
+ 437              		.thumb
+ 438              		.thumb_func
+ 439              		.type	initialize_default_values, %function
+ 440              	initialize_default_values:
+ 441              	.LFB73:
+ 243:hardware_management.c **** 
+ 244:hardware_management.c **** void initialize_default_values(void){
+ 442              		.loc 1 244 0
+ 443              		.cfi_startproc
+ 444              		@ args = 0, pretend = 0, frame = 0
+ 445              		@ frame_needed = 0, uses_anonymous_args = 0
+ 446 0000 08B5     		push	{r3, lr}
+ 447              		.cfi_def_cfa_offset 8
+ 448              		.cfi_offset 3, -8
+ 449              		.cfi_offset 14, -4
+ 245:hardware_management.c ****     EEPROM_Start();
+ 450              		.loc 1 245 0
+ 451 0002 FFF7FEFF 		bl	EEPROM_Start
+ 452              	.LVL61:
+ 246:hardware_management.c ****     return_value = EEPROM_WriteByte(M_DEFAULT,M_DEFAULT_ADD);
+ 453              		.loc 1 246 0
+ 454 0006 0021     		movs	r1, #0
+ 455 0008 0A20     		movs	r0, #10
+ 456 000a FFF7FEFF 		bl	EEPROM_WriteByte
+ 457              	.LVL62:
+ 458 000e 344B     		ldr	r3, .L41
+ 459 0010 1860     		str	r0, [r3]
+ 247:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 460              		.loc 1 247 0
+ 461 0012 08B1     		cbz	r0, .L28
+ 248:hardware_management.c ****             errorBT();
+ 462              		.loc 1 248 0
+ 463 0014 FFF7FEFF 		bl	errorBT
+ 464              	.LVL63:
+ 465              	.L28:
+ 249:hardware_management.c ****         }
+ 250:hardware_management.c ****     return_value = EEPROM_WriteByte(Q_DEFAULT,Q_DEFAULT_ADD);
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 14
+
+
+ 466              		.loc 1 250 0
+ 467 0018 0121     		movs	r1, #1
+ 468 001a 0A20     		movs	r0, #10
+ 469 001c FFF7FEFF 		bl	EEPROM_WriteByte
+ 470              	.LVL64:
+ 471 0020 2F4B     		ldr	r3, .L41
+ 472 0022 1860     		str	r0, [r3]
+ 251:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 473              		.loc 1 251 0
+ 474 0024 08B1     		cbz	r0, .L29
+ 252:hardware_management.c ****             errorBT();
+ 475              		.loc 1 252 0
+ 476 0026 FFF7FEFF 		bl	errorBT
+ 477              	.LVL65:
+ 478              	.L29:
+ 253:hardware_management.c ****         }
+ 254:hardware_management.c ****     return_value = EEPROM_WriteByte(V_DEFAULT,V_DEFAULT_ADD);
+ 479              		.loc 1 254 0
+ 480 002a 0221     		movs	r1, #2
+ 481 002c 0A20     		movs	r0, #10
+ 482 002e FFF7FEFF 		bl	EEPROM_WriteByte
+ 483              	.LVL66:
+ 484 0032 2B4B     		ldr	r3, .L41
+ 485 0034 1860     		str	r0, [r3]
+ 255:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 486              		.loc 1 255 0
+ 487 0036 08B1     		cbz	r0, .L30
+ 256:hardware_management.c ****             errorBT();
+ 488              		.loc 1 256 0
+ 489 0038 FFF7FEFF 		bl	errorBT
+ 490              	.LVL67:
+ 491              	.L30:
+ 257:hardware_management.c ****         }
+ 258:hardware_management.c ****     return_value = EEPROM_WriteByte(T_DEFAULT,T_DEFAULT_ADD);
+ 492              		.loc 1 258 0
+ 493 003c 0321     		movs	r1, #3
+ 494 003e 0A20     		movs	r0, #10
+ 495 0040 FFF7FEFF 		bl	EEPROM_WriteByte
+ 496              	.LVL68:
+ 497 0044 264B     		ldr	r3, .L41
+ 498 0046 1860     		str	r0, [r3]
+ 259:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 499              		.loc 1 259 0
+ 500 0048 08B1     		cbz	r0, .L31
+ 260:hardware_management.c ****             errorBT();
+ 501              		.loc 1 260 0
+ 502 004a FFF7FEFF 		bl	errorBT
+ 503              	.LVL69:
+ 504              	.L31:
+ 261:hardware_management.c ****         }
+ 262:hardware_management.c ****     return_value = EEPROM_WriteByte(SCAN_RATE_DEFAULT,SCAN_RATE_DEFAULT_ADD);
+ 505              		.loc 1 262 0
+ 506 004e 0421     		movs	r1, #4
+ 507 0050 0A20     		movs	r0, #10
+ 508 0052 FFF7FEFF 		bl	EEPROM_WriteByte
+ 509              	.LVL70:
+ 510 0056 224B     		ldr	r3, .L41
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 15
+
+
+ 511 0058 1860     		str	r0, [r3]
+ 263:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 512              		.loc 1 263 0
+ 513 005a 08B1     		cbz	r0, .L32
+ 264:hardware_management.c ****             errorBT();
+ 514              		.loc 1 264 0
+ 515 005c FFF7FEFF 		bl	errorBT
+ 516              	.LVL71:
+ 517              	.L32:
+ 265:hardware_management.c ****         }   
+ 266:hardware_management.c ****     return_value = EEPROM_WriteByte(START_DEFAULT,START_DEFAULT_ADD);
+ 518              		.loc 1 266 0
+ 519 0060 0521     		movs	r1, #5
+ 520 0062 0A20     		movs	r0, #10
+ 521 0064 FFF7FEFF 		bl	EEPROM_WriteByte
+ 522              	.LVL72:
+ 523 0068 1D4B     		ldr	r3, .L41
+ 524 006a 1860     		str	r0, [r3]
+ 267:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 525              		.loc 1 267 0
+ 526 006c 08B1     		cbz	r0, .L33
+ 268:hardware_management.c ****             errorBT();
+ 527              		.loc 1 268 0
+ 528 006e FFF7FEFF 		bl	errorBT
+ 529              	.LVL73:
+ 530              	.L33:
+ 269:hardware_management.c ****         }
+ 270:hardware_management.c ****     return_value = EEPROM_WriteByte(END_DEFAULT,END_DEFAULT_ADD);
+ 531              		.loc 1 270 0
+ 532 0072 0621     		movs	r1, #6
+ 533 0074 0A20     		movs	r0, #10
+ 534 0076 FFF7FEFF 		bl	EEPROM_WriteByte
+ 535              	.LVL74:
+ 536 007a 194B     		ldr	r3, .L41
+ 537 007c 1860     		str	r0, [r3]
+ 271:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 538              		.loc 1 271 0
+ 539 007e 08B1     		cbz	r0, .L34
+ 272:hardware_management.c ****             errorBT();
+ 540              		.loc 1 272 0
+ 541 0080 FFF7FEFF 		bl	errorBT
+ 542              	.LVL75:
+ 543              	.L34:
+ 273:hardware_management.c ****         } 
+ 274:hardware_management.c ****     return_value = EEPROM_WriteByte(INCREMENT_DEFAULT,INCREMENT_DEFAULT_ADD);
+ 544              		.loc 1 274 0
+ 545 0084 0721     		movs	r1, #7
+ 546 0086 0A20     		movs	r0, #10
+ 547 0088 FFF7FEFF 		bl	EEPROM_WriteByte
+ 548              	.LVL76:
+ 549 008c 144B     		ldr	r3, .L41
+ 550 008e 1860     		str	r0, [r3]
+ 275:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 551              		.loc 1 275 0
+ 552 0090 08B1     		cbz	r0, .L35
+ 276:hardware_management.c ****             errorBT();
+ 553              		.loc 1 276 0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 16
+
+
+ 554 0092 FFF7FEFF 		bl	errorBT
+ 555              	.LVL77:
+ 556              	.L35:
+ 277:hardware_management.c ****         } 
+ 278:hardware_management.c ****     return_value = EEPROM_WriteByte(STEP_DEFAULT,STEP_DEFAULT_ADD);
+ 557              		.loc 1 278 0
+ 558 0096 0821     		movs	r1, #8
+ 559 0098 0A20     		movs	r0, #10
+ 560 009a FFF7FEFF 		bl	EEPROM_WriteByte
+ 561              	.LVL78:
+ 562 009e 104B     		ldr	r3, .L41
+ 563 00a0 1860     		str	r0, [r3]
+ 279:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 564              		.loc 1 279 0
+ 565 00a2 08B1     		cbz	r0, .L36
+ 280:hardware_management.c ****             errorBT();
+ 566              		.loc 1 280 0
+ 567 00a4 FFF7FEFF 		bl	errorBT
+ 568              	.LVL79:
+ 569              	.L36:
+ 281:hardware_management.c ****         }
+ 282:hardware_management.c ****     return_value = EEPROM_WriteByte(CA_PERIOD_DEFAULT,CA_PERIOD_DEFAULT_ADD);
+ 570              		.loc 1 282 0
+ 571 00a8 0921     		movs	r1, #9
+ 572 00aa D020     		movs	r0, #208
+ 573 00ac FFF7FEFF 		bl	EEPROM_WriteByte
+ 574              	.LVL80:
+ 575 00b0 0B4B     		ldr	r3, .L41
+ 576 00b2 1860     		str	r0, [r3]
+ 283:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 577              		.loc 1 283 0
+ 578 00b4 08B1     		cbz	r0, .L37
+ 284:hardware_management.c ****             errorBT();
+ 579              		.loc 1 284 0
+ 580 00b6 FFF7FEFF 		bl	errorBT
+ 581              	.LVL81:
+ 582              	.L37:
+ 285:hardware_management.c ****         } 
+ 286:hardware_management.c ****     return_value = EEPROM_WriteByte(EEPROM_FLAG_DONE,EEPROM_FLAG_ADD);
+ 583              		.loc 1 286 0
+ 584 00ba FF21     		movs	r1, #255
+ 585 00bc 0120     		movs	r0, #1
+ 586 00be FFF7FEFF 		bl	EEPROM_WriteByte
+ 587              	.LVL82:
+ 588 00c2 074B     		ldr	r3, .L41
+ 589 00c4 1860     		str	r0, [r3]
+ 287:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 590              		.loc 1 287 0
+ 591 00c6 08B1     		cbz	r0, .L38
+ 288:hardware_management.c ****             errorBT();
+ 592              		.loc 1 288 0
+ 593 00c8 FFF7FEFF 		bl	errorBT
+ 594              	.LVL83:
+ 595              	.L38:
+ 289:hardware_management.c ****         }
+ 290:hardware_management.c ****         
+ 291:hardware_management.c ****     return_value = EEPROM_WriteByte(VDAC_IS_VDAC,VDAC_ADDRESS);
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 17
+
+
+ 596              		.loc 1 291 0
+ 597 00cc 0021     		movs	r1, #0
+ 598 00ce 0120     		movs	r0, #1
+ 599 00d0 FFF7FEFF 		bl	EEPROM_WriteByte
+ 600              	.LVL84:
+ 601 00d4 024B     		ldr	r3, .L41
+ 602 00d6 1860     		str	r0, [r3]
+ 292:hardware_management.c ****         if(return_value != CYRET_SUCCESS){
+ 603              		.loc 1 292 0
+ 604 00d8 08B1     		cbz	r0, .L27
+ 293:hardware_management.c ****             errorBT();
+ 605              		.loc 1 293 0
+ 606 00da FFF7FEFF 		bl	errorBT
+ 607              	.LVL85:
+ 608              	.L27:
+ 609 00de 08BD     		pop	{r3, pc}
+ 610              	.L42:
+ 611              		.align	2
+ 612              	.L41:
+ 613 00e0 00000000 		.word	return_value
+ 614              		.cfi_endproc
+ 615              	.LFE73:
+ 616              		.size	initialize_default_values, .-initialize_default_values
+ 617              		.comm	finished_procedure_flag,1,1
+ 618              		.comm	data_long,5000,4
+ 619              		.comm	data_to_send,120,4
+ 620              		.comm	temp,20,4
+ 621              		.comm	data_buffer,20,4
+ 622              		.comm	selected_voltage_source,1,1
+ 623              		.comm	tia_calibration_values,21,4
+ 624              		.comm	lut_length,2,2
+ 625              		.comm	lut_index,2,2
+ 626              		.comm	waveform_lut,10010,4
+ 627              		.comm	lut_value,2,2
+ 628              		.comm	return_value,4,4
+ 629              		.comm	dac_ground_value,2,2
+ 630              		.bss
+ 631              		.type	input_flag, %object
+ 632              		.size	input_flag, 1
+ 633              	input_flag:
+ 634 0000 00       		.space	1
+ 635              		.type	connection_state, %object
+ 636              		.size	connection_state, 1
+ 637              	connection_state:
+ 638 0001 00       		.space	1
+ 639              		.type	buffer_index, %object
+ 640              		.size	buffer_index, 1
+ 641              	buffer_index:
+ 642 0002 00       		.space	1
+ 643              		.text
+ 644              	.Letext0:
+ 645              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 646              		.file 3 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 647              		.file 4 "Generated_Source\\PSoC5/cytypes.h"
+ 648              		.file 5 "globals.h"
+ 649              		.file 6 "Generated_Source\\PSoC5/core_cm3.h"
+ 650              		.file 7 "DAC_management.h"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 18
+
+
+ 651              		.file 8 "BT_protocols.h"
+ 652              		.file 9 "Generated_Source\\PSoC5/EEPROM.h"
+ 653              		.file 10 "Generated_Source\\PSoC5/CyLib.h"
+ 654              		.file 11 "Generated_Source\\PSoC5/VDAC_source.h"
+ 655              		.file 12 "Generated_Source\\PSoC5/DVDAC.h"
+ 656              		.file 13 "Generated_Source\\PSoC5/ADC_SigDel.h"
+ 657              		.file 14 "Generated_Source\\PSoC5/TIA.h"
+ 658              		.file 15 "Generated_Source\\PSoC5/VDAC_TIA.h"
+ 659              		.file 16 "Generated_Source\\PSoC5/Opamp_Aux.h"
+ 660              		.file 17 "Generated_Source\\PSoC5/PWM_isr.h"
+ 661              		.file 18 "Generated_Source\\PSoC5/AMux_electrode.h"
+ 662              		.file 19 "Generated_Source\\PSoC5/AMux_TIA_input.h"
+ 663              		.file 20 "Generated_Source\\PSoC5/AMux_TIA_resistor_bypass.h"
+ 664              		.file 21 "Generated_Source\\PSoC5/AMux_V_source.h"
+ 665              		.section	.debug_info,"",%progbits
+ 666              	.Ldebug_info0:
+ 667 0000 45090000 		.4byte	0x945
+ 668 0004 0400     		.2byte	0x4
+ 669 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 670 000a 04       		.byte	0x4
+ 671 000b 01       		.uleb128 0x1
+ 672 000c B8030000 		.4byte	.LASF89
+ 673 0010 0C       		.byte	0xc
+ 674 0011 5C050000 		.4byte	.LASF90
+ 675 0015 9D010000 		.4byte	.LASF91
+ 676 0019 18000000 		.4byte	.Ldebug_ranges0+0x18
+ 677 001d 00000000 		.4byte	0
+ 678 0021 00000000 		.4byte	.Ldebug_line0
+ 679 0025 02       		.uleb128 0x2
+ 680 0026 01       		.byte	0x1
+ 681 0027 06       		.byte	0x6
+ 682 0028 16010000 		.4byte	.LASF0
+ 683 002c 03       		.uleb128 0x3
+ 684 002d 2C020000 		.4byte	.LASF3
+ 685 0031 02       		.byte	0x2
+ 686 0032 1D       		.byte	0x1d
+ 687 0033 37000000 		.4byte	0x37
+ 688 0037 02       		.uleb128 0x2
+ 689 0038 01       		.byte	0x1
+ 690 0039 08       		.byte	0x8
+ 691 003a 8E020000 		.4byte	.LASF1
+ 692 003e 02       		.uleb128 0x2
+ 693 003f 02       		.byte	0x2
+ 694 0040 05       		.byte	0x5
+ 695 0041 5D000000 		.4byte	.LASF2
+ 696 0045 03       		.uleb128 0x3
+ 697 0046 BC000000 		.4byte	.LASF4
+ 698 004a 02       		.byte	0x2
+ 699 004b 2B       		.byte	0x2b
+ 700 004c 50000000 		.4byte	0x50
+ 701 0050 02       		.uleb128 0x2
+ 702 0051 02       		.byte	0x2
+ 703 0052 07       		.byte	0x7
+ 704 0053 89030000 		.4byte	.LASF5
+ 705 0057 03       		.uleb128 0x3
+ 706 0058 72050000 		.4byte	.LASF6
+ 707 005c 02       		.byte	0x2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 19
+
+
+ 708 005d 3F       		.byte	0x3f
+ 709 005e 62000000 		.4byte	0x62
+ 710 0062 02       		.uleb128 0x2
+ 711 0063 04       		.byte	0x4
+ 712 0064 05       		.byte	0x5
+ 713 0065 94010000 		.4byte	.LASF7
+ 714 0069 02       		.uleb128 0x2
+ 715 006a 04       		.byte	0x4
+ 716 006b 07       		.byte	0x7
+ 717 006c E1040000 		.4byte	.LASF8
+ 718 0070 02       		.uleb128 0x2
+ 719 0071 08       		.byte	0x8
+ 720 0072 05       		.byte	0x5
+ 721 0073 44010000 		.4byte	.LASF9
+ 722 0077 02       		.uleb128 0x2
+ 723 0078 08       		.byte	0x8
+ 724 0079 07       		.byte	0x7
+ 725 007a 52010000 		.4byte	.LASF10
+ 726 007e 04       		.uleb128 0x4
+ 727 007f 04       		.byte	0x4
+ 728 0080 05       		.byte	0x5
+ 729 0081 696E7400 		.ascii	"int\000"
+ 730 0085 02       		.uleb128 0x2
+ 731 0086 04       		.byte	0x4
+ 732 0087 07       		.byte	0x7
+ 733 0088 12030000 		.4byte	.LASF11
+ 734 008c 03       		.uleb128 0x3
+ 735 008d FF000000 		.4byte	.LASF12
+ 736 0091 03       		.byte	0x3
+ 737 0092 18       		.byte	0x18
+ 738 0093 2C000000 		.4byte	0x2c
+ 739 0097 03       		.uleb128 0x3
+ 740 0098 1F030000 		.4byte	.LASF13
+ 741 009c 03       		.byte	0x3
+ 742 009d 24       		.byte	0x24
+ 743 009e 45000000 		.4byte	0x45
+ 744 00a2 03       		.uleb128 0x3
+ 745 00a3 6B040000 		.4byte	.LASF14
+ 746 00a7 03       		.byte	0x3
+ 747 00a8 2C       		.byte	0x2c
+ 748 00a9 57000000 		.4byte	0x57
+ 749 00ad 02       		.uleb128 0x2
+ 750 00ae 04       		.byte	0x4
+ 751 00af 04       		.byte	0x4
+ 752 00b0 22010000 		.4byte	.LASF15
+ 753 00b4 02       		.uleb128 0x2
+ 754 00b5 08       		.byte	0x8
+ 755 00b6 04       		.byte	0x4
+ 756 00b7 AE050000 		.4byte	.LASF16
+ 757 00bb 02       		.uleb128 0x2
+ 758 00bc 01       		.byte	0x1
+ 759 00bd 08       		.byte	0x8
+ 760 00be 53040000 		.4byte	.LASF17
+ 761 00c2 05       		.uleb128 0x5
+ 762 00c3 58040000 		.4byte	.LASF18
+ 763 00c7 04       		.byte	0x4
+ 764 00c8 8B02     		.2byte	0x28b
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 20
+
+
+ 765 00ca 69000000 		.4byte	0x69
+ 766 00ce 02       		.uleb128 0x2
+ 767 00cf 08       		.byte	0x8
+ 768 00d0 04       		.byte	0x4
+ 769 00d1 78020000 		.4byte	.LASF19
+ 770 00d5 02       		.uleb128 0x2
+ 771 00d6 04       		.byte	0x4
+ 772 00d7 07       		.byte	0x7
+ 773 00d8 67000000 		.4byte	.LASF20
+ 774 00dc 06       		.uleb128 0x6
+ 775 00dd 8C000000 		.4byte	0x8c
+ 776 00e1 06       		.uleb128 0x6
+ 777 00e2 97000000 		.4byte	0x97
+ 778 00e6 07       		.uleb128 0x7
+ 779 00e7 36020000 		.4byte	.LASF24
+ 780 00eb 01       		.byte	0x1
+ 781 00ec 5A       		.byte	0x5a
+ 782 00ed 8C000000 		.4byte	0x8c
+ 783 00f1 00000000 		.4byte	.LFB66
+ 784 00f5 26000000 		.4byte	.LFE66-.LFB66
+ 785 00f9 01       		.uleb128 0x1
+ 786 00fa 9C       		.byte	0x9c
+ 787 00fb 73010000 		.4byte	0x173
+ 788 00ff 08       		.uleb128 0x8
+ 789 0100 BD040000 		.4byte	.LASF21
+ 790 0104 01       		.byte	0x1
+ 791 0105 5A       		.byte	0x5a
+ 792 0106 8C000000 		.4byte	0x8c
+ 793 010a 00000000 		.4byte	.LLST0
+ 794 010e 08       		.uleb128 0x8
+ 795 010f F7000000 		.4byte	.LASF22
+ 796 0113 01       		.byte	0x1
+ 797 0114 5A       		.byte	0x5a
+ 798 0115 97000000 		.4byte	0x97
+ 799 0119 21000000 		.4byte	.LLST1
+ 800 011d 09       		.uleb128 0x9
+ 801 011e B1020000 		.4byte	.LASF26
+ 802 0122 01       		.byte	0x1
+ 803 0123 5E       		.byte	0x5e
+ 804 0124 8C000000 		.4byte	0x8c
+ 805 0128 01       		.uleb128 0x1
+ 806 0129 54       		.byte	0x54
+ 807 012a 0A       		.uleb128 0xa
+ 808 012b 0A000000 		.4byte	.LVL1
+ 809 012f BC070000 		.4byte	0x7bc
+ 810 0133 0B       		.uleb128 0xb
+ 811 0134 10000000 		.4byte	.LVL2
+ 812 0138 C7070000 		.4byte	0x7c7
+ 813 013c 46010000 		.4byte	0x146
+ 814 0140 0C       		.uleb128 0xc
+ 815 0141 01       		.uleb128 0x1
+ 816 0142 50       		.byte	0x50
+ 817 0143 01       		.uleb128 0x1
+ 818 0144 3A       		.byte	0x3a
+ 819 0145 00       		.byte	0
+ 820 0146 0A       		.uleb128 0xa
+ 821 0147 14000000 		.4byte	.LVL3
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 21
+
+
+ 822 014b D2070000 		.4byte	0x7d2
+ 823 014f 0B       		.uleb128 0xb
+ 824 0150 1C000000 		.4byte	.LVL4
+ 825 0154 DD070000 		.4byte	0x7dd
+ 826 0158 69010000 		.4byte	0x169
+ 827 015c 0C       		.uleb128 0xc
+ 828 015d 01       		.uleb128 0x1
+ 829 015e 50       		.byte	0x50
+ 830 015f 02       		.uleb128 0x2
+ 831 0160 74       		.byte	0x74
+ 832 0161 00       		.sleb128 0
+ 833 0162 0C       		.uleb128 0xc
+ 834 0163 01       		.uleb128 0x1
+ 835 0164 51       		.byte	0x51
+ 836 0165 02       		.uleb128 0x2
+ 837 0166 75       		.byte	0x75
+ 838 0167 00       		.sleb128 0
+ 839 0168 00       		.byte	0
+ 840 0169 0A       		.uleb128 0xa
+ 841 016a 22000000 		.4byte	.LVL6
+ 842 016e E8070000 		.4byte	0x7e8
+ 843 0172 00       		.byte	0
+ 844 0173 0D       		.uleb128 0xd
+ 845 0174 89050000 		.4byte	.LASF28
+ 846 0178 01       		.byte	0x1
+ 847 0179 3A       		.byte	0x3a
+ 848 017a 00000000 		.4byte	.LFB65
+ 849 017e 2C000000 		.4byte	.LFE65-.LFB65
+ 850 0182 01       		.uleb128 0x1
+ 851 0183 9C       		.byte	0x9c
+ 852 0184 CF010000 		.4byte	0x1cf
+ 853 0188 08       		.uleb128 0x8
+ 854 0189 BF020000 		.4byte	.LASF23
+ 855 018d 01       		.byte	0x1
+ 856 018e 3A       		.byte	0x3a
+ 857 018f 8C000000 		.4byte	0x8c
+ 858 0193 42000000 		.4byte	.LLST2
+ 859 0197 0B       		.uleb128 0xb
+ 860 0198 0C000000 		.4byte	.LVL8
+ 861 019c E6000000 		.4byte	0xe6
+ 862 01a0 AA010000 		.4byte	0x1aa
+ 863 01a4 0C       		.uleb128 0xc
+ 864 01a5 01       		.uleb128 0x1
+ 865 01a6 51       		.byte	0x51
+ 866 01a7 01       		.uleb128 0x1
+ 867 01a8 30       		.byte	0x30
+ 868 01a9 00       		.byte	0
+ 869 01aa 0A       		.uleb128 0xa
+ 870 01ab 16000000 		.4byte	.LVL9
+ 871 01af F3070000 		.4byte	0x7f3
+ 872 01b3 0A       		.uleb128 0xa
+ 873 01b4 1C000000 		.4byte	.LVL10
+ 874 01b8 FE070000 		.4byte	0x7fe
+ 875 01bc 0A       		.uleb128 0xa
+ 876 01bd 20000000 		.4byte	.LVL11
+ 877 01c1 09080000 		.4byte	0x809
+ 878 01c5 0A       		.uleb128 0xa
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 22
+
+
+ 879 01c6 24000000 		.4byte	.LVL12
+ 880 01ca 14080000 		.4byte	0x814
+ 881 01ce 00       		.byte	0
+ 882 01cf 07       		.uleb128 0x7
+ 883 01d0 B5050000 		.4byte	.LASF25
+ 884 01d4 01       		.byte	0x1
+ 885 01d5 72       		.byte	0x72
+ 886 01d6 8C000000 		.4byte	0x8c
+ 887 01da 00000000 		.4byte	.LFB67
+ 888 01de 28000000 		.4byte	.LFE67-.LFB67
+ 889 01e2 01       		.uleb128 0x1
+ 890 01e3 9C       		.byte	0x9c
+ 891 01e4 5A020000 		.4byte	0x25a
+ 892 01e8 08       		.uleb128 0x8
+ 893 01e9 F7000000 		.4byte	.LASF22
+ 894 01ed 01       		.byte	0x1
+ 895 01ee 72       		.byte	0x72
+ 896 01ef 97000000 		.4byte	0x97
+ 897 01f3 63000000 		.4byte	.LLST3
+ 898 01f7 09       		.uleb128 0x9
+ 899 01f8 BD040000 		.4byte	.LASF21
+ 900 01fc 01       		.byte	0x1
+ 901 01fd 77       		.byte	0x77
+ 902 01fe 8C000000 		.4byte	0x8c
+ 903 0202 01       		.uleb128 0x1
+ 904 0203 54       		.byte	0x54
+ 905 0204 0A       		.uleb128 0xa
+ 906 0205 08000000 		.4byte	.LVL14
+ 907 0209 BC070000 		.4byte	0x7bc
+ 908 020d 0B       		.uleb128 0xb
+ 909 020e 0E000000 		.4byte	.LVL15
+ 910 0212 C7070000 		.4byte	0x7c7
+ 911 0216 20020000 		.4byte	0x220
+ 912 021a 0C       		.uleb128 0xc
+ 913 021b 01       		.uleb128 0x1
+ 914 021c 50       		.byte	0x50
+ 915 021d 01       		.uleb128 0x1
+ 916 021e 3A       		.byte	0x3a
+ 917 021f 00       		.byte	0
+ 918 0220 0A       		.uleb128 0xa
+ 919 0221 12000000 		.4byte	.LVL16
+ 920 0225 D2070000 		.4byte	0x7d2
+ 921 0229 0B       		.uleb128 0xb
+ 922 022a 18000000 		.4byte	.LVL17
+ 923 022e C7070000 		.4byte	0x7c7
+ 924 0232 3C020000 		.4byte	0x23c
+ 925 0236 0C       		.uleb128 0xc
+ 926 0237 01       		.uleb128 0x1
+ 927 0238 50       		.byte	0x50
+ 928 0239 01       		.uleb128 0x1
+ 929 023a 3A       		.byte	0x3a
+ 930 023b 00       		.byte	0
+ 931 023c 0B       		.uleb128 0xb
+ 932 023d 1E000000 		.4byte	.LVL18
+ 933 0241 1F080000 		.4byte	0x81f
+ 934 0245 50020000 		.4byte	0x250
+ 935 0249 0C       		.uleb128 0xc
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 23
+
+
+ 936 024a 01       		.uleb128 0x1
+ 937 024b 50       		.byte	0x50
+ 938 024c 02       		.uleb128 0x2
+ 939 024d 74       		.byte	0x74
+ 940 024e 00       		.sleb128 0
+ 941 024f 00       		.byte	0
+ 942 0250 0A       		.uleb128 0xa
+ 943 0251 24000000 		.4byte	.LVL20
+ 944 0255 E8070000 		.4byte	0x7e8
+ 945 0259 00       		.byte	0
+ 946 025a 07       		.uleb128 0x7
+ 947 025b E1020000 		.4byte	.LASF27
+ 948 025f 01       		.byte	0x1
+ 949 0260 25       		.byte	0x25
+ 950 0261 8C000000 		.4byte	0x8c
+ 951 0265 00000000 		.4byte	.LFB64
+ 952 0269 0A000000 		.4byte	.LFE64-.LFB64
+ 953 026d 01       		.uleb128 0x1
+ 954 026e 9C       		.byte	0x9c
+ 955 026f 83020000 		.4byte	0x283
+ 956 0273 0E       		.uleb128 0xe
+ 957 0274 08000000 		.4byte	.LVL21
+ 958 0278 CF010000 		.4byte	0x1cf
+ 959 027c 0C       		.uleb128 0xc
+ 960 027d 01       		.uleb128 0x1
+ 961 027e 50       		.byte	0x50
+ 962 027f 01       		.uleb128 0x1
+ 963 0280 30       		.byte	0x30
+ 964 0281 00       		.byte	0
+ 965 0282 00       		.byte	0
+ 966 0283 0D       		.uleb128 0xd
+ 967 0284 C2040000 		.4byte	.LASF29
+ 968 0288 01       		.byte	0x1
+ 969 0289 A4       		.byte	0xa4
+ 970 028a 00000000 		.4byte	.LFB69
+ 971 028e 18000000 		.4byte	.LFE69-.LFB69
+ 972 0292 01       		.uleb128 0x1
+ 973 0293 9C       		.byte	0x9c
+ 974 0294 C6020000 		.4byte	0x2c6
+ 975 0298 0A       		.uleb128 0xa
+ 976 0299 06000000 		.4byte	.LVL22
+ 977 029d 2A080000 		.4byte	0x82a
+ 978 02a1 0A       		.uleb128 0xa
+ 979 02a2 0A000000 		.4byte	.LVL23
+ 980 02a6 35080000 		.4byte	0x835
+ 981 02aa 0A       		.uleb128 0xa
+ 982 02ab 0E000000 		.4byte	.LVL24
+ 983 02af 40080000 		.4byte	0x840
+ 984 02b3 0A       		.uleb128 0xa
+ 985 02b4 12000000 		.4byte	.LVL25
+ 986 02b8 4B080000 		.4byte	0x84b
+ 987 02bc 0A       		.uleb128 0xa
+ 988 02bd 16000000 		.4byte	.LVL26
+ 989 02c1 56080000 		.4byte	0x856
+ 990 02c5 00       		.byte	0
+ 991 02c6 0D       		.uleb128 0xd
+ 992 02c7 46050000 		.4byte	.LASF30
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 24
+
+
+ 993 02cb 01       		.byte	0x1
+ 994 02cc B5       		.byte	0xb5
+ 995 02cd 00000000 		.4byte	.LFB70
+ 996 02d1 34000000 		.4byte	.LFE70-.LFB70
+ 997 02d5 01       		.uleb128 0x1
+ 998 02d6 9C       		.byte	0x9c
+ 999 02d7 41030000 		.4byte	0x341
+ 1000 02db 0A       		.uleb128 0xa
+ 1001 02dc 06000000 		.4byte	.LVL27
+ 1002 02e0 61080000 		.4byte	0x861
+ 1003 02e4 0A       		.uleb128 0xa
+ 1004 02e5 0A000000 		.4byte	.LVL28
+ 1005 02e9 6C080000 		.4byte	0x86c
+ 1006 02ed 0A       		.uleb128 0xa
+ 1007 02ee 0E000000 		.4byte	.LVL29
+ 1008 02f2 77080000 		.4byte	0x877
+ 1009 02f6 0A       		.uleb128 0xa
+ 1010 02f7 12000000 		.4byte	.LVL30
+ 1011 02fb 82080000 		.4byte	0x882
+ 1012 02ff 0B       		.uleb128 0xb
+ 1013 0300 18000000 		.4byte	.LVL31
+ 1014 0304 8D080000 		.4byte	0x88d
+ 1015 0308 12030000 		.4byte	0x312
+ 1016 030c 0C       		.uleb128 0xc
+ 1017 030d 01       		.uleb128 0x1
+ 1018 030e 50       		.byte	0x50
+ 1019 030f 01       		.uleb128 0x1
+ 1020 0310 31       		.byte	0x31
+ 1021 0311 00       		.byte	0
+ 1022 0312 0A       		.uleb128 0xa
+ 1023 0313 20000000 		.4byte	.LVL32
+ 1024 0317 98080000 		.4byte	0x898
+ 1025 031b 0B       		.uleb128 0xb
+ 1026 031c 26000000 		.4byte	.LVL33
+ 1027 0320 8D080000 		.4byte	0x88d
+ 1028 0324 2E030000 		.4byte	0x32e
+ 1029 0328 0C       		.uleb128 0xc
+ 1030 0329 01       		.uleb128 0x1
+ 1031 032a 50       		.byte	0x50
+ 1032 032b 01       		.uleb128 0x1
+ 1033 032c 3A       		.byte	0x3a
+ 1034 032d 00       		.byte	0
+ 1035 032e 0A       		.uleb128 0xa
+ 1036 032f 2A000000 		.4byte	.LVL34
+ 1037 0333 A3080000 		.4byte	0x8a3
+ 1038 0337 0A       		.uleb128 0xa
+ 1039 0338 2E000000 		.4byte	.LVL35
+ 1040 033c AE080000 		.4byte	0x8ae
+ 1041 0340 00       		.byte	0
+ 1042 0341 0D       		.uleb128 0xd
+ 1043 0342 F3040000 		.4byte	.LASF31
+ 1044 0346 01       		.byte	0x1
+ 1045 0347 CC       		.byte	0xcc
+ 1046 0348 00000000 		.4byte	.LFB71
+ 1047 034c 1C000000 		.4byte	.LFE71-.LFB71
+ 1048 0350 01       		.uleb128 0x1
+ 1049 0351 9C       		.byte	0x9c
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 25
+
+
+ 1050 0352 8D030000 		.4byte	0x38d
+ 1051 0356 0A       		.uleb128 0xa
+ 1052 0357 06000000 		.4byte	.LVL36
+ 1053 035b B9080000 		.4byte	0x8b9
+ 1054 035f 0A       		.uleb128 0xa
+ 1055 0360 0A000000 		.4byte	.LVL37
+ 1056 0364 14080000 		.4byte	0x814
+ 1057 0368 0A       		.uleb128 0xa
+ 1058 0369 0E000000 		.4byte	.LVL38
+ 1059 036d C4080000 		.4byte	0x8c4
+ 1060 0371 0A       		.uleb128 0xa
+ 1061 0372 12000000 		.4byte	.LVL39
+ 1062 0376 CF080000 		.4byte	0x8cf
+ 1063 037a 0A       		.uleb128 0xa
+ 1064 037b 16000000 		.4byte	.LVL40
+ 1065 037f DA080000 		.4byte	0x8da
+ 1066 0383 0A       		.uleb128 0xa
+ 1067 0384 1A000000 		.4byte	.LVL41
+ 1068 0388 E5080000 		.4byte	0x8e5
+ 1069 038c 00       		.byte	0
+ 1070 038d 0D       		.uleb128 0xd
+ 1071 038e 9C020000 		.4byte	.LASF32
+ 1072 0392 01       		.byte	0x1
+ 1073 0393 88       		.byte	0x88
+ 1074 0394 00000000 		.4byte	.LFB68
+ 1075 0398 36000000 		.4byte	.LFE68-.LFB68
+ 1076 039c 01       		.uleb128 0x1
+ 1077 039d 9C       		.byte	0x9c
+ 1078 039e 20040000 		.4byte	0x420
+ 1079 03a2 0A       		.uleb128 0xa
+ 1080 03a3 06000000 		.4byte	.LVL42
+ 1081 03a7 83020000 		.4byte	0x283
+ 1082 03ab 0A       		.uleb128 0xa
+ 1083 03ac 0A000000 		.4byte	.LVL43
+ 1084 03b0 41030000 		.4byte	0x341
+ 1085 03b4 0A       		.uleb128 0xa
+ 1086 03b5 0E000000 		.4byte	.LVL44
+ 1087 03b9 F0080000 		.4byte	0x8f0
+ 1088 03bd 0A       		.uleb128 0xa
+ 1089 03be 12000000 		.4byte	.LVL45
+ 1090 03c2 FB080000 		.4byte	0x8fb
+ 1091 03c6 0A       		.uleb128 0xa
+ 1092 03c7 16000000 		.4byte	.LVL46
+ 1093 03cb 06090000 		.4byte	0x906
+ 1094 03cf 0A       		.uleb128 0xa
+ 1095 03d0 1A000000 		.4byte	.LVL47
+ 1096 03d4 11090000 		.4byte	0x911
+ 1097 03d8 0A       		.uleb128 0xa
+ 1098 03d9 1E000000 		.4byte	.LVL48
+ 1099 03dd 06090000 		.4byte	0x906
+ 1100 03e1 0A       		.uleb128 0xa
+ 1101 03e2 22000000 		.4byte	.LVL49
+ 1102 03e6 09080000 		.4byte	0x809
+ 1103 03ea 0B       		.uleb128 0xb
+ 1104 03eb 28000000 		.4byte	.LVL50
+ 1105 03ef 1C090000 		.4byte	0x91c
+ 1106 03f3 FD030000 		.4byte	0x3fd
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 26
+
+
+ 1107 03f7 0C       		.uleb128 0xc
+ 1108 03f8 01       		.uleb128 0x1
+ 1109 03f9 50       		.byte	0x50
+ 1110 03fa 01       		.uleb128 0x1
+ 1111 03fb 30       		.byte	0x30
+ 1112 03fc 00       		.byte	0
+ 1113 03fd 0B       		.uleb128 0xb
+ 1114 03fe 2E000000 		.4byte	.LVL51
+ 1115 0402 27090000 		.4byte	0x927
+ 1116 0406 10040000 		.4byte	0x410
+ 1117 040a 0C       		.uleb128 0xc
+ 1118 040b 01       		.uleb128 0x1
+ 1119 040c 50       		.byte	0x50
+ 1120 040d 01       		.uleb128 0x1
+ 1121 040e 31       		.byte	0x31
+ 1122 040f 00       		.byte	0
+ 1123 0410 0E       		.uleb128 0xe
+ 1124 0411 34000000 		.4byte	.LVL52
+ 1125 0415 32090000 		.4byte	0x932
+ 1126 0419 0C       		.uleb128 0xc
+ 1127 041a 01       		.uleb128 0x1
+ 1128 041b 50       		.byte	0x50
+ 1129 041c 01       		.uleb128 0x1
+ 1130 041d 30       		.byte	0x30
+ 1131 041e 00       		.byte	0
+ 1132 041f 00       		.byte	0
+ 1133 0420 07       		.uleb128 0x7
+ 1134 0421 CE020000 		.4byte	.LASF33
+ 1135 0425 01       		.byte	0x1
+ 1136 0426 EC       		.byte	0xec
+ 1137 0427 97000000 		.4byte	0x97
+ 1138 042b 00000000 		.4byte	.LFB72
+ 1139 042f 24000000 		.4byte	.LFE72-.LFB72
+ 1140 0433 01       		.uleb128 0x1
+ 1141 0434 9C       		.byte	0x9c
+ 1142 0435 78040000 		.4byte	0x478
+ 1143 0439 08       		.uleb128 0x8
+ 1144 043a 21050000 		.4byte	.LASF34
+ 1145 043e 01       		.byte	0x1
+ 1146 043f EC       		.byte	0xec
+ 1147 0440 78040000 		.4byte	0x478
+ 1148 0444 84000000 		.4byte	.LLST4
+ 1149 0448 0F       		.uleb128 0xf
+ 1150 0449 6C656E00 		.ascii	"len\000"
+ 1151 044d 01       		.byte	0x1
+ 1152 044e EC       		.byte	0xec
+ 1153 044f 7E040000 		.4byte	0x47e
+ 1154 0453 01       		.uleb128 0x1
+ 1155 0454 51       		.byte	0x51
+ 1156 0455 10       		.uleb128 0x10
+ 1157 0456 6E756D00 		.ascii	"num\000"
+ 1158 045a 01       		.byte	0x1
+ 1159 045b ED       		.byte	0xed
+ 1160 045c 97000000 		.4byte	0x97
+ 1161 0460 A5000000 		.4byte	.LLST5
+ 1162 0464 11       		.uleb128 0x11
+ 1163 0465 00000000 		.4byte	.Ldebug_ranges0+0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 27
+
+
+ 1164 0469 10       		.uleb128 0x10
+ 1165 046a 6900     		.ascii	"i\000"
+ 1166 046c 01       		.byte	0x1
+ 1167 046d EE       		.byte	0xee
+ 1168 046e 7E000000 		.4byte	0x7e
+ 1169 0472 CF000000 		.4byte	.LLST6
+ 1170 0476 00       		.byte	0
+ 1171 0477 00       		.byte	0
+ 1172 0478 12       		.uleb128 0x12
+ 1173 0479 04       		.byte	0x4
+ 1174 047a 7E040000 		.4byte	0x47e
+ 1175 047e 13       		.uleb128 0x13
+ 1176 047f 8C000000 		.4byte	0x8c
+ 1177 0483 0D       		.uleb128 0xd
+ 1178 0484 69010000 		.4byte	.LASF35
+ 1179 0488 01       		.byte	0x1
+ 1180 0489 F4       		.byte	0xf4
+ 1181 048a 00000000 		.4byte	.LFB73
+ 1182 048e E4000000 		.4byte	.LFE73-.LFB73
+ 1183 0492 01       		.uleb128 0x1
+ 1184 0493 9C       		.byte	0x9c
+ 1185 0494 30060000 		.4byte	0x630
+ 1186 0498 0A       		.uleb128 0xa
+ 1187 0499 06000000 		.4byte	.LVL61
+ 1188 049d BC070000 		.4byte	0x7bc
+ 1189 04a1 0B       		.uleb128 0xb
+ 1190 04a2 0E000000 		.4byte	.LVL62
+ 1191 04a6 DD070000 		.4byte	0x7dd
+ 1192 04aa B9040000 		.4byte	0x4b9
+ 1193 04ae 0C       		.uleb128 0xc
+ 1194 04af 01       		.uleb128 0x1
+ 1195 04b0 50       		.byte	0x50
+ 1196 04b1 01       		.uleb128 0x1
+ 1197 04b2 3A       		.byte	0x3a
+ 1198 04b3 0C       		.uleb128 0xc
+ 1199 04b4 01       		.uleb128 0x1
+ 1200 04b5 51       		.byte	0x51
+ 1201 04b6 01       		.uleb128 0x1
+ 1202 04b7 30       		.byte	0x30
+ 1203 04b8 00       		.byte	0
+ 1204 04b9 0A       		.uleb128 0xa
+ 1205 04ba 18000000 		.4byte	.LVL63
+ 1206 04be 3D090000 		.4byte	0x93d
+ 1207 04c2 0B       		.uleb128 0xb
+ 1208 04c3 20000000 		.4byte	.LVL64
+ 1209 04c7 DD070000 		.4byte	0x7dd
+ 1210 04cb DA040000 		.4byte	0x4da
+ 1211 04cf 0C       		.uleb128 0xc
+ 1212 04d0 01       		.uleb128 0x1
+ 1213 04d1 50       		.byte	0x50
+ 1214 04d2 01       		.uleb128 0x1
+ 1215 04d3 3A       		.byte	0x3a
+ 1216 04d4 0C       		.uleb128 0xc
+ 1217 04d5 01       		.uleb128 0x1
+ 1218 04d6 51       		.byte	0x51
+ 1219 04d7 01       		.uleb128 0x1
+ 1220 04d8 31       		.byte	0x31
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 28
+
+
+ 1221 04d9 00       		.byte	0
+ 1222 04da 0A       		.uleb128 0xa
+ 1223 04db 2A000000 		.4byte	.LVL65
+ 1224 04df 3D090000 		.4byte	0x93d
+ 1225 04e3 0B       		.uleb128 0xb
+ 1226 04e4 32000000 		.4byte	.LVL66
+ 1227 04e8 DD070000 		.4byte	0x7dd
+ 1228 04ec FB040000 		.4byte	0x4fb
+ 1229 04f0 0C       		.uleb128 0xc
+ 1230 04f1 01       		.uleb128 0x1
+ 1231 04f2 50       		.byte	0x50
+ 1232 04f3 01       		.uleb128 0x1
+ 1233 04f4 3A       		.byte	0x3a
+ 1234 04f5 0C       		.uleb128 0xc
+ 1235 04f6 01       		.uleb128 0x1
+ 1236 04f7 51       		.byte	0x51
+ 1237 04f8 01       		.uleb128 0x1
+ 1238 04f9 32       		.byte	0x32
+ 1239 04fa 00       		.byte	0
+ 1240 04fb 0A       		.uleb128 0xa
+ 1241 04fc 3C000000 		.4byte	.LVL67
+ 1242 0500 3D090000 		.4byte	0x93d
+ 1243 0504 0B       		.uleb128 0xb
+ 1244 0505 44000000 		.4byte	.LVL68
+ 1245 0509 DD070000 		.4byte	0x7dd
+ 1246 050d 1C050000 		.4byte	0x51c
+ 1247 0511 0C       		.uleb128 0xc
+ 1248 0512 01       		.uleb128 0x1
+ 1249 0513 50       		.byte	0x50
+ 1250 0514 01       		.uleb128 0x1
+ 1251 0515 3A       		.byte	0x3a
+ 1252 0516 0C       		.uleb128 0xc
+ 1253 0517 01       		.uleb128 0x1
+ 1254 0518 51       		.byte	0x51
+ 1255 0519 01       		.uleb128 0x1
+ 1256 051a 33       		.byte	0x33
+ 1257 051b 00       		.byte	0
+ 1258 051c 0A       		.uleb128 0xa
+ 1259 051d 4E000000 		.4byte	.LVL69
+ 1260 0521 3D090000 		.4byte	0x93d
+ 1261 0525 0B       		.uleb128 0xb
+ 1262 0526 56000000 		.4byte	.LVL70
+ 1263 052a DD070000 		.4byte	0x7dd
+ 1264 052e 3D050000 		.4byte	0x53d
+ 1265 0532 0C       		.uleb128 0xc
+ 1266 0533 01       		.uleb128 0x1
+ 1267 0534 50       		.byte	0x50
+ 1268 0535 01       		.uleb128 0x1
+ 1269 0536 3A       		.byte	0x3a
+ 1270 0537 0C       		.uleb128 0xc
+ 1271 0538 01       		.uleb128 0x1
+ 1272 0539 51       		.byte	0x51
+ 1273 053a 01       		.uleb128 0x1
+ 1274 053b 34       		.byte	0x34
+ 1275 053c 00       		.byte	0
+ 1276 053d 0A       		.uleb128 0xa
+ 1277 053e 60000000 		.4byte	.LVL71
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 29
+
+
+ 1278 0542 3D090000 		.4byte	0x93d
+ 1279 0546 0B       		.uleb128 0xb
+ 1280 0547 68000000 		.4byte	.LVL72
+ 1281 054b DD070000 		.4byte	0x7dd
+ 1282 054f 5E050000 		.4byte	0x55e
+ 1283 0553 0C       		.uleb128 0xc
+ 1284 0554 01       		.uleb128 0x1
+ 1285 0555 50       		.byte	0x50
+ 1286 0556 01       		.uleb128 0x1
+ 1287 0557 3A       		.byte	0x3a
+ 1288 0558 0C       		.uleb128 0xc
+ 1289 0559 01       		.uleb128 0x1
+ 1290 055a 51       		.byte	0x51
+ 1291 055b 01       		.uleb128 0x1
+ 1292 055c 35       		.byte	0x35
+ 1293 055d 00       		.byte	0
+ 1294 055e 0A       		.uleb128 0xa
+ 1295 055f 72000000 		.4byte	.LVL73
+ 1296 0563 3D090000 		.4byte	0x93d
+ 1297 0567 0B       		.uleb128 0xb
+ 1298 0568 7A000000 		.4byte	.LVL74
+ 1299 056c DD070000 		.4byte	0x7dd
+ 1300 0570 7F050000 		.4byte	0x57f
+ 1301 0574 0C       		.uleb128 0xc
+ 1302 0575 01       		.uleb128 0x1
+ 1303 0576 50       		.byte	0x50
+ 1304 0577 01       		.uleb128 0x1
+ 1305 0578 3A       		.byte	0x3a
+ 1306 0579 0C       		.uleb128 0xc
+ 1307 057a 01       		.uleb128 0x1
+ 1308 057b 51       		.byte	0x51
+ 1309 057c 01       		.uleb128 0x1
+ 1310 057d 36       		.byte	0x36
+ 1311 057e 00       		.byte	0
+ 1312 057f 0A       		.uleb128 0xa
+ 1313 0580 84000000 		.4byte	.LVL75
+ 1314 0584 3D090000 		.4byte	0x93d
+ 1315 0588 0B       		.uleb128 0xb
+ 1316 0589 8C000000 		.4byte	.LVL76
+ 1317 058d DD070000 		.4byte	0x7dd
+ 1318 0591 A0050000 		.4byte	0x5a0
+ 1319 0595 0C       		.uleb128 0xc
+ 1320 0596 01       		.uleb128 0x1
+ 1321 0597 50       		.byte	0x50
+ 1322 0598 01       		.uleb128 0x1
+ 1323 0599 3A       		.byte	0x3a
+ 1324 059a 0C       		.uleb128 0xc
+ 1325 059b 01       		.uleb128 0x1
+ 1326 059c 51       		.byte	0x51
+ 1327 059d 01       		.uleb128 0x1
+ 1328 059e 37       		.byte	0x37
+ 1329 059f 00       		.byte	0
+ 1330 05a0 0A       		.uleb128 0xa
+ 1331 05a1 96000000 		.4byte	.LVL77
+ 1332 05a5 3D090000 		.4byte	0x93d
+ 1333 05a9 0B       		.uleb128 0xb
+ 1334 05aa 9E000000 		.4byte	.LVL78
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 30
+
+
+ 1335 05ae DD070000 		.4byte	0x7dd
+ 1336 05b2 C1050000 		.4byte	0x5c1
+ 1337 05b6 0C       		.uleb128 0xc
+ 1338 05b7 01       		.uleb128 0x1
+ 1339 05b8 50       		.byte	0x50
+ 1340 05b9 01       		.uleb128 0x1
+ 1341 05ba 3A       		.byte	0x3a
+ 1342 05bb 0C       		.uleb128 0xc
+ 1343 05bc 01       		.uleb128 0x1
+ 1344 05bd 51       		.byte	0x51
+ 1345 05be 01       		.uleb128 0x1
+ 1346 05bf 38       		.byte	0x38
+ 1347 05c0 00       		.byte	0
+ 1348 05c1 0A       		.uleb128 0xa
+ 1349 05c2 A8000000 		.4byte	.LVL79
+ 1350 05c6 3D090000 		.4byte	0x93d
+ 1351 05ca 0B       		.uleb128 0xb
+ 1352 05cb B0000000 		.4byte	.LVL80
+ 1353 05cf DD070000 		.4byte	0x7dd
+ 1354 05d3 E3050000 		.4byte	0x5e3
+ 1355 05d7 0C       		.uleb128 0xc
+ 1356 05d8 01       		.uleb128 0x1
+ 1357 05d9 50       		.byte	0x50
+ 1358 05da 02       		.uleb128 0x2
+ 1359 05db 09       		.byte	0x9
+ 1360 05dc D0       		.byte	0xd0
+ 1361 05dd 0C       		.uleb128 0xc
+ 1362 05de 01       		.uleb128 0x1
+ 1363 05df 51       		.byte	0x51
+ 1364 05e0 01       		.uleb128 0x1
+ 1365 05e1 39       		.byte	0x39
+ 1366 05e2 00       		.byte	0
+ 1367 05e3 0A       		.uleb128 0xa
+ 1368 05e4 BA000000 		.4byte	.LVL81
+ 1369 05e8 3D090000 		.4byte	0x93d
+ 1370 05ec 0B       		.uleb128 0xb
+ 1371 05ed C2000000 		.4byte	.LVL82
+ 1372 05f1 DD070000 		.4byte	0x7dd
+ 1373 05f5 05060000 		.4byte	0x605
+ 1374 05f9 0C       		.uleb128 0xc
+ 1375 05fa 01       		.uleb128 0x1
+ 1376 05fb 50       		.byte	0x50
+ 1377 05fc 01       		.uleb128 0x1
+ 1378 05fd 31       		.byte	0x31
+ 1379 05fe 0C       		.uleb128 0xc
+ 1380 05ff 01       		.uleb128 0x1
+ 1381 0600 51       		.byte	0x51
+ 1382 0601 02       		.uleb128 0x2
+ 1383 0602 08       		.byte	0x8
+ 1384 0603 FF       		.byte	0xff
+ 1385 0604 00       		.byte	0
+ 1386 0605 0A       		.uleb128 0xa
+ 1387 0606 CC000000 		.4byte	.LVL83
+ 1388 060a 3D090000 		.4byte	0x93d
+ 1389 060e 0B       		.uleb128 0xb
+ 1390 060f D4000000 		.4byte	.LVL84
+ 1391 0613 DD070000 		.4byte	0x7dd
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 31
+
+
+ 1392 0617 26060000 		.4byte	0x626
+ 1393 061b 0C       		.uleb128 0xc
+ 1394 061c 01       		.uleb128 0x1
+ 1395 061d 50       		.byte	0x50
+ 1396 061e 01       		.uleb128 0x1
+ 1397 061f 31       		.byte	0x31
+ 1398 0620 0C       		.uleb128 0xc
+ 1399 0621 01       		.uleb128 0x1
+ 1400 0622 51       		.byte	0x51
+ 1401 0623 01       		.uleb128 0x1
+ 1402 0624 30       		.byte	0x30
+ 1403 0625 00       		.byte	0
+ 1404 0626 0A       		.uleb128 0xa
+ 1405 0627 DE000000 		.4byte	.LVL85
+ 1406 062b 3D090000 		.4byte	0x93d
+ 1407 062f 00       		.byte	0
+ 1408 0630 09       		.uleb128 0x9
+ 1409 0631 34030000 		.4byte	.LASF36
+ 1410 0635 05       		.byte	0x5
+ 1411 0636 B1       		.byte	0xb1
+ 1412 0637 DC000000 		.4byte	0xdc
+ 1413 063b 05       		.uleb128 0x5
+ 1414 063c 03       		.byte	0x3
+ 1415 063d 02000000 		.4byte	buffer_index
+ 1416 0641 09       		.uleb128 0x9
+ 1417 0642 31000000 		.4byte	.LASF37
+ 1418 0646 05       		.byte	0x5
+ 1419 0647 B2       		.byte	0xb2
+ 1420 0648 DC000000 		.4byte	0xdc
+ 1421 064c 05       		.uleb128 0x5
+ 1422 064d 03       		.byte	0x3
+ 1423 064e 01000000 		.4byte	connection_state
+ 1424 0652 09       		.uleb128 0x9
+ 1425 0653 1C000000 		.4byte	.LASF38
+ 1426 0657 05       		.byte	0x5
+ 1427 0658 B3       		.byte	0xb3
+ 1428 0659 DC000000 		.4byte	0xdc
+ 1429 065d 05       		.uleb128 0x5
+ 1430 065e 03       		.byte	0x3
+ 1431 065f 00000000 		.4byte	input_flag
+ 1432 0663 14       		.uleb128 0x14
+ 1433 0664 E7050000 		.4byte	.LASF39
+ 1434 0668 06       		.byte	0x6
+ 1435 0669 1207     		.2byte	0x712
+ 1436 066b 6F060000 		.4byte	0x66f
+ 1437 066f 06       		.uleb128 0x6
+ 1438 0670 A2000000 		.4byte	0xa2
+ 1439 0674 15       		.uleb128 0x15
+ 1440 0675 70000000 		.4byte	.LASF40
+ 1441 0679 07       		.byte	0x7
+ 1442 067a 21       		.byte	0x21
+ 1443 067b 97000000 		.4byte	0x97
+ 1444 067f 05       		.uleb128 0x5
+ 1445 0680 03       		.byte	0x3
+ 1446 0681 00000000 		.4byte	dac_ground_value
+ 1447 0685 15       		.uleb128 0x15
+ 1448 0686 41030000 		.4byte	.LASF41
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 32
+
+
+ 1449 068a 05       		.byte	0x5
+ 1450 068b 9C       		.byte	0x9c
+ 1451 068c C2000000 		.4byte	0xc2
+ 1452 0690 05       		.uleb128 0x5
+ 1453 0691 03       		.byte	0x3
+ 1454 0692 00000000 		.4byte	return_value
+ 1455 0696 15       		.uleb128 0x15
+ 1456 0697 61040000 		.4byte	.LASF42
+ 1457 069b 05       		.byte	0x5
+ 1458 069c A1       		.byte	0xa1
+ 1459 069d 97000000 		.4byte	0x97
+ 1460 06a1 05       		.uleb128 0x5
+ 1461 06a2 03       		.byte	0x3
+ 1462 06a3 00000000 		.4byte	lut_value
+ 1463 06a7 16       		.uleb128 0x16
+ 1464 06a8 E1000000 		.4byte	0xe1
+ 1465 06ac B8060000 		.4byte	0x6b8
+ 1466 06b0 17       		.uleb128 0x17
+ 1467 06b1 D5000000 		.4byte	0xd5
+ 1468 06b5 8C13     		.2byte	0x138c
+ 1469 06b7 00       		.byte	0
+ 1470 06b8 15       		.uleb128 0x15
+ 1471 06b9 05030000 		.4byte	.LASF43
+ 1472 06bd 08       		.byte	0x8
+ 1473 06be 2A       		.byte	0x2a
+ 1474 06bf C9060000 		.4byte	0x6c9
+ 1475 06c3 05       		.uleb128 0x5
+ 1476 06c4 03       		.byte	0x3
+ 1477 06c5 00000000 		.4byte	waveform_lut
+ 1478 06c9 06       		.uleb128 0x6
+ 1479 06ca A7060000 		.4byte	0x6a7
+ 1480 06ce 15       		.uleb128 0x15
+ 1481 06cf 22020000 		.4byte	.LASF44
+ 1482 06d3 05       		.byte	0x5
+ 1483 06d4 A6       		.byte	0xa6
+ 1484 06d5 97000000 		.4byte	0x97
+ 1485 06d9 05       		.uleb128 0x5
+ 1486 06da 03       		.byte	0x3
+ 1487 06db 00000000 		.4byte	lut_index
+ 1488 06df 15       		.uleb128 0x15
+ 1489 06e0 A3050000 		.4byte	.LASF45
+ 1490 06e4 05       		.byte	0x5
+ 1491 06e5 A7       		.byte	0xa7
+ 1492 06e6 97000000 		.4byte	0x97
+ 1493 06ea 05       		.uleb128 0x5
+ 1494 06eb 03       		.byte	0x3
+ 1495 06ec 00000000 		.4byte	lut_length
+ 1496 06f0 16       		.uleb128 0x16
+ 1497 06f1 8C000000 		.4byte	0x8c
+ 1498 06f5 00070000 		.4byte	0x700
+ 1499 06f9 18       		.uleb128 0x18
+ 1500 06fa D5000000 		.4byte	0xd5
+ 1501 06fe 14       		.byte	0x14
+ 1502 06ff 00       		.byte	0
+ 1503 0700 15       		.uleb128 0x15
+ 1504 0701 28010000 		.4byte	.LASF46
+ 1505 0705 05       		.byte	0x5
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 33
+
+
+ 1506 0706 A9       		.byte	0xa9
+ 1507 0707 F0060000 		.4byte	0x6f0
+ 1508 070b 05       		.uleb128 0x5
+ 1509 070c 03       		.byte	0x3
+ 1510 070d 00000000 		.4byte	tia_calibration_values
+ 1511 0711 15       		.uleb128 0x15
+ 1512 0712 4E030000 		.4byte	.LASF47
+ 1513 0716 05       		.byte	0x5
+ 1514 0717 AC       		.byte	0xac
+ 1515 0718 8C000000 		.4byte	0x8c
+ 1516 071c 05       		.uleb128 0x5
+ 1517 071d 03       		.byte	0x3
+ 1518 071e 00000000 		.4byte	selected_voltage_source
+ 1519 0722 16       		.uleb128 0x16
+ 1520 0723 DC000000 		.4byte	0xdc
+ 1521 0727 32070000 		.4byte	0x732
+ 1522 072b 18       		.uleb128 0x18
+ 1523 072c D5000000 		.4byte	0xd5
+ 1524 0730 13       		.byte	0x13
+ 1525 0731 00       		.byte	0
+ 1526 0732 15       		.uleb128 0x15
+ 1527 0733 06060000 		.4byte	.LASF48
+ 1528 0737 08       		.byte	0x8
+ 1529 0738 23       		.byte	0x23
+ 1530 0739 43070000 		.4byte	0x743
+ 1531 073d 05       		.uleb128 0x5
+ 1532 073e 03       		.byte	0x3
+ 1533 073f 00000000 		.4byte	data_buffer
+ 1534 0743 06       		.uleb128 0x6
+ 1535 0744 22070000 		.4byte	0x722
+ 1536 0748 15       		.uleb128 0x15
+ 1537 0749 3F010000 		.4byte	.LASF49
+ 1538 074d 08       		.byte	0x8
+ 1539 074e 24       		.byte	0x24
+ 1540 074f 59070000 		.4byte	0x759
+ 1541 0753 05       		.uleb128 0x5
+ 1542 0754 03       		.byte	0x3
+ 1543 0755 00000000 		.4byte	temp
+ 1544 0759 06       		.uleb128 0x6
+ 1545 075a 22070000 		.4byte	0x722
+ 1546 075e 16       		.uleb128 0x16
+ 1547 075f DC000000 		.4byte	0xdc
+ 1548 0763 6E070000 		.4byte	0x76e
+ 1549 0767 18       		.uleb128 0x18
+ 1550 0768 D5000000 		.4byte	0xd5
+ 1551 076c 77       		.byte	0x77
+ 1552 076d 00       		.byte	0
+ 1553 076e 15       		.uleb128 0x15
+ 1554 076f 7C050000 		.4byte	.LASF50
+ 1555 0773 08       		.byte	0x8
+ 1556 0774 28       		.byte	0x28
+ 1557 0775 7F070000 		.4byte	0x77f
+ 1558 0779 05       		.uleb128 0x5
+ 1559 077a 03       		.byte	0x3
+ 1560 077b 00000000 		.4byte	data_to_send
+ 1561 077f 06       		.uleb128 0x6
+ 1562 0780 5E070000 		.4byte	0x75e
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 34
+
+
+ 1563 0784 16       		.uleb128 0x16
+ 1564 0785 DC000000 		.4byte	0xdc
+ 1565 0789 95070000 		.4byte	0x795
+ 1566 078d 17       		.uleb128 0x17
+ 1567 078e D5000000 		.4byte	0xd5
+ 1568 0792 8713     		.2byte	0x1387
+ 1569 0794 00       		.byte	0
+ 1570 0795 15       		.uleb128 0x15
+ 1571 0796 27000000 		.4byte	.LASF51
+ 1572 079a 08       		.byte	0x8
+ 1573 079b 27       		.byte	0x27
+ 1574 079c A6070000 		.4byte	0x7a6
+ 1575 07a0 05       		.uleb128 0x5
+ 1576 07a1 03       		.byte	0x3
+ 1577 07a2 00000000 		.4byte	data_long
+ 1578 07a6 06       		.uleb128 0x6
+ 1579 07a7 84070000 		.4byte	0x784
+ 1580 07ab 15       		.uleb128 0x15
+ 1581 07ac 71030000 		.4byte	.LASF52
+ 1582 07b0 05       		.byte	0x5
+ 1583 07b1 BC       		.byte	0xbc
+ 1584 07b2 8C000000 		.4byte	0x8c
+ 1585 07b6 05       		.uleb128 0x5
+ 1586 07b7 03       		.byte	0x3
+ 1587 07b8 00000000 		.4byte	finished_procedure_flag
+ 1588 07bc 19       		.uleb128 0x19
+ 1589 07bd A1040000 		.4byte	.LASF53
+ 1590 07c1 A1040000 		.4byte	.LASF53
+ 1591 07c5 09       		.byte	0x9
+ 1592 07c6 1F       		.byte	0x1f
+ 1593 07c7 19       		.uleb128 0x19
+ 1594 07c8 84020000 		.4byte	.LASF54
+ 1595 07cc 84020000 		.4byte	.LASF54
+ 1596 07d0 0A       		.byte	0xa
+ 1597 07d1 77       		.byte	0x77
+ 1598 07d2 19       		.uleb128 0x19
+ 1599 07d3 08050000 		.4byte	.LASF55
+ 1600 07d7 08050000 		.4byte	.LASF55
+ 1601 07db 09       		.byte	0x9
+ 1602 07dc 24       		.byte	0x24
+ 1603 07dd 19       		.uleb128 0x19
+ 1604 07de 12060000 		.4byte	.LASF56
+ 1605 07e2 12060000 		.4byte	.LASF56
+ 1606 07e6 09       		.byte	0x9
+ 1607 07e7 21       		.byte	0x21
+ 1608 07e8 19       		.uleb128 0x19
+ 1609 07e9 28030000 		.4byte	.LASF57
+ 1610 07ed 28030000 		.4byte	.LASF57
+ 1611 07f1 09       		.byte	0x9
+ 1612 07f2 20       		.byte	0x20
+ 1613 07f3 19       		.uleb128 0x19
+ 1614 07f4 D6050000 		.4byte	.LASF58
+ 1615 07f8 D6050000 		.4byte	.LASF58
+ 1616 07fc 0B       		.byte	0xb
+ 1617 07fd 34       		.byte	0x34
+ 1618 07fe 19       		.uleb128 0x19
+ 1619 07ff 42000000 		.4byte	.LASF59
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 35
+
+
+ 1620 0803 42000000 		.4byte	.LASF59
+ 1621 0807 0C       		.byte	0xc
+ 1622 0808 49       		.byte	0x49
+ 1623 0809 19       		.uleb128 0x19
+ 1624 080a F4050000 		.4byte	.LASF60
+ 1625 080e F4050000 		.4byte	.LASF60
+ 1626 0812 07       		.byte	0x7
+ 1627 0813 28       		.byte	0x28
+ 1628 0814 19       		.uleb128 0x19
+ 1629 0815 CC050000 		.4byte	.LASF61
+ 1630 0819 CC050000 		.4byte	.LASF61
+ 1631 081d 07       		.byte	0x7
+ 1632 081e 29       		.byte	0x29
+ 1633 081f 19       		.uleb128 0x19
+ 1634 0820 4D000000 		.4byte	.LASF62
+ 1635 0824 4D000000 		.4byte	.LASF62
+ 1636 0828 09       		.byte	0x9
+ 1637 0829 23       		.byte	0x23
+ 1638 082a 19       		.uleb128 0x19
+ 1639 082b EF010000 		.4byte	.LASF63
+ 1640 082f EF010000 		.4byte	.LASF63
+ 1641 0833 0D       		.byte	0xd
+ 1642 0834 3A       		.byte	0x3a
+ 1643 0835 19       		.uleb128 0x19
+ 1644 0836 88040000 		.4byte	.LASF64
+ 1645 083a 88040000 		.4byte	.LASF64
+ 1646 083e 0E       		.byte	0xe
+ 1647 083f 3D       		.byte	0x3d
+ 1648 0840 19       		.uleb128 0x19
+ 1649 0841 AE040000 		.4byte	.LASF65
+ 1650 0845 AE040000 		.4byte	.LASF65
+ 1651 0849 0F       		.byte	0xf
+ 1652 084a 33       		.byte	0x33
+ 1653 084b 19       		.uleb128 0x19
+ 1654 084c 12020000 		.4byte	.LASF66
+ 1655 0850 12020000 		.4byte	.LASF66
+ 1656 0854 10       		.byte	0x10
+ 1657 0855 33       		.byte	0x33
+ 1658 0856 19       		.uleb128 0x19
+ 1659 0857 0E000000 		.4byte	.LASF67
+ 1660 085b 0E000000 		.4byte	.LASF67
+ 1661 085f 11       		.byte	0x11
+ 1662 0860 92       		.byte	0x92
+ 1663 0861 19       		.uleb128 0x19
+ 1664 0862 00020000 		.4byte	.LASF68
+ 1665 0866 00020000 		.4byte	.LASF68
+ 1666 086a 0D       		.byte	0xd
+ 1667 086b 4B       		.byte	0x4b
+ 1668 086c 19       		.uleb128 0x19
+ 1669 086d 9C030000 		.4byte	.LASF69
+ 1670 0871 9C030000 		.4byte	.LASF69
+ 1671 0875 0E       		.byte	0xe
+ 1672 0876 43       		.byte	0x43
+ 1673 0877 19       		.uleb128 0x19
+ 1674 0878 97000000 		.4byte	.LASF70
+ 1675 087c 97000000 		.4byte	.LASF70
+ 1676 0880 0F       		.byte	0xf
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 36
+
+
+ 1677 0881 3E       		.byte	0x3e
+ 1678 0882 19       		.uleb128 0x19
+ 1679 0883 66030000 		.4byte	.LASF71
+ 1680 0887 66030000 		.4byte	.LASF71
+ 1681 088b 07       		.byte	0x7
+ 1682 088c 2A       		.byte	0x2a
+ 1683 088d 19       		.uleb128 0x19
+ 1684 088e FE050000 		.4byte	.LASF72
+ 1685 0892 FE050000 		.4byte	.LASF72
+ 1686 0896 0A       		.byte	0xa
+ 1687 0897 76       		.byte	0x76
+ 1688 0898 19       		.uleb128 0x19
+ 1689 0899 46040000 		.4byte	.LASF73
+ 1690 089d 46040000 		.4byte	.LASF73
+ 1691 08a1 07       		.byte	0x7
+ 1692 08a2 2B       		.byte	0x2b
+ 1693 08a3 19       		.uleb128 0x19
+ 1694 08a4 A7030000 		.4byte	.LASF74
+ 1695 08a8 A7030000 		.4byte	.LASF74
+ 1696 08ac 10       		.byte	0x10
+ 1697 08ad 37       		.byte	0x37
+ 1698 08ae 19       		.uleb128 0x19
+ 1699 08af 07010000 		.4byte	.LASF75
+ 1700 08b3 07010000 		.4byte	.LASF75
+ 1701 08b7 11       		.byte	0x11
+ 1702 08b8 DD       		.byte	0xdd
+ 1703 08b9 19       		.uleb128 0x19
+ 1704 08ba 83010000 		.4byte	.LASF76
+ 1705 08be 83010000 		.4byte	.LASF76
+ 1706 08c2 0D       		.byte	0xd
+ 1707 08c3 4A       		.byte	0x4a
+ 1708 08c4 19       		.uleb128 0x19
+ 1709 08c5 D7040000 		.4byte	.LASF77
+ 1710 08c9 D7040000 		.4byte	.LASF77
+ 1711 08cd 0E       		.byte	0xe
+ 1712 08ce 42       		.byte	0x42
+ 1713 08cf 19       		.uleb128 0x19
+ 1714 08d0 92040000 		.4byte	.LASF78
+ 1715 08d4 92040000 		.4byte	.LASF78
+ 1716 08d8 0F       		.byte	0xf
+ 1717 08d9 3D       		.byte	0x3d
+ 1718 08da 19       		.uleb128 0x19
+ 1719 08db C7000000 		.4byte	.LASF79
+ 1720 08df C7000000 		.4byte	.LASF79
+ 1721 08e3 10       		.byte	0x10
+ 1722 08e4 36       		.byte	0x36
+ 1723 08e5 19       		.uleb128 0x19
+ 1724 08e6 00000000 		.4byte	.LASF80
+ 1725 08ea 00000000 		.4byte	.LASF80
+ 1726 08ee 11       		.byte	0x11
+ 1727 08ef DC       		.byte	0xdc
+ 1728 08f0 19       		.uleb128 0x19
+ 1729 08f1 A7000000 		.4byte	.LASF81
+ 1730 08f5 A7000000 		.4byte	.LASF81
+ 1731 08f9 12       		.byte	0x12
+ 1732 08fa 25       		.byte	0x25
+ 1733 08fb 19       		.uleb128 0x19
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 37
+
+
+ 1734 08fc 73040000 		.4byte	.LASF82
+ 1735 0900 73040000 		.4byte	.LASF82
+ 1736 0904 13       		.byte	0x13
+ 1737 0905 25       		.byte	0x25
+ 1738 0906 19       		.uleb128 0x19
+ 1739 0907 27050000 		.4byte	.LASF83
+ 1740 090b 27050000 		.4byte	.LASF83
+ 1741 090f 14       		.byte	0x14
+ 1742 0910 25       		.byte	0x25
+ 1743 0911 19       		.uleb128 0x19
+ 1744 0912 4E020000 		.4byte	.LASF84
+ 1745 0916 4E020000 		.4byte	.LASF84
+ 1746 091a 15       		.byte	0x15
+ 1747 091b 25       		.byte	0x25
+ 1748 091c 19       		.uleb128 0x19
+ 1749 091d 62020000 		.4byte	.LASF85
+ 1750 0921 62020000 		.4byte	.LASF85
+ 1751 0925 12       		.byte	0x12
+ 1752 0926 57       		.byte	0x57
+ 1753 0927 19       		.uleb128 0x19
+ 1754 0928 81000000 		.4byte	.LASF86
+ 1755 092c 81000000 		.4byte	.LASF86
+ 1756 0930 13       		.byte	0x13
+ 1757 0931 57       		.byte	0x57
+ 1758 0932 19       		.uleb128 0x19
+ 1759 0933 D7000000 		.4byte	.LASF87
+ 1760 0937 D7000000 		.4byte	.LASF87
+ 1761 093b 14       		.byte	0x14
+ 1762 093c 57       		.byte	0x57
+ 1763 093d 19       		.uleb128 0x19
+ 1764 093e FD020000 		.4byte	.LASF88
+ 1765 0942 FD020000 		.4byte	.LASF88
+ 1766 0946 08       		.byte	0x8
+ 1767 0947 16       		.byte	0x16
+ 1768 0948 00       		.byte	0
+ 1769              		.section	.debug_abbrev,"",%progbits
+ 1770              	.Ldebug_abbrev0:
+ 1771 0000 01       		.uleb128 0x1
+ 1772 0001 11       		.uleb128 0x11
+ 1773 0002 01       		.byte	0x1
+ 1774 0003 25       		.uleb128 0x25
+ 1775 0004 0E       		.uleb128 0xe
+ 1776 0005 13       		.uleb128 0x13
+ 1777 0006 0B       		.uleb128 0xb
+ 1778 0007 03       		.uleb128 0x3
+ 1779 0008 0E       		.uleb128 0xe
+ 1780 0009 1B       		.uleb128 0x1b
+ 1781 000a 0E       		.uleb128 0xe
+ 1782 000b 55       		.uleb128 0x55
+ 1783 000c 17       		.uleb128 0x17
+ 1784 000d 11       		.uleb128 0x11
+ 1785 000e 01       		.uleb128 0x1
+ 1786 000f 10       		.uleb128 0x10
+ 1787 0010 17       		.uleb128 0x17
+ 1788 0011 00       		.byte	0
+ 1789 0012 00       		.byte	0
+ 1790 0013 02       		.uleb128 0x2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 38
+
+
+ 1791 0014 24       		.uleb128 0x24
+ 1792 0015 00       		.byte	0
+ 1793 0016 0B       		.uleb128 0xb
+ 1794 0017 0B       		.uleb128 0xb
+ 1795 0018 3E       		.uleb128 0x3e
+ 1796 0019 0B       		.uleb128 0xb
+ 1797 001a 03       		.uleb128 0x3
+ 1798 001b 0E       		.uleb128 0xe
+ 1799 001c 00       		.byte	0
+ 1800 001d 00       		.byte	0
+ 1801 001e 03       		.uleb128 0x3
+ 1802 001f 16       		.uleb128 0x16
+ 1803 0020 00       		.byte	0
+ 1804 0021 03       		.uleb128 0x3
+ 1805 0022 0E       		.uleb128 0xe
+ 1806 0023 3A       		.uleb128 0x3a
+ 1807 0024 0B       		.uleb128 0xb
+ 1808 0025 3B       		.uleb128 0x3b
+ 1809 0026 0B       		.uleb128 0xb
+ 1810 0027 49       		.uleb128 0x49
+ 1811 0028 13       		.uleb128 0x13
+ 1812 0029 00       		.byte	0
+ 1813 002a 00       		.byte	0
+ 1814 002b 04       		.uleb128 0x4
+ 1815 002c 24       		.uleb128 0x24
+ 1816 002d 00       		.byte	0
+ 1817 002e 0B       		.uleb128 0xb
+ 1818 002f 0B       		.uleb128 0xb
+ 1819 0030 3E       		.uleb128 0x3e
+ 1820 0031 0B       		.uleb128 0xb
+ 1821 0032 03       		.uleb128 0x3
+ 1822 0033 08       		.uleb128 0x8
+ 1823 0034 00       		.byte	0
+ 1824 0035 00       		.byte	0
+ 1825 0036 05       		.uleb128 0x5
+ 1826 0037 16       		.uleb128 0x16
+ 1827 0038 00       		.byte	0
+ 1828 0039 03       		.uleb128 0x3
+ 1829 003a 0E       		.uleb128 0xe
+ 1830 003b 3A       		.uleb128 0x3a
+ 1831 003c 0B       		.uleb128 0xb
+ 1832 003d 3B       		.uleb128 0x3b
+ 1833 003e 05       		.uleb128 0x5
+ 1834 003f 49       		.uleb128 0x49
+ 1835 0040 13       		.uleb128 0x13
+ 1836 0041 00       		.byte	0
+ 1837 0042 00       		.byte	0
+ 1838 0043 06       		.uleb128 0x6
+ 1839 0044 35       		.uleb128 0x35
+ 1840 0045 00       		.byte	0
+ 1841 0046 49       		.uleb128 0x49
+ 1842 0047 13       		.uleb128 0x13
+ 1843 0048 00       		.byte	0
+ 1844 0049 00       		.byte	0
+ 1845 004a 07       		.uleb128 0x7
+ 1846 004b 2E       		.uleb128 0x2e
+ 1847 004c 01       		.byte	0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 39
+
+
+ 1848 004d 3F       		.uleb128 0x3f
+ 1849 004e 19       		.uleb128 0x19
+ 1850 004f 03       		.uleb128 0x3
+ 1851 0050 0E       		.uleb128 0xe
+ 1852 0051 3A       		.uleb128 0x3a
+ 1853 0052 0B       		.uleb128 0xb
+ 1854 0053 3B       		.uleb128 0x3b
+ 1855 0054 0B       		.uleb128 0xb
+ 1856 0055 27       		.uleb128 0x27
+ 1857 0056 19       		.uleb128 0x19
+ 1858 0057 49       		.uleb128 0x49
+ 1859 0058 13       		.uleb128 0x13
+ 1860 0059 11       		.uleb128 0x11
+ 1861 005a 01       		.uleb128 0x1
+ 1862 005b 12       		.uleb128 0x12
+ 1863 005c 06       		.uleb128 0x6
+ 1864 005d 40       		.uleb128 0x40
+ 1865 005e 18       		.uleb128 0x18
+ 1866 005f 9742     		.uleb128 0x2117
+ 1867 0061 19       		.uleb128 0x19
+ 1868 0062 01       		.uleb128 0x1
+ 1869 0063 13       		.uleb128 0x13
+ 1870 0064 00       		.byte	0
+ 1871 0065 00       		.byte	0
+ 1872 0066 08       		.uleb128 0x8
+ 1873 0067 05       		.uleb128 0x5
+ 1874 0068 00       		.byte	0
+ 1875 0069 03       		.uleb128 0x3
+ 1876 006a 0E       		.uleb128 0xe
+ 1877 006b 3A       		.uleb128 0x3a
+ 1878 006c 0B       		.uleb128 0xb
+ 1879 006d 3B       		.uleb128 0x3b
+ 1880 006e 0B       		.uleb128 0xb
+ 1881 006f 49       		.uleb128 0x49
+ 1882 0070 13       		.uleb128 0x13
+ 1883 0071 02       		.uleb128 0x2
+ 1884 0072 17       		.uleb128 0x17
+ 1885 0073 00       		.byte	0
+ 1886 0074 00       		.byte	0
+ 1887 0075 09       		.uleb128 0x9
+ 1888 0076 34       		.uleb128 0x34
+ 1889 0077 00       		.byte	0
+ 1890 0078 03       		.uleb128 0x3
+ 1891 0079 0E       		.uleb128 0xe
+ 1892 007a 3A       		.uleb128 0x3a
+ 1893 007b 0B       		.uleb128 0xb
+ 1894 007c 3B       		.uleb128 0x3b
+ 1895 007d 0B       		.uleb128 0xb
+ 1896 007e 49       		.uleb128 0x49
+ 1897 007f 13       		.uleb128 0x13
+ 1898 0080 02       		.uleb128 0x2
+ 1899 0081 18       		.uleb128 0x18
+ 1900 0082 00       		.byte	0
+ 1901 0083 00       		.byte	0
+ 1902 0084 0A       		.uleb128 0xa
+ 1903 0085 898201   		.uleb128 0x4109
+ 1904 0088 00       		.byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 40
+
+
+ 1905 0089 11       		.uleb128 0x11
+ 1906 008a 01       		.uleb128 0x1
+ 1907 008b 31       		.uleb128 0x31
+ 1908 008c 13       		.uleb128 0x13
+ 1909 008d 00       		.byte	0
+ 1910 008e 00       		.byte	0
+ 1911 008f 0B       		.uleb128 0xb
+ 1912 0090 898201   		.uleb128 0x4109
+ 1913 0093 01       		.byte	0x1
+ 1914 0094 11       		.uleb128 0x11
+ 1915 0095 01       		.uleb128 0x1
+ 1916 0096 31       		.uleb128 0x31
+ 1917 0097 13       		.uleb128 0x13
+ 1918 0098 01       		.uleb128 0x1
+ 1919 0099 13       		.uleb128 0x13
+ 1920 009a 00       		.byte	0
+ 1921 009b 00       		.byte	0
+ 1922 009c 0C       		.uleb128 0xc
+ 1923 009d 8A8201   		.uleb128 0x410a
+ 1924 00a0 00       		.byte	0
+ 1925 00a1 02       		.uleb128 0x2
+ 1926 00a2 18       		.uleb128 0x18
+ 1927 00a3 9142     		.uleb128 0x2111
+ 1928 00a5 18       		.uleb128 0x18
+ 1929 00a6 00       		.byte	0
+ 1930 00a7 00       		.byte	0
+ 1931 00a8 0D       		.uleb128 0xd
+ 1932 00a9 2E       		.uleb128 0x2e
+ 1933 00aa 01       		.byte	0x1
+ 1934 00ab 3F       		.uleb128 0x3f
+ 1935 00ac 19       		.uleb128 0x19
+ 1936 00ad 03       		.uleb128 0x3
+ 1937 00ae 0E       		.uleb128 0xe
+ 1938 00af 3A       		.uleb128 0x3a
+ 1939 00b0 0B       		.uleb128 0xb
+ 1940 00b1 3B       		.uleb128 0x3b
+ 1941 00b2 0B       		.uleb128 0xb
+ 1942 00b3 27       		.uleb128 0x27
+ 1943 00b4 19       		.uleb128 0x19
+ 1944 00b5 11       		.uleb128 0x11
+ 1945 00b6 01       		.uleb128 0x1
+ 1946 00b7 12       		.uleb128 0x12
+ 1947 00b8 06       		.uleb128 0x6
+ 1948 00b9 40       		.uleb128 0x40
+ 1949 00ba 18       		.uleb128 0x18
+ 1950 00bb 9742     		.uleb128 0x2117
+ 1951 00bd 19       		.uleb128 0x19
+ 1952 00be 01       		.uleb128 0x1
+ 1953 00bf 13       		.uleb128 0x13
+ 1954 00c0 00       		.byte	0
+ 1955 00c1 00       		.byte	0
+ 1956 00c2 0E       		.uleb128 0xe
+ 1957 00c3 898201   		.uleb128 0x4109
+ 1958 00c6 01       		.byte	0x1
+ 1959 00c7 11       		.uleb128 0x11
+ 1960 00c8 01       		.uleb128 0x1
+ 1961 00c9 31       		.uleb128 0x31
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 41
+
+
+ 1962 00ca 13       		.uleb128 0x13
+ 1963 00cb 00       		.byte	0
+ 1964 00cc 00       		.byte	0
+ 1965 00cd 0F       		.uleb128 0xf
+ 1966 00ce 05       		.uleb128 0x5
+ 1967 00cf 00       		.byte	0
+ 1968 00d0 03       		.uleb128 0x3
+ 1969 00d1 08       		.uleb128 0x8
+ 1970 00d2 3A       		.uleb128 0x3a
+ 1971 00d3 0B       		.uleb128 0xb
+ 1972 00d4 3B       		.uleb128 0x3b
+ 1973 00d5 0B       		.uleb128 0xb
+ 1974 00d6 49       		.uleb128 0x49
+ 1975 00d7 13       		.uleb128 0x13
+ 1976 00d8 02       		.uleb128 0x2
+ 1977 00d9 18       		.uleb128 0x18
+ 1978 00da 00       		.byte	0
+ 1979 00db 00       		.byte	0
+ 1980 00dc 10       		.uleb128 0x10
+ 1981 00dd 34       		.uleb128 0x34
+ 1982 00de 00       		.byte	0
+ 1983 00df 03       		.uleb128 0x3
+ 1984 00e0 08       		.uleb128 0x8
+ 1985 00e1 3A       		.uleb128 0x3a
+ 1986 00e2 0B       		.uleb128 0xb
+ 1987 00e3 3B       		.uleb128 0x3b
+ 1988 00e4 0B       		.uleb128 0xb
+ 1989 00e5 49       		.uleb128 0x49
+ 1990 00e6 13       		.uleb128 0x13
+ 1991 00e7 02       		.uleb128 0x2
+ 1992 00e8 17       		.uleb128 0x17
+ 1993 00e9 00       		.byte	0
+ 1994 00ea 00       		.byte	0
+ 1995 00eb 11       		.uleb128 0x11
+ 1996 00ec 0B       		.uleb128 0xb
+ 1997 00ed 01       		.byte	0x1
+ 1998 00ee 55       		.uleb128 0x55
+ 1999 00ef 17       		.uleb128 0x17
+ 2000 00f0 00       		.byte	0
+ 2001 00f1 00       		.byte	0
+ 2002 00f2 12       		.uleb128 0x12
+ 2003 00f3 0F       		.uleb128 0xf
+ 2004 00f4 00       		.byte	0
+ 2005 00f5 0B       		.uleb128 0xb
+ 2006 00f6 0B       		.uleb128 0xb
+ 2007 00f7 49       		.uleb128 0x49
+ 2008 00f8 13       		.uleb128 0x13
+ 2009 00f9 00       		.byte	0
+ 2010 00fa 00       		.byte	0
+ 2011 00fb 13       		.uleb128 0x13
+ 2012 00fc 26       		.uleb128 0x26
+ 2013 00fd 00       		.byte	0
+ 2014 00fe 49       		.uleb128 0x49
+ 2015 00ff 13       		.uleb128 0x13
+ 2016 0100 00       		.byte	0
+ 2017 0101 00       		.byte	0
+ 2018 0102 14       		.uleb128 0x14
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 42
+
+
+ 2019 0103 34       		.uleb128 0x34
+ 2020 0104 00       		.byte	0
+ 2021 0105 03       		.uleb128 0x3
+ 2022 0106 0E       		.uleb128 0xe
+ 2023 0107 3A       		.uleb128 0x3a
+ 2024 0108 0B       		.uleb128 0xb
+ 2025 0109 3B       		.uleb128 0x3b
+ 2026 010a 05       		.uleb128 0x5
+ 2027 010b 49       		.uleb128 0x49
+ 2028 010c 13       		.uleb128 0x13
+ 2029 010d 3F       		.uleb128 0x3f
+ 2030 010e 19       		.uleb128 0x19
+ 2031 010f 3C       		.uleb128 0x3c
+ 2032 0110 19       		.uleb128 0x19
+ 2033 0111 00       		.byte	0
+ 2034 0112 00       		.byte	0
+ 2035 0113 15       		.uleb128 0x15
+ 2036 0114 34       		.uleb128 0x34
+ 2037 0115 00       		.byte	0
+ 2038 0116 03       		.uleb128 0x3
+ 2039 0117 0E       		.uleb128 0xe
+ 2040 0118 3A       		.uleb128 0x3a
+ 2041 0119 0B       		.uleb128 0xb
+ 2042 011a 3B       		.uleb128 0x3b
+ 2043 011b 0B       		.uleb128 0xb
+ 2044 011c 49       		.uleb128 0x49
+ 2045 011d 13       		.uleb128 0x13
+ 2046 011e 3F       		.uleb128 0x3f
+ 2047 011f 19       		.uleb128 0x19
+ 2048 0120 02       		.uleb128 0x2
+ 2049 0121 18       		.uleb128 0x18
+ 2050 0122 00       		.byte	0
+ 2051 0123 00       		.byte	0
+ 2052 0124 16       		.uleb128 0x16
+ 2053 0125 01       		.uleb128 0x1
+ 2054 0126 01       		.byte	0x1
+ 2055 0127 49       		.uleb128 0x49
+ 2056 0128 13       		.uleb128 0x13
+ 2057 0129 01       		.uleb128 0x1
+ 2058 012a 13       		.uleb128 0x13
+ 2059 012b 00       		.byte	0
+ 2060 012c 00       		.byte	0
+ 2061 012d 17       		.uleb128 0x17
+ 2062 012e 21       		.uleb128 0x21
+ 2063 012f 00       		.byte	0
+ 2064 0130 49       		.uleb128 0x49
+ 2065 0131 13       		.uleb128 0x13
+ 2066 0132 2F       		.uleb128 0x2f
+ 2067 0133 05       		.uleb128 0x5
+ 2068 0134 00       		.byte	0
+ 2069 0135 00       		.byte	0
+ 2070 0136 18       		.uleb128 0x18
+ 2071 0137 21       		.uleb128 0x21
+ 2072 0138 00       		.byte	0
+ 2073 0139 49       		.uleb128 0x49
+ 2074 013a 13       		.uleb128 0x13
+ 2075 013b 2F       		.uleb128 0x2f
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 43
+
+
+ 2076 013c 0B       		.uleb128 0xb
+ 2077 013d 00       		.byte	0
+ 2078 013e 00       		.byte	0
+ 2079 013f 19       		.uleb128 0x19
+ 2080 0140 2E       		.uleb128 0x2e
+ 2081 0141 00       		.byte	0
+ 2082 0142 3F       		.uleb128 0x3f
+ 2083 0143 19       		.uleb128 0x19
+ 2084 0144 3C       		.uleb128 0x3c
+ 2085 0145 19       		.uleb128 0x19
+ 2086 0146 6E       		.uleb128 0x6e
+ 2087 0147 0E       		.uleb128 0xe
+ 2088 0148 03       		.uleb128 0x3
+ 2089 0149 0E       		.uleb128 0xe
+ 2090 014a 3A       		.uleb128 0x3a
+ 2091 014b 0B       		.uleb128 0xb
+ 2092 014c 3B       		.uleb128 0x3b
+ 2093 014d 0B       		.uleb128 0xb
+ 2094 014e 00       		.byte	0
+ 2095 014f 00       		.byte	0
+ 2096 0150 00       		.byte	0
+ 2097              		.section	.debug_loc,"",%progbits
+ 2098              	.Ldebug_loc0:
+ 2099              	.LLST0:
+ 2100 0000 00000000 		.4byte	.LVL0
+ 2101 0004 09000000 		.4byte	.LVL1-1
+ 2102 0008 0100     		.2byte	0x1
+ 2103 000a 50       		.byte	0x50
+ 2104 000b 09000000 		.4byte	.LVL1-1
+ 2105 000f 26000000 		.4byte	.LFE66
+ 2106 0013 0400     		.2byte	0x4
+ 2107 0015 F3       		.byte	0xf3
+ 2108 0016 01       		.uleb128 0x1
+ 2109 0017 50       		.byte	0x50
+ 2110 0018 9F       		.byte	0x9f
+ 2111 0019 00000000 		.4byte	0
+ 2112 001d 00000000 		.4byte	0
+ 2113              	.LLST1:
+ 2114 0021 00000000 		.4byte	.LVL0
+ 2115 0025 09000000 		.4byte	.LVL1-1
+ 2116 0029 0100     		.2byte	0x1
+ 2117 002b 51       		.byte	0x51
+ 2118 002c 09000000 		.4byte	.LVL1-1
+ 2119 0030 26000000 		.4byte	.LFE66
+ 2120 0034 0400     		.2byte	0x4
+ 2121 0036 F3       		.byte	0xf3
+ 2122 0037 01       		.uleb128 0x1
+ 2123 0038 51       		.byte	0x51
+ 2124 0039 9F       		.byte	0x9f
+ 2125 003a 00000000 		.4byte	0
+ 2126 003e 00000000 		.4byte	0
+ 2127              	.LLST2:
+ 2128 0042 00000000 		.4byte	.LVL7
+ 2129 0046 0B000000 		.4byte	.LVL8-1
+ 2130 004a 0100     		.2byte	0x1
+ 2131 004c 50       		.byte	0x50
+ 2132 004d 0B000000 		.4byte	.LVL8-1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 44
+
+
+ 2133 0051 2C000000 		.4byte	.LFE65
+ 2134 0055 0400     		.2byte	0x4
+ 2135 0057 F3       		.byte	0xf3
+ 2136 0058 01       		.uleb128 0x1
+ 2137 0059 50       		.byte	0x50
+ 2138 005a 9F       		.byte	0x9f
+ 2139 005b 00000000 		.4byte	0
+ 2140 005f 00000000 		.4byte	0
+ 2141              	.LLST3:
+ 2142 0063 00000000 		.4byte	.LVL13
+ 2143 0067 07000000 		.4byte	.LVL14-1
+ 2144 006b 0100     		.2byte	0x1
+ 2145 006d 50       		.byte	0x50
+ 2146 006e 07000000 		.4byte	.LVL14-1
+ 2147 0072 28000000 		.4byte	.LFE67
+ 2148 0076 0400     		.2byte	0x4
+ 2149 0078 F3       		.byte	0xf3
+ 2150 0079 01       		.uleb128 0x1
+ 2151 007a 50       		.byte	0x50
+ 2152 007b 9F       		.byte	0x9f
+ 2153 007c 00000000 		.4byte	0
+ 2154 0080 00000000 		.4byte	0
+ 2155              	.LLST4:
+ 2156 0084 00000000 		.4byte	.LVL53
+ 2157 0088 20000000 		.4byte	.LVL59
+ 2158 008c 0100     		.2byte	0x1
+ 2159 008e 50       		.byte	0x50
+ 2160 008f 20000000 		.4byte	.LVL59
+ 2161 0093 24000000 		.4byte	.LFE72
+ 2162 0097 0400     		.2byte	0x4
+ 2163 0099 F3       		.byte	0xf3
+ 2164 009a 01       		.uleb128 0x1
+ 2165 009b 50       		.byte	0x50
+ 2166 009c 9F       		.byte	0x9f
+ 2167 009d 00000000 		.4byte	0
+ 2168 00a1 00000000 		.4byte	0
+ 2169              	.LLST5:
+ 2170 00a5 02000000 		.4byte	.LVL54
+ 2171 00a9 08000000 		.4byte	.LVL55
+ 2172 00ad 0200     		.2byte	0x2
+ 2173 00af 30       		.byte	0x30
+ 2174 00b0 9F       		.byte	0x9f
+ 2175 00b1 08000000 		.4byte	.LVL55
+ 2176 00b5 0E000000 		.4byte	.LVL56
+ 2177 00b9 0100     		.2byte	0x1
+ 2178 00bb 53       		.byte	0x53
+ 2179 00bc 18000000 		.4byte	.LVL57
+ 2180 00c0 24000000 		.4byte	.LFE72
+ 2181 00c4 0100     		.2byte	0x1
+ 2182 00c6 53       		.byte	0x53
+ 2183 00c7 00000000 		.4byte	0
+ 2184 00cb 00000000 		.4byte	0
+ 2185              	.LLST6:
+ 2186 00cf 02000000 		.4byte	.LVL54
+ 2187 00d3 08000000 		.4byte	.LVL55
+ 2188 00d7 0200     		.2byte	0x2
+ 2189 00d9 30       		.byte	0x30
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 45
+
+
+ 2190 00da 9F       		.byte	0x9f
+ 2191 00db 08000000 		.4byte	.LVL55
+ 2192 00df 22000000 		.4byte	.LVL60
+ 2193 00e3 0100     		.2byte	0x1
+ 2194 00e5 54       		.byte	0x54
+ 2195 00e6 00000000 		.4byte	0
+ 2196 00ea 00000000 		.4byte	0
+ 2197              		.section	.debug_aranges,"",%progbits
+ 2198 0000 64000000 		.4byte	0x64
+ 2199 0004 0200     		.2byte	0x2
+ 2200 0006 00000000 		.4byte	.Ldebug_info0
+ 2201 000a 04       		.byte	0x4
+ 2202 000b 00       		.byte	0
+ 2203 000c 0000     		.2byte	0
+ 2204 000e 0000     		.2byte	0
+ 2205 0010 00000000 		.4byte	.LFB66
+ 2206 0014 26000000 		.4byte	.LFE66-.LFB66
+ 2207 0018 00000000 		.4byte	.LFB65
+ 2208 001c 2C000000 		.4byte	.LFE65-.LFB65
+ 2209 0020 00000000 		.4byte	.LFB67
+ 2210 0024 28000000 		.4byte	.LFE67-.LFB67
+ 2211 0028 00000000 		.4byte	.LFB64
+ 2212 002c 0A000000 		.4byte	.LFE64-.LFB64
+ 2213 0030 00000000 		.4byte	.LFB69
+ 2214 0034 18000000 		.4byte	.LFE69-.LFB69
+ 2215 0038 00000000 		.4byte	.LFB70
+ 2216 003c 34000000 		.4byte	.LFE70-.LFB70
+ 2217 0040 00000000 		.4byte	.LFB71
+ 2218 0044 1C000000 		.4byte	.LFE71-.LFB71
+ 2219 0048 00000000 		.4byte	.LFB68
+ 2220 004c 36000000 		.4byte	.LFE68-.LFB68
+ 2221 0050 00000000 		.4byte	.LFB72
+ 2222 0054 24000000 		.4byte	.LFE72-.LFB72
+ 2223 0058 00000000 		.4byte	.LFB73
+ 2224 005c E4000000 		.4byte	.LFE73-.LFB73
+ 2225 0060 00000000 		.4byte	0
+ 2226 0064 00000000 		.4byte	0
+ 2227              		.section	.debug_ranges,"",%progbits
+ 2228              	.Ldebug_ranges0:
+ 2229 0000 02000000 		.4byte	.LBB2
+ 2230 0004 04000000 		.4byte	.LBE2
+ 2231 0008 06000000 		.4byte	.LBB3
+ 2232 000c 1E000000 		.4byte	.LBE3
+ 2233 0010 00000000 		.4byte	0
+ 2234 0014 00000000 		.4byte	0
+ 2235 0018 00000000 		.4byte	.LFB66
+ 2236 001c 26000000 		.4byte	.LFE66
+ 2237 0020 00000000 		.4byte	.LFB65
+ 2238 0024 2C000000 		.4byte	.LFE65
+ 2239 0028 00000000 		.4byte	.LFB67
+ 2240 002c 28000000 		.4byte	.LFE67
+ 2241 0030 00000000 		.4byte	.LFB64
+ 2242 0034 0A000000 		.4byte	.LFE64
+ 2243 0038 00000000 		.4byte	.LFB69
+ 2244 003c 18000000 		.4byte	.LFE69
+ 2245 0040 00000000 		.4byte	.LFB70
+ 2246 0044 34000000 		.4byte	.LFE70
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 46
+
+
+ 2247 0048 00000000 		.4byte	.LFB71
+ 2248 004c 1C000000 		.4byte	.LFE71
+ 2249 0050 00000000 		.4byte	.LFB68
+ 2250 0054 36000000 		.4byte	.LFE68
+ 2251 0058 00000000 		.4byte	.LFB72
+ 2252 005c 24000000 		.4byte	.LFE72
+ 2253 0060 00000000 		.4byte	.LFB73
+ 2254 0064 E4000000 		.4byte	.LFE73
+ 2255 0068 00000000 		.4byte	0
+ 2256 006c 00000000 		.4byte	0
+ 2257              		.section	.debug_line,"",%progbits
+ 2258              	.Ldebug_line0:
+ 2259 0000 70030000 		.section	.debug_str,"MS",%progbits,1
+ 2259      02005D02 
+ 2259      00000201 
+ 2259      FB0E0D00 
+ 2259      01010101 
+ 2260              	.LASF80:
+ 2261 0000 50574D5F 		.ascii	"PWM_isr_Sleep\000"
+ 2261      6973725F 
+ 2261      536C6565 
+ 2261      7000
+ 2262              	.LASF67:
+ 2263 000e 50574D5F 		.ascii	"PWM_isr_Start\000"
+ 2263      6973725F 
+ 2263      53746172 
+ 2263      7400
+ 2264              	.LASF38:
+ 2265 001c 696E7075 		.ascii	"input_flag\000"
+ 2265      745F666C 
+ 2265      616700
+ 2266              	.LASF51:
+ 2267 0027 64617461 		.ascii	"data_long\000"
+ 2267      5F6C6F6E 
+ 2267      6700
+ 2268              	.LASF37:
+ 2269 0031 636F6E6E 		.ascii	"connection_state\000"
+ 2269      65637469 
+ 2269      6F6E5F73 
+ 2269      74617465 
+ 2269      00
+ 2270              	.LASF59:
+ 2271 0042 44564441 		.ascii	"DVDAC_Stop\000"
+ 2271      435F5374 
+ 2271      6F7000
+ 2272              	.LASF62:
+ 2273 004d 45455052 		.ascii	"EEPROM_ReadByte\000"
+ 2273      4F4D5F52 
+ 2273      65616442 
+ 2273      79746500 
+ 2274              	.LASF2:
+ 2275 005d 73686F72 		.ascii	"short int\000"
+ 2275      7420696E 
+ 2275      7400
+ 2276              	.LASF20:
+ 2277 0067 73697A65 		.ascii	"sizetype\000"
+ 2277      74797065 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 47
+
+
+ 2277      00
+ 2278              	.LASF40:
+ 2279 0070 6461635F 		.ascii	"dac_ground_value\000"
+ 2279      67726F75 
+ 2279      6E645F76 
+ 2279      616C7565 
+ 2279      00
+ 2280              	.LASF86:
+ 2281 0081 414D7578 		.ascii	"AMux_TIA_input_Select\000"
+ 2281      5F544941 
+ 2281      5F696E70 
+ 2281      75745F53 
+ 2281      656C6563 
+ 2282              	.LASF70:
+ 2283 0097 56444143 		.ascii	"VDAC_TIA_Wakeup\000"
+ 2283      5F544941 
+ 2283      5F57616B 
+ 2283      65757000 
+ 2284              	.LASF81:
+ 2285 00a7 414D7578 		.ascii	"AMux_electrode_Start\000"
+ 2285      5F656C65 
+ 2285      6374726F 
+ 2285      64655F53 
+ 2285      74617274 
+ 2286              	.LASF4:
+ 2287 00bc 5F5F7569 		.ascii	"__uint16_t\000"
+ 2287      6E743136 
+ 2287      5F7400
+ 2288              	.LASF79:
+ 2289 00c7 4F70616D 		.ascii	"Opamp_Aux_Sleep\000"
+ 2289      705F4175 
+ 2289      785F536C 
+ 2289      65657000 
+ 2290              	.LASF87:
+ 2291 00d7 414D7578 		.ascii	"AMux_TIA_resistor_bypass_Select\000"
+ 2291      5F544941 
+ 2291      5F726573 
+ 2291      6973746F 
+ 2291      725F6279 
+ 2292              	.LASF22:
+ 2293 00f7 61646472 		.ascii	"address\000"
+ 2293      65737300 
+ 2294              	.LASF12:
+ 2295 00ff 75696E74 		.ascii	"uint8_t\000"
+ 2295      385F7400 
+ 2296              	.LASF75:
+ 2297 0107 50574D5F 		.ascii	"PWM_isr_Wakeup\000"
+ 2297      6973725F 
+ 2297      57616B65 
+ 2297      757000
+ 2298              	.LASF0:
+ 2299 0116 7369676E 		.ascii	"signed char\000"
+ 2299      65642063 
+ 2299      68617200 
+ 2300              	.LASF15:
+ 2301 0122 666C6F61 		.ascii	"float\000"
+ 2301      7400
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 48
+
+
+ 2302              	.LASF46:
+ 2303 0128 7469615F 		.ascii	"tia_calibration_values\000"
+ 2303      63616C69 
+ 2303      62726174 
+ 2303      696F6E5F 
+ 2303      76616C75 
+ 2304              	.LASF49:
+ 2305 013f 74656D70 		.ascii	"temp\000"
+ 2305      00
+ 2306              	.LASF9:
+ 2307 0144 6C6F6E67 		.ascii	"long long int\000"
+ 2307      206C6F6E 
+ 2307      6720696E 
+ 2307      7400
+ 2308              	.LASF10:
+ 2309 0152 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 2309      206C6F6E 
+ 2309      6720756E 
+ 2309      7369676E 
+ 2309      65642069 
+ 2310              	.LASF35:
+ 2311 0169 696E6974 		.ascii	"initialize_default_values\000"
+ 2311      69616C69 
+ 2311      7A655F64 
+ 2311      65666175 
+ 2311      6C745F76 
+ 2312              	.LASF76:
+ 2313 0183 4144435F 		.ascii	"ADC_SigDel_Sleep\000"
+ 2313      53696744 
+ 2313      656C5F53 
+ 2313      6C656570 
+ 2313      00
+ 2314              	.LASF7:
+ 2315 0194 6C6F6E67 		.ascii	"long int\000"
+ 2315      20696E74 
+ 2315      00
+ 2316              	.LASF91:
+ 2317 019d 5C5C4D61 		.ascii	"\\\\Mac\\Home\\Desktop\\LAB_TEBS\\_Progetto\\TEBS_G"
+ 2317      635C486F 
+ 2317      6D655C44 
+ 2317      65736B74 
+ 2317      6F705C4C 
+ 2318 01c9 69744875 		.ascii	"itHub\\PSoC_Project\\PSoC_Project.cydsn\000"
+ 2318      625C5053 
+ 2318      6F435F50 
+ 2318      726F6A65 
+ 2318      63745C50 
+ 2319              	.LASF63:
+ 2320 01ef 4144435F 		.ascii	"ADC_SigDel_Start\000"
+ 2320      53696744 
+ 2320      656C5F53 
+ 2320      74617274 
+ 2320      00
+ 2321              	.LASF68:
+ 2322 0200 4144435F 		.ascii	"ADC_SigDel_Wakeup\000"
+ 2322      53696744 
+ 2322      656C5F57 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 49
+
+
+ 2322      616B6575 
+ 2322      7000
+ 2323              	.LASF66:
+ 2324 0212 4F70616D 		.ascii	"Opamp_Aux_Start\000"
+ 2324      705F4175 
+ 2324      785F5374 
+ 2324      61727400 
+ 2325              	.LASF44:
+ 2326 0222 6C75745F 		.ascii	"lut_index\000"
+ 2326      696E6465 
+ 2326      7800
+ 2327              	.LASF3:
+ 2328 022c 5F5F7569 		.ascii	"__uint8_t\000"
+ 2328      6E74385F 
+ 2328      7400
+ 2329              	.LASF24:
+ 2330 0236 68656C70 		.ascii	"helper_Writebyte_EEPROM\000"
+ 2330      65725F57 
+ 2330      72697465 
+ 2330      62797465 
+ 2330      5F454550 
+ 2331              	.LASF84:
+ 2332 024e 414D7578 		.ascii	"AMux_V_source_Start\000"
+ 2332      5F565F73 
+ 2332      6F757263 
+ 2332      655F5374 
+ 2332      61727400 
+ 2333              	.LASF85:
+ 2334 0262 414D7578 		.ascii	"AMux_electrode_Select\000"
+ 2334      5F656C65 
+ 2334      6374726F 
+ 2334      64655F53 
+ 2334      656C6563 
+ 2335              	.LASF19:
+ 2336 0278 6C6F6E67 		.ascii	"long double\000"
+ 2336      20646F75 
+ 2336      626C6500 
+ 2337              	.LASF54:
+ 2338 0284 43794465 		.ascii	"CyDelayUs\000"
+ 2338      6C617955 
+ 2338      7300
+ 2339              	.LASF1:
+ 2340 028e 756E7369 		.ascii	"unsigned char\000"
+ 2340      676E6564 
+ 2340      20636861 
+ 2340      7200
+ 2341              	.LASF32:
+ 2342 029c 68656C70 		.ascii	"helper_HardwareSetup\000"
+ 2342      65725F48 
+ 2342      61726477 
+ 2342      61726553 
+ 2342      65747570 
+ 2343              	.LASF26:
+ 2344 02b1 77726974 		.ascii	"write_results\000"
+ 2344      655F7265 
+ 2344      73756C74 
+ 2344      7300
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 50
+
+
+ 2345              	.LASF23:
+ 2346 02bf 766F6C74 		.ascii	"voltage_source\000"
+ 2346      6167655F 
+ 2346      736F7572 
+ 2346      636500
+ 2347              	.LASF33:
+ 2348 02ce 68656C70 		.ascii	"helper_Convert2Dec\000"
+ 2348      65725F43 
+ 2348      6F6E7665 
+ 2348      72743244 
+ 2348      656300
+ 2349              	.LASF27:
+ 2350 02e1 68656C70 		.ascii	"helper_check_voltage_source\000"
+ 2350      65725F63 
+ 2350      6865636B 
+ 2350      5F766F6C 
+ 2350      74616765 
+ 2351              	.LASF88:
+ 2352 02fd 6572726F 		.ascii	"errorBT\000"
+ 2352      72425400 
+ 2353              	.LASF43:
+ 2354 0305 77617665 		.ascii	"waveform_lut\000"
+ 2354      666F726D 
+ 2354      5F6C7574 
+ 2354      00
+ 2355              	.LASF11:
+ 2356 0312 756E7369 		.ascii	"unsigned int\000"
+ 2356      676E6564 
+ 2356      20696E74 
+ 2356      00
+ 2357              	.LASF13:
+ 2358 031f 75696E74 		.ascii	"uint16_t\000"
+ 2358      31365F74 
+ 2358      00
+ 2359              	.LASF57:
+ 2360 0328 45455052 		.ascii	"EEPROM_Stop\000"
+ 2360      4F4D5F53 
+ 2360      746F7000 
+ 2361              	.LASF36:
+ 2362 0334 62756666 		.ascii	"buffer_index\000"
+ 2362      65725F69 
+ 2362      6E646578 
+ 2362      00
+ 2363              	.LASF41:
+ 2364 0341 72657475 		.ascii	"return_value\000"
+ 2364      726E5F76 
+ 2364      616C7565 
+ 2364      00
+ 2365              	.LASF47:
+ 2366 034e 73656C65 		.ascii	"selected_voltage_source\000"
+ 2366      63746564 
+ 2366      5F766F6C 
+ 2366      74616765 
+ 2366      5F736F75 
+ 2367              	.LASF71:
+ 2368 0366 4441435F 		.ascii	"DAC_Wakeup\000"
+ 2368      57616B65 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 51
+
+
+ 2368      757000
+ 2369              	.LASF52:
+ 2370 0371 66696E69 		.ascii	"finished_procedure_flag\000"
+ 2370      73686564 
+ 2370      5F70726F 
+ 2370      63656475 
+ 2370      72655F66 
+ 2371              	.LASF5:
+ 2372 0389 73686F72 		.ascii	"short unsigned int\000"
+ 2372      7420756E 
+ 2372      7369676E 
+ 2372      65642069 
+ 2372      6E7400
+ 2373              	.LASF69:
+ 2374 039c 5449415F 		.ascii	"TIA_Wakeup\000"
+ 2374      57616B65 
+ 2374      757000
+ 2375              	.LASF74:
+ 2376 03a7 4F70616D 		.ascii	"Opamp_Aux_Wakeup\000"
+ 2376      705F4175 
+ 2376      785F5761 
+ 2376      6B657570 
+ 2376      00
+ 2377              	.LASF89:
+ 2378 03b8 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 2378      43313120 
+ 2378      352E342E 
+ 2378      31203230 
+ 2378      31363036 
+ 2379 03eb 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m3 -mthumb -g -O"
+ 2379      20726576 
+ 2379      6973696F 
+ 2379      6E203233 
+ 2379      37373135 
+ 2380 041e 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 2380      66756E63 
+ 2380      74696F6E 
+ 2380      2D736563 
+ 2380      74696F6E 
+ 2381              	.LASF73:
+ 2382 0446 4441435F 		.ascii	"DAC_SetValue\000"
+ 2382      53657456 
+ 2382      616C7565 
+ 2382      00
+ 2383              	.LASF17:
+ 2384 0453 63686172 		.ascii	"char\000"
+ 2384      00
+ 2385              	.LASF18:
+ 2386 0458 63797374 		.ascii	"cystatus\000"
+ 2386      61747573 
+ 2386      00
+ 2387              	.LASF42:
+ 2388 0461 6C75745F 		.ascii	"lut_value\000"
+ 2388      76616C75 
+ 2388      6500
+ 2389              	.LASF14:
+ 2390 046b 696E7433 		.ascii	"int32_t\000"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 52
+
+
+ 2390      325F7400 
+ 2391              	.LASF82:
+ 2392 0473 414D7578 		.ascii	"AMux_TIA_input_Start\000"
+ 2392      5F544941 
+ 2392      5F696E70 
+ 2392      75745F53 
+ 2392      74617274 
+ 2393              	.LASF64:
+ 2394 0488 5449415F 		.ascii	"TIA_Start\000"
+ 2394      53746172 
+ 2394      7400
+ 2395              	.LASF78:
+ 2396 0492 56444143 		.ascii	"VDAC_TIA_Sleep\000"
+ 2396      5F544941 
+ 2396      5F536C65 
+ 2396      657000
+ 2397              	.LASF53:
+ 2398 04a1 45455052 		.ascii	"EEPROM_Start\000"
+ 2398      4F4D5F53 
+ 2398      74617274 
+ 2398      00
+ 2399              	.LASF65:
+ 2400 04ae 56444143 		.ascii	"VDAC_TIA_Start\000"
+ 2400      5F544941 
+ 2400      5F537461 
+ 2400      727400
+ 2401              	.LASF21:
+ 2402 04bd 64617461 		.ascii	"data\000"
+ 2402      00
+ 2403              	.LASF29:
+ 2404 04c2 68656C70 		.ascii	"helper_HardwareStart\000"
+ 2404      65725F48 
+ 2404      61726477 
+ 2404      61726553 
+ 2404      74617274 
+ 2405              	.LASF77:
+ 2406 04d7 5449415F 		.ascii	"TIA_Sleep\000"
+ 2406      536C6565 
+ 2406      7000
+ 2407              	.LASF8:
+ 2408 04e1 6C6F6E67 		.ascii	"long unsigned int\000"
+ 2408      20756E73 
+ 2408      69676E65 
+ 2408      6420696E 
+ 2408      7400
+ 2409              	.LASF31:
+ 2410 04f3 68656C70 		.ascii	"helper_HardwareSleep\000"
+ 2410      65725F48 
+ 2410      61726477 
+ 2410      61726553 
+ 2410      6C656570 
+ 2411              	.LASF55:
+ 2412 0508 45455052 		.ascii	"EEPROM_UpdateTemperature\000"
+ 2412      4F4D5F55 
+ 2412      70646174 
+ 2412      6554656D 
+ 2412      70657261 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 53
+
+
+ 2413              	.LASF34:
+ 2414 0521 61727261 		.ascii	"array\000"
+ 2414      7900
+ 2415              	.LASF83:
+ 2416 0527 414D7578 		.ascii	"AMux_TIA_resistor_bypass_Start\000"
+ 2416      5F544941 
+ 2416      5F726573 
+ 2416      6973746F 
+ 2416      725F6279 
+ 2417              	.LASF30:
+ 2418 0546 68656C70 		.ascii	"helper_HardwareWakeup\000"
+ 2418      65725F48 
+ 2418      61726477 
+ 2418      61726557 
+ 2418      616B6575 
+ 2419              	.LASF90:
+ 2420 055c 68617264 		.ascii	"hardware_management.c\000"
+ 2420      77617265 
+ 2420      5F6D616E 
+ 2420      6167656D 
+ 2420      656E742E 
+ 2421              	.LASF6:
+ 2422 0572 5F5F696E 		.ascii	"__int32_t\000"
+ 2422      7433325F 
+ 2422      7400
+ 2423              	.LASF50:
+ 2424 057c 64617461 		.ascii	"data_to_send\000"
+ 2424      5F746F5F 
+ 2424      73656E64 
+ 2424      00
+ 2425              	.LASF28:
+ 2426 0589 68656C70 		.ascii	"helper_set_voltage_source\000"
+ 2426      65725F73 
+ 2426      65745F76 
+ 2426      6F6C7461 
+ 2426      67655F73 
+ 2427              	.LASF45:
+ 2428 05a3 6C75745F 		.ascii	"lut_length\000"
+ 2428      6C656E67 
+ 2428      746800
+ 2429              	.LASF16:
+ 2430 05ae 646F7562 		.ascii	"double\000"
+ 2430      6C6500
+ 2431              	.LASF25:
+ 2432 05b5 68656C70 		.ascii	"helper_Readbyte_EEPROM\000"
+ 2432      65725F52 
+ 2432      65616462 
+ 2432      7974655F 
+ 2432      45455052 
+ 2433              	.LASF61:
+ 2434 05cc 4441435F 		.ascii	"DAC_Sleep\000"
+ 2434      536C6565 
+ 2434      7000
+ 2435              	.LASF58:
+ 2436 05d6 56444143 		.ascii	"VDAC_source_Stop\000"
+ 2436      5F736F75 
+ 2436      7263655F 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccgNa7f3.s 			page 54
+
+
+ 2436      53746F70 
+ 2436      00
+ 2437              	.LASF39:
+ 2438 05e7 49544D5F 		.ascii	"ITM_RxBuffer\000"
+ 2438      52784275 
+ 2438      66666572 
+ 2438      00
+ 2439              	.LASF60:
+ 2440 05f4 4441435F 		.ascii	"DAC_Start\000"
+ 2440      53746172 
+ 2440      7400
+ 2441              	.LASF72:
+ 2442 05fe 43794465 		.ascii	"CyDelay\000"
+ 2442      6C617900 
+ 2443              	.LASF48:
+ 2444 0606 64617461 		.ascii	"data_buffer\000"
+ 2444      5F627566 
+ 2444      66657200 
+ 2445              	.LASF56:
+ 2446 0612 45455052 		.ascii	"EEPROM_WriteByte\000"
+ 2446      4F4D5F57 
+ 2446      72697465 
+ 2446      42797465 
+ 2446      00
+ 2447              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran

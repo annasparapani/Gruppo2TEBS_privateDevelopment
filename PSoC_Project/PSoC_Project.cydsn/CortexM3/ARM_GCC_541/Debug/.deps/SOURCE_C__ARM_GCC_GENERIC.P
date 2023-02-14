@@ -1,0 +1,130 @@
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/CortexM3/ARM_GCC_541/Debug/BT_protocols.o : //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/ADC_SigDel.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/ADC_SigDel_Ext_CP_Clk.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/ADC_SigDel_IRQ.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/ADC_SigDel_theACLK.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/AMux_TIA_input.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/AMux_TIA_resistor_bypass.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/AMux_V_source.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/AMux_electrode.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CYDMAC.H //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CYFITTER.H //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Clock_PWM.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Counter_Electrode.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Counter_Electrode_aliases.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CyDmac.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CyFlash.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CyLib.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CySpc.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/DVDAC.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/DVDAC_DMA_dma.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/DVDAC_IntClock.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/DVDAC_VDAC8.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/EEPROM.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/IDAC_calibrate.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/LED_ADC.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/LED_ADC_aliases.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/LED_DAC.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/LED_DAC_aliases.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Opamp_Aux.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/PWM_isr.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Pin_DVDAC_cap.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Pin_DVDAC_cap_aliases.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Reference_Electrode.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Reference_Electrode_aliases.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA_end_pin.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA_end_pin_aliases.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA_resistor1.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA_resistor1_aliases.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/UART_BT.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/UART_BT_IntClock.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/VDAC_TIA.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/VDAC_source.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Working_Electrode.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Working_Electrode_aliases.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cmsis_armcc.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cmsis_compiler.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cmsis_gcc.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/core_cm3.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/core_cm3_psoc5.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cyPm.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cy_em_eeprom.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cydevice.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cydevice_trm.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cydisabledsheets.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cyfitter.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cyfitter_cfg.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cypins.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cytypes.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/isr_UART_BT_RX.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/isr_adc.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/isr_adcAmp.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/isr_dac.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/project.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/BT_protocols.c //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/BT_protocols.h //.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/globals.h 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/ADC_SigDel.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/ADC_SigDel_Ext_CP_Clk.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/ADC_SigDel_IRQ.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/ADC_SigDel_theACLK.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/AMux_TIA_input.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/AMux_TIA_resistor_bypass.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/AMux_V_source.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/AMux_electrode.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CYDMAC.H : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CYFITTER.H : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Clock_PWM.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Counter_Electrode.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Counter_Electrode_aliases.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CyFlash.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CyLib.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/CySpc.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/DVDAC.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/DVDAC_DMA_dma.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/DVDAC_IntClock.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/DVDAC_VDAC8.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/EEPROM.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/IDAC_calibrate.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/LED_ADC.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/LED_ADC_aliases.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/LED_DAC.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/LED_DAC_aliases.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Opamp_Aux.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/PWM_isr.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Pin_DVDAC_cap.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Pin_DVDAC_cap_aliases.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Reference_Electrode.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Reference_Electrode_aliases.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA_end_pin.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA_end_pin_aliases.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA_resistor1.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/TIA_resistor1_aliases.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/UART_BT.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/UART_BT_IntClock.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/VDAC_TIA.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/VDAC_source.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Working_Electrode.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/Working_Electrode_aliases.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cmsis_armcc.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cmsis_compiler.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cmsis_gcc.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/core_cm3.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/core_cm3_psoc5.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cyPm.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cy_em_eeprom.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cydevice.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cydevice_trm.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cydisabledsheets.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cyfitter_cfg.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cypins.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/cytypes.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/isr_UART_BT_RX.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/isr_adc.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/isr_adcAmp.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/isr_dac.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/Generated_Source/PSoC5/project.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/BT_protocols.c : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/BT_protocols.h : 
+
+//.psf/Home/Desktop/LAB_TEBS/_Progetto/TEBS_GitHub/PSoC_Project/PSoC_Project.cydsn/globals.h : 
+

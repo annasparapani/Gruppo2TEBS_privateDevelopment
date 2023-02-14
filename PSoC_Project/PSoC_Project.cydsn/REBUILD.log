@@ -1,0 +1,13 @@
+--------------- Rebuild Started: 01/06/2023 22:11:36 Project: main.c, Configuration: ARM GCC 5.4-2016-q2-update Debug ---------------
+arm-none-eabi-gcc.exe -mcpu=cortex-m3 -mthumb -I. -IGenerated_Source\PSoC5 -Wa,-alh=.\CortexM3\ARM_GCC_541\Debug/main.lst -g -D DEBUG -D CY_CORE_ID=0 -Wall -ffunction-sections -ffat-lto-objects -Og -c main.c -o .\CortexM3\ARM_GCC_541\Debug\main.o
+In file included from hardware_management.h:18:0,
+                 from DAC_management.h:18,
+                 from main.c:20:
+main.c: In function 'main':
+globals.h:51:33: warning: statement with no effect [-Wunused-value]
+ #define RUN_CA                  'E'
+                                 ^
+main.c:183:40: note: in expansion of macro 'RUN_CA'
+                 if (data_buffer[1]==1) RUN_CA; // go directly to running the CA if measuring (just one button to press) 
+                                        ^
+--------------- Rebuild Succeeded: 01/06/2023 22:11:39 ---------------

@@ -1,0 +1,1898 @@
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"BT_protocols.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.writeBT,"ax",%progbits
+  20              		.align	2
+  21              		.global	writeBT
+  22              		.thumb
+  23              		.thumb_func
+  24              		.type	writeBT, %function
+  25              	writeBT:
+  26              	.LFB64:
+  27              		.file 1 "BT_protocols.c"
+   1:BT_protocols.c **** /* ========================================
+   2:BT_protocols.c ****  *
+   3:BT_protocols.c ****  * FILE with all the PROTOOLS FOR THE UART
+   4:BT_protocols.c ****  * BLUETOOTH SERIAL COMMUNICATION
+   5:BT_protocols.c ****  *
+   6:BT_protocols.c ****  * ========================================
+   7:BT_protocols.c **** */
+   8:BT_protocols.c **** 
+   9:BT_protocols.c **** /*******************************************************
+  10:BT_protocols.c ****   *** UART INITIALIZATION ***
+  11:BT_protocols.c ****   * switch on the HW needed by the UART for communication 
+  12:BT_protocols.c ****   * > already implemented in the UART_Start() API  
+  13:BT_protocols.c **** */
+  14:BT_protocols.c **** 
+  15:BT_protocols.c **** #include <project.h>
+  16:BT_protocols.c **** #include "stdio.h"
+  17:BT_protocols.c **** #include "stdlib.h"
+  18:BT_protocols.c **** #include "BT_protocols.h"
+  19:BT_protocols.c **** 
+  20:BT_protocols.c **** /* **************************************************************
+  21:BT_protocols.c ****    ******************   UART RECEIVE DATA ***********************
+  22:BT_protocols.c ****    **************************************************************
+  23:BT_protocols.c **** 
+  24:BT_protocols.c ****    the incoming data are parameteres to set the measuring procedures, and instructions 
+  25:BT_protocols.c ****    from the GUI. They come as : 
+  26:BT_protocols.c ****                     [HEADER - 1 byte] [DATA - 1 byte] ... [DATA - 1 byte] [TAIL - 1 byte]
+  27:BT_protocols.c ****    in the main we veirfy if there is incoming data, and if there is we switch the case according 
+  28:BT_protocols.c ****    to the header. 
+  29:BT_protocols.c ****                     
+  30:BT_protocols.c ****    - reading is perfomed by the interrupt of the rx bluetooth, each incoming byte is saved in data_
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 2
+
+
+  31:BT_protocols.c ****      until the TAIL is received. When tail is received a flag is raised and the main reads the data
+  32:BT_protocols.c ****                     
+  33:BT_protocols.c **** */
+  34:BT_protocols.c **** 
+  35:BT_protocols.c **** /* **************************************************************
+  36:BT_protocols.c ****    ******************   UART SEND DATA ***********************
+  37:BT_protocols.c ****    **************************************************************
+  38:BT_protocols.c **** 
+  39:BT_protocols.c ****    the outgoing data are readings of the ADC during the CV and CA procedures 
+  40:BT_protocols.c ****    to the GUI and parameters. They come as : 
+  41:BT_protocols.c ****                     [HEADER - 1 byte] [DATA - 1 byte] ... [DATA - 1 byte] [TAIL - 1 byte]
+  42:BT_protocols.c ****    they are sent when the measure is finished, or when the buffer reaches MAX_SIZE_BUFFER 
+  43:BT_protocols.c ****    
+  44:BT_protocols.c ****    the buffer size is "counted" when the buffer is filled
+  45:BT_protocols.c ****                     
+  46:BT_protocols.c **** */
+  47:BT_protocols.c **** 
+  48:BT_protocols.c **** void writeBT(int sending_size){
+  28              		.loc 1 48 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 08B5     		push	{r3, lr}
+  34              		.cfi_def_cfa_offset 8
+  35              		.cfi_offset 3, -8
+  36              		.cfi_offset 14, -4
+  37 0002 0346     		mov	r3, r0
+  49:BT_protocols.c ****     
+  50:BT_protocols.c ****     data_to_send[sending_size] = TAIL; //tail added at the end of the array
+  38              		.loc 1 50 0
+  39 0004 0848     		ldr	r0, .L5
+  40              	.LVL1:
+  41 0006 5A22     		movs	r2, #90
+  42 0008 C254     		strb	r2, [r0, r3]
+  51:BT_protocols.c ****     
+  52:BT_protocols.c ****     
+  53:BT_protocols.c ****     UART_BT_PutArray(data_to_send, sending_size+1); // pass the data_buffer[0] address and the buff
+  43              		.loc 1 53 0
+  44 000a 591C     		adds	r1, r3, #1
+  45 000c C9B2     		uxtb	r1, r1
+  46 000e FFF7FEFF 		bl	UART_BT_PutArray
+  47              	.LVL2:
+  48              	.LBB2:
+  54:BT_protocols.c ****                                                     // +1 because we added the tail 
+  55:BT_protocols.c ****     // clean the sending array
+  56:BT_protocols.c ****     for(uint8_t i=0; i<DATA_MAX_SENDING_SIZE ; i++){
+  49              		.loc 1 56 0
+  50 0012 0023     		movs	r3, #0
+  51 0014 04E0     		b	.L2
+  52              	.LVL3:
+  53              	.L3:
+  57:BT_protocols.c ****         data_to_send[i] = 0;
+  54              		.loc 1 57 0 discriminator 3
+  55 0016 0021     		movs	r1, #0
+  56 0018 034A     		ldr	r2, .L5
+  57 001a D154     		strb	r1, [r2, r3]
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 3
+
+
+  56:BT_protocols.c ****         data_to_send[i] = 0;
+  58              		.loc 1 56 0 discriminator 3
+  59 001c 0133     		adds	r3, r3, #1
+  60              	.LVL4:
+  61 001e DBB2     		uxtb	r3, r3
+  62              	.LVL5:
+  63              	.L2:
+  56:BT_protocols.c ****         data_to_send[i] = 0;
+  64              		.loc 1 56 0 is_stmt 0 discriminator 1
+  65 0020 772B     		cmp	r3, #119
+  66 0022 F8D9     		bls	.L3
+  67              	.LBE2:
+  58:BT_protocols.c ****     }
+  59:BT_protocols.c **** }
+  68              		.loc 1 59 0 is_stmt 1
+  69 0024 08BD     		pop	{r3, pc}
+  70              	.LVL6:
+  71              	.L6:
+  72 0026 00BF     		.align	2
+  73              	.L5:
+  74 0028 00000000 		.word	data_to_send
+  75              		.cfi_endproc
+  76              	.LFE64:
+  77              		.size	writeBT, .-writeBT
+  78              		.section	.text.errorBT,"ax",%progbits
+  79              		.align	2
+  80              		.global	errorBT
+  81              		.thumb
+  82              		.thumb_func
+  83              		.type	errorBT, %function
+  84              	errorBT:
+  85              	.LFB65:
+  60:BT_protocols.c **** 
+  61:BT_protocols.c **** void errorBT(void){
+  86              		.loc 1 61 0
+  87              		.cfi_startproc
+  88              		@ args = 0, pretend = 0, frame = 0
+  89              		@ frame_needed = 0, uses_anonymous_args = 0
+  90 0000 08B5     		push	{r3, lr}
+  91              		.cfi_def_cfa_offset 8
+  92              		.cfi_offset 3, -8
+  93              		.cfi_offset 14, -4
+  62:BT_protocols.c ****     
+  63:BT_protocols.c ****     UART_BT_PutString("Error");
+  94              		.loc 1 63 0
+  95 0002 0248     		ldr	r0, .L9
+  96 0004 FFF7FEFF 		bl	UART_BT_PutString
+  97              	.LVL7:
+  98 0008 08BD     		pop	{r3, pc}
+  99              	.L10:
+ 100 000a 00BF     		.align	2
+ 101              	.L9:
+ 102 000c 00000000 		.word	.LC0
+ 103              		.cfi_endproc
+ 104              	.LFE65:
+ 105              		.size	errorBT, .-errorBT
+ 106              		.section	.text.BT_sending_manager,"ax",%progbits
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 4
+
+
+ 107              		.align	2
+ 108              		.global	BT_sending_manager
+ 109              		.thumb
+ 110              		.thumb_func
+ 111              		.type	BT_sending_manager, %function
+ 112              	BT_sending_manager:
+ 113              	.LFB66:
+  64:BT_protocols.c ****     
+  65:BT_protocols.c **** }
+  66:BT_protocols.c **** 
+  67:BT_protocols.c **** /* **************************************************************
+  68:BT_protocols.c ****    ******************   BT SENDING MANAGER **********************
+  69:BT_protocols.c ****    **************************************************************
+  70:BT_protocols.c **** 
+  71:BT_protocols.c ****    the UART sends 1 byte at each iteration, and should not send more 
+  72:BT_protocols.c ****    than DATA_MAX_SENDING_SIZE, otherwise the cnncetion requires too long and 
+  73:BT_protocols.c ****    it's easier to lose data. This function is used for when all the data from 
+  74:BT_protocols.c ****    CV and CA needs to be sent. Takes the entire array of data (1000-2000 bytes) 
+  75:BT_protocols.c ****    and splits it up into arrays of an appropriate sending size which are
+  76:BT_protocols.c ****    sent by calling the writeBT function 
+  77:BT_protocols.c ****                     
+  78:BT_protocols.c **** */
+  79:BT_protocols.c **** 
+  80:BT_protocols.c **** void BT_sending_manager(uint8_t* data_long_BT_man, int sending_size){
+ 114              		.loc 1 80 0
+ 115              		.cfi_startproc
+ 116              		@ args = 0, pretend = 0, frame = 0
+ 117              		@ frame_needed = 0, uses_anonymous_args = 0
+ 118              	.LVL8:
+ 119 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 120              		.cfi_def_cfa_offset 24
+ 121              		.cfi_offset 3, -24
+ 122              		.cfi_offset 4, -20
+ 123              		.cfi_offset 5, -16
+ 124              		.cfi_offset 6, -12
+ 125              		.cfi_offset 7, -8
+ 126              		.cfi_offset 14, -4
+ 127 0002 0746     		mov	r7, r0
+ 128 0004 0E46     		mov	r6, r1
+ 129              	.LVL9:
+  81:BT_protocols.c ****     
+  82:BT_protocols.c ****     int index=0;
+  83:BT_protocols.c ****     for(index = 0; index < sending_size; index++){
+ 130              		.loc 1 83 0
+ 131 0006 0024     		movs	r4, #0
+ 132 0008 23E0     		b	.L12
+ 133              	.LVL10:
+ 134              	.L18:
+  84:BT_protocols.c ****         if(index<DATA_MAX_SENDING_SIZE){
+ 135              		.loc 1 84 0
+ 136 000a 772C     		cmp	r4, #119
+ 137 000c 03DC     		bgt	.L13
+  85:BT_protocols.c ****             data_to_send[index] = data_long_BT_man[index];
+ 138              		.loc 1 85 0
+ 139 000e 3A5D     		ldrb	r2, [r7, r4]	@ zero_extendqisi2
+ 140 0010 204B     		ldr	r3, .L22
+ 141 0012 1A55     		strb	r2, [r3, r4]
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 5
+
+
+ 142 0014 1CE0     		b	.L14
+ 143              	.L13:
+  86:BT_protocols.c ****         } else {
+  87:BT_protocols.c ****             if((index%DATA_MAX_SENDING_SIZE)==0&&(index!=0)){ // filled one array to send, we call 
+ 144              		.loc 1 87 0
+ 145 0016 204A     		ldr	r2, .L22+4
+ 146 0018 84FB0223 		smull	r2, r3, r4, r2
+ 147 001c E518     		adds	r5, r4, r3
+ 148 001e E317     		asrs	r3, r4, #31
+ 149 0020 C3EBA515 		rsb	r5, r3, r5, asr #6
+ 150 0024 C5EB0515 		rsb	r5, r5, r5, lsl #4
+ 151 0028 EB00     		lsls	r3, r5, #3
+ 152 002a E51A     		subs	r5, r4, r3
+ 153 002c 0DD1     		bne	.L15
+ 154              		.loc 1 87 0 is_stmt 0 discriminator 1
+ 155 002e 64B1     		cbz	r4, .L15
+  88:BT_protocols.c ****                 //writeBT(DATA_MAX_SENDING_SIZE);
+  89:BT_protocols.c ****                 UART_BT_PutArray(data_to_send, DATA_MAX_SENDING_SIZE); // pass the data_buffer[0] a
+ 156              		.loc 1 89 0 is_stmt 1
+ 157 0030 7821     		movs	r1, #120
+ 158 0032 1848     		ldr	r0, .L22
+ 159 0034 FFF7FEFF 		bl	UART_BT_PutArray
+ 160              	.LVL11:
+ 161              	.LBB3:
+  90:BT_protocols.c ****                                                     // +1 because we added the tail 
+  91:BT_protocols.c ****             // clean the sending array
+  92:BT_protocols.c ****             for(uint8_t i=0; i<DATA_MAX_SENDING_SIZE ; i++){
+ 162              		.loc 1 92 0
+ 163 0038 0023     		movs	r3, #0
+ 164 003a 04E0     		b	.L16
+ 165              	.LVL12:
+ 166              	.L17:
+  93:BT_protocols.c ****                 data_to_send[i] = 0;
+ 167              		.loc 1 93 0 discriminator 3
+ 168 003c 0021     		movs	r1, #0
+ 169 003e 154A     		ldr	r2, .L22
+ 170 0040 D154     		strb	r1, [r2, r3]
+  92:BT_protocols.c ****                 data_to_send[i] = 0;
+ 171              		.loc 1 92 0 discriminator 3
+ 172 0042 0133     		adds	r3, r3, #1
+ 173              	.LVL13:
+ 174 0044 DBB2     		uxtb	r3, r3
+ 175              	.LVL14:
+ 176              	.L16:
+  92:BT_protocols.c ****                 data_to_send[i] = 0;
+ 177              		.loc 1 92 0 is_stmt 0 discriminator 1
+ 178 0046 772B     		cmp	r3, #119
+ 179 0048 F8D9     		bls	.L17
+ 180              	.LVL15:
+ 181              	.L15:
+ 182              	.LBE3:
+  94:BT_protocols.c ****             }
+  95:BT_protocols.c ****         }
+  96:BT_protocols.c ****             
+  97:BT_protocols.c ****             data_to_send[index%DATA_MAX_SENDING_SIZE] = data_long_BT_man[index]; 
+ 183              		.loc 1 97 0 is_stmt 1
+ 184 004a 3A5D     		ldrb	r2, [r7, r4]	@ zero_extendqisi2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 6
+
+
+ 185 004c 114B     		ldr	r3, .L22
+ 186 004e 5A55     		strb	r2, [r3, r5]
+ 187              	.L14:
+  83:BT_protocols.c ****         if(index<DATA_MAX_SENDING_SIZE){
+ 188              		.loc 1 83 0 discriminator 2
+ 189 0050 0134     		adds	r4, r4, #1
+ 190              	.LVL16:
+ 191              	.L12:
+  83:BT_protocols.c ****         if(index<DATA_MAX_SENDING_SIZE){
+ 192              		.loc 1 83 0 is_stmt 0 discriminator 1
+ 193 0052 B442     		cmp	r4, r6
+ 194 0054 D9DB     		blt	.L18
+  98:BT_protocols.c ****         }
+  99:BT_protocols.c ****     }
+ 100:BT_protocols.c ****     // sending of extra "last piece" of array which does not reach the SENDING SIZE
+ 101:BT_protocols.c ****     // this is not needed in out case, our measures arrays will always be 2*lut_legth
+ 102:BT_protocols.c ****     
+ 103:BT_protocols.c ****     data_to_send[index%DATA_MAX_SENDING_SIZE] = TAIL;
+ 195              		.loc 1 103 0 is_stmt 1
+ 196 0056 104A     		ldr	r2, .L22+4
+ 197 0058 84FB0223 		smull	r2, r3, r4, r2
+ 198 005c E218     		adds	r2, r4, r3
+ 199 005e E317     		asrs	r3, r4, #31
+ 200 0060 C3EBA213 		rsb	r3, r3, r2, asr #6
+ 201 0064 C3EB0313 		rsb	r3, r3, r3, lsl #4
+ 202 0068 DA00     		lsls	r2, r3, #3
+ 203 006a A31A     		subs	r3, r4, r2
+ 204 006c 0948     		ldr	r0, .L22
+ 205 006e 5A22     		movs	r2, #90
+ 206 0070 C254     		strb	r2, [r0, r3]
+ 104:BT_protocols.c ****     data_to_send[(index%DATA_MAX_SENDING_SIZE)+1] = TAIL; //tail added at the end of the array
+ 207              		.loc 1 104 0
+ 208 0072 591C     		adds	r1, r3, #1
+ 209 0074 4254     		strb	r2, [r0, r1]
+ 105:BT_protocols.c ****     
+ 106:BT_protocols.c ****     UART_BT_PutArray(data_to_send, (index%DATA_MAX_SENDING_SIZE)+2); // pass the data_buffer[0] add
+ 210              		.loc 1 106 0
+ 211 0076 991C     		adds	r1, r3, #2
+ 212 0078 C9B2     		uxtb	r1, r1
+ 213 007a FFF7FEFF 		bl	UART_BT_PutArray
+ 214              	.LVL17:
+ 215              	.LBB4:
+ 107:BT_protocols.c ****                                                     // +1 because we added the tail 
+ 108:BT_protocols.c ****     // clean the sending array
+ 109:BT_protocols.c ****     for(uint8_t i=0; i<DATA_MAX_SENDING_SIZE ; i++){
+ 216              		.loc 1 109 0
+ 217 007e 0023     		movs	r3, #0
+ 218 0080 04E0     		b	.L19
+ 219              	.LVL18:
+ 220              	.L20:
+ 110:BT_protocols.c ****         data_to_send[i] = 0;
+ 221              		.loc 1 110 0 discriminator 3
+ 222 0082 0021     		movs	r1, #0
+ 223 0084 034A     		ldr	r2, .L22
+ 224 0086 D154     		strb	r1, [r2, r3]
+ 109:BT_protocols.c ****         data_to_send[i] = 0;
+ 225              		.loc 1 109 0 discriminator 3
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 7
+
+
+ 226 0088 0133     		adds	r3, r3, #1
+ 227              	.LVL19:
+ 228 008a DBB2     		uxtb	r3, r3
+ 229              	.LVL20:
+ 230              	.L19:
+ 109:BT_protocols.c ****         data_to_send[i] = 0;
+ 231              		.loc 1 109 0 is_stmt 0 discriminator 1
+ 232 008c 772B     		cmp	r3, #119
+ 233 008e F8D9     		bls	.L20
+ 234              	.LBE4:
+ 111:BT_protocols.c ****     }
+ 112:BT_protocols.c **** }
+ 235              		.loc 1 112 0 is_stmt 1
+ 236 0090 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 237              	.LVL21:
+ 238              	.L23:
+ 239 0092 00BF     		.align	2
+ 240              	.L22:
+ 241 0094 00000000 		.word	data_to_send
+ 242 0098 89888888 		.word	-2004318071
+ 243              		.cfi_endproc
+ 244              	.LFE66:
+ 245              		.size	BT_sending_manager, .-BT_sending_manager
+ 246              		.section	.text.sendMeasures,"ax",%progbits
+ 247              		.align	2
+ 248              		.global	sendMeasures
+ 249              		.thumb
+ 250              		.thumb_func
+ 251              		.type	sendMeasures, %function
+ 252              	sendMeasures:
+ 253              	.LFB67:
+ 113:BT_protocols.c **** 
+ 114:BT_protocols.c **** 
+ 115:BT_protocols.c **** void sendMeasures(void){ // called by the ISR when the measures are finished 
+ 254              		.loc 1 115 0
+ 255              		.cfi_startproc
+ 256              		@ args = 0, pretend = 0, frame = 0
+ 257              		@ frame_needed = 0, uses_anonymous_args = 0
+ 258 0000 10B5     		push	{r4, lr}
+ 259              		.cfi_def_cfa_offset 8
+ 260              		.cfi_offset 4, -8
+ 261              		.cfi_offset 14, -4
+ 116:BT_protocols.c ****     
+ 117:BT_protocols.c ****     BT_sending_manager(data_long, lut_length*2); // send the measured voltages  
+ 262              		.loc 1 117 0
+ 263 0002 184B     		ldr	r3, .L30
+ 264 0004 1988     		ldrh	r1, [r3]
+ 265 0006 4900     		lsls	r1, r1, #1
+ 266 0008 1748     		ldr	r0, .L30+4
+ 267 000a FFF7FEFF 		bl	BT_sending_manager
+ 268              	.LVL22:
+ 269              	.LBB5:
+ 118:BT_protocols.c ****     
+ 119:BT_protocols.c ****     for(int i=0; i<DATA_LONG_SIZE; i++){
+ 270              		.loc 1 119 0
+ 271 000e 0023     		movs	r3, #0
+ 272 0010 03E0     		b	.L25
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 8
+
+
+ 273              	.LVL23:
+ 274              	.L26:
+ 120:BT_protocols.c ****         data_long[i]=0; 
+ 275              		.loc 1 120 0 discriminator 3
+ 276 0012 0021     		movs	r1, #0
+ 277 0014 144A     		ldr	r2, .L30+4
+ 278 0016 D154     		strb	r1, [r2, r3]
+ 119:BT_protocols.c ****         data_long[i]=0; 
+ 279              		.loc 1 119 0 discriminator 3
+ 280 0018 0133     		adds	r3, r3, #1
+ 281              	.LVL24:
+ 282              	.L25:
+ 119:BT_protocols.c ****         data_long[i]=0; 
+ 283              		.loc 1 119 0 is_stmt 0 discriminator 1
+ 284 001a 41F28732 		movw	r2, #4999
+ 285 001e 9342     		cmp	r3, r2
+ 286 0020 F7DD     		ble	.L26
+ 287 0022 0023     		movs	r3, #0
+ 288              	.LVL25:
+ 289 0024 0EE0     		b	.L27
+ 290              	.LVL26:
+ 291              	.L28:
+ 292              	.LBE5:
+ 293              	.LBB6:
+ 294              	.LBB7:
+ 121:BT_protocols.c ****     }
+ 122:BT_protocols.c ****     
+ 123:BT_protocols.c ****     for(int i = 0; i < lut_length; i++){ //create the array and send the imposed voltages
+ 124:BT_protocols.c ****         uint8_t LSB_data = waveform_lut[i] & 0xFF;
+ 295              		.loc 1 124 0 is_stmt 1 discriminator 3
+ 296 0026 114A     		ldr	r2, .L30+8
+ 297 0028 32F81310 		ldrh	r1, [r2, r3, lsl #1]
+ 298 002c C9B2     		uxtb	r1, r1
+ 299              	.LVL27:
+ 125:BT_protocols.c ****         uint8_t MSB_data = waveform_lut[i] >> 8;
+ 300              		.loc 1 125 0 discriminator 3
+ 301 002e 32F81300 		ldrh	r0, [r2, r3, lsl #1]
+ 302 0032 C0F30720 		ubfx	r0, r0, #8, #8
+ 303              	.LVL28:
+ 126:BT_protocols.c ****         data_long[2*i] = MSB_data; // i = 0 -> 0 e 1 , i = 2 -> 
+ 304              		.loc 1 126 0 discriminator 3
+ 305 0036 5A00     		lsls	r2, r3, #1
+ 306 0038 0B4C     		ldr	r4, .L30+4
+ 307 003a 04F81300 		strb	r0, [r4, r3, lsl #1]
+ 127:BT_protocols.c ****         data_long[2*i+1] = LSB_data;
+ 308              		.loc 1 127 0 discriminator 3
+ 309 003e 0132     		adds	r2, r2, #1
+ 310 0040 A154     		strb	r1, [r4, r2]
+ 311              	.LBE7:
+ 123:BT_protocols.c ****         uint8_t LSB_data = waveform_lut[i] & 0xFF;
+ 312              		.loc 1 123 0 discriminator 3
+ 313 0042 0133     		adds	r3, r3, #1
+ 314              	.LVL29:
+ 315              	.L27:
+ 123:BT_protocols.c ****         uint8_t LSB_data = waveform_lut[i] & 0xFF;
+ 316              		.loc 1 123 0 is_stmt 0 discriminator 1
+ 317 0044 074A     		ldr	r2, .L30
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 9
+
+
+ 318 0046 1288     		ldrh	r2, [r2]
+ 319 0048 9342     		cmp	r3, r2
+ 320 004a ECDB     		blt	.L28
+ 321              	.LBE6:
+ 128:BT_protocols.c ****     }
+ 129:BT_protocols.c ****     CyDelay(500);
+ 322              		.loc 1 129 0 is_stmt 1
+ 323 004c 4FF4FA70 		mov	r0, #500
+ 324 0050 FFF7FEFF 		bl	CyDelay
+ 325              	.LVL30:
+ 130:BT_protocols.c ****     
+ 131:BT_protocols.c ****     BT_sending_manager(data_long, lut_length*2); // incompatible pointers, if it's an issue copy 
+ 326              		.loc 1 131 0
+ 327 0054 034B     		ldr	r3, .L30
+ 328 0056 1988     		ldrh	r1, [r3]
+ 329 0058 4900     		lsls	r1, r1, #1
+ 330 005a 0348     		ldr	r0, .L30+4
+ 331 005c FFF7FEFF 		bl	BT_sending_manager
+ 332              	.LVL31:
+ 333 0060 10BD     		pop	{r4, pc}
+ 334              	.L31:
+ 335 0062 00BF     		.align	2
+ 336              	.L30:
+ 337 0064 00000000 		.word	lut_length
+ 338 0068 00000000 		.word	data_long
+ 339 006c 00000000 		.word	waveform_lut
+ 340              		.cfi_endproc
+ 341              	.LFE67:
+ 342              		.size	sendMeasures, .-sendMeasures
+ 343              		.comm	finished_procedure_flag,1,1
+ 344              		.comm	data_long,5000,4
+ 345              		.comm	data_to_send,120,4
+ 346              		.comm	temp,20,4
+ 347              		.comm	data_buffer,20,4
+ 348              		.comm	selected_voltage_source,1,1
+ 349              		.comm	tia_calibration_values,21,4
+ 350              		.comm	lut_length,2,2
+ 351              		.comm	lut_index,2,2
+ 352              		.comm	waveform_lut,10010,4
+ 353              		.comm	lut_value,2,2
+ 354              		.comm	return_value,4,4
+ 355              		.comm	dac_ground_value,2,2
+ 356              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 357              		.align	2
+ 358              	.LC0:
+ 359 0000 4572726F 		.ascii	"Error\000"
+ 359      7200
+ 360              		.bss
+ 361              		.type	input_flag, %object
+ 362              		.size	input_flag, 1
+ 363              	input_flag:
+ 364 0000 00       		.space	1
+ 365              		.type	connection_state, %object
+ 366              		.size	connection_state, 1
+ 367              	connection_state:
+ 368 0001 00       		.space	1
+ 369              		.type	buffer_index, %object
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 10
+
+
+ 370              		.size	buffer_index, 1
+ 371              	buffer_index:
+ 372 0002 00       		.space	1
+ 373              		.text
+ 374              	.Letext0:
+ 375              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 376              		.file 3 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 377              		.file 4 "Generated_Source\\PSoC5/cytypes.h"
+ 378              		.file 5 "globals.h"
+ 379              		.file 6 "Generated_Source\\PSoC5/core_cm3.h"
+ 380              		.file 7 "BT_protocols.h"
+ 381              		.file 8 "Generated_Source\\PSoC5/UART_BT.h"
+ 382              		.file 9 "Generated_Source\\PSoC5/CyLib.h"
+ 383              		.section	.debug_info,"",%progbits
+ 384              	.Ldebug_info0:
+ 385 0000 77040000 		.4byte	0x477
+ 386 0004 0400     		.2byte	0x4
+ 387 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 388 000a 04       		.byte	0x4
+ 389 000b 01       		.uleb128 0x1
+ 390 000c 0F010000 		.4byte	.LASF50
+ 391 0010 0C       		.byte	0xc
+ 392 0011 15000000 		.4byte	.LASF51
+ 393 0015 92000000 		.4byte	.LASF52
+ 394 0019 00000000 		.4byte	.Ldebug_ranges0+0
+ 395 001d 00000000 		.4byte	0
+ 396 0021 00000000 		.4byte	.Ldebug_line0
+ 397 0025 02       		.uleb128 0x2
+ 398 0026 01       		.byte	0x1
+ 399 0027 06       		.byte	0x6
+ 400 0028 41030000 		.4byte	.LASF0
+ 401 002c 03       		.uleb128 0x3
+ 402 002d 31000000 		.4byte	.LASF3
+ 403 0031 02       		.byte	0x2
+ 404 0032 1D       		.byte	0x1d
+ 405 0033 37000000 		.4byte	0x37
+ 406 0037 02       		.uleb128 0x2
+ 407 0038 01       		.byte	0x1
+ 408 0039 08       		.byte	0x8
+ 409 003a 01010000 		.4byte	.LASF1
+ 410 003e 02       		.uleb128 0x2
+ 411 003f 02       		.byte	0x2
+ 412 0040 05       		.byte	0x5
+ 413 0041 FC020000 		.4byte	.LASF2
+ 414 0045 03       		.uleb128 0x3
+ 415 0046 06030000 		.4byte	.LASF4
+ 416 004a 02       		.byte	0x2
+ 417 004b 2B       		.byte	0x2b
+ 418 004c 50000000 		.4byte	0x50
+ 419 0050 02       		.uleb128 0x2
+ 420 0051 02       		.byte	0x2
+ 421 0052 07       		.byte	0x7
+ 422 0053 C1010000 		.4byte	.LASF5
+ 423 0057 03       		.uleb128 0x3
+ 424 0058 59000000 		.4byte	.LASF6
+ 425 005c 02       		.byte	0x2
+ 426 005d 3F       		.byte	0x3f
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 11
+
+
+ 427 005e 62000000 		.4byte	0x62
+ 428 0062 02       		.uleb128 0x2
+ 429 0063 04       		.byte	0x4
+ 430 0064 05       		.byte	0x5
+ 431 0065 2C030000 		.4byte	.LASF7
+ 432 0069 02       		.uleb128 0x2
+ 433 006a 04       		.byte	0x4
+ 434 006b 07       		.byte	0x7
+ 435 006c AA010000 		.4byte	.LASF8
+ 436 0070 02       		.uleb128 0x2
+ 437 0071 08       		.byte	0x8
+ 438 0072 05       		.byte	0x5
+ 439 0073 BE020000 		.4byte	.LASF9
+ 440 0077 02       		.uleb128 0x2
+ 441 0078 08       		.byte	0x8
+ 442 0079 07       		.byte	0x7
+ 443 007a 4D020000 		.4byte	.LASF10
+ 444 007e 04       		.uleb128 0x4
+ 445 007f 04       		.byte	0x4
+ 446 0080 05       		.byte	0x5
+ 447 0081 696E7400 		.ascii	"int\000"
+ 448 0085 02       		.uleb128 0x2
+ 449 0086 04       		.byte	0x4
+ 450 0087 07       		.byte	0x7
+ 451 0088 40020000 		.4byte	.LASF11
+ 452 008c 03       		.uleb128 0x3
+ 453 008d 64020000 		.4byte	.LASF12
+ 454 0091 03       		.byte	0x3
+ 455 0092 18       		.byte	0x18
+ 456 0093 2C000000 		.4byte	0x2c
+ 457 0097 03       		.uleb128 0x3
+ 458 0098 11030000 		.4byte	.LASF13
+ 459 009c 03       		.byte	0x3
+ 460 009d 24       		.byte	0x24
+ 461 009e 45000000 		.4byte	0x45
+ 462 00a2 03       		.uleb128 0x3
+ 463 00a3 AD020000 		.4byte	.LASF14
+ 464 00a7 03       		.byte	0x3
+ 465 00a8 2C       		.byte	0x2c
+ 466 00a9 57000000 		.4byte	0x57
+ 467 00ad 02       		.uleb128 0x2
+ 468 00ae 04       		.byte	0x4
+ 469 00af 04       		.byte	0x4
+ 470 00b0 F2000000 		.4byte	.LASF15
+ 471 00b4 02       		.uleb128 0x2
+ 472 00b5 08       		.byte	0x8
+ 473 00b6 04       		.byte	0x4
+ 474 00b7 4D030000 		.4byte	.LASF16
+ 475 00bb 02       		.uleb128 0x2
+ 476 00bc 01       		.byte	0x1
+ 477 00bd 08       		.byte	0x8
+ 478 00be E4020000 		.4byte	.LASF17
+ 479 00c2 05       		.uleb128 0x5
+ 480 00c3 2C020000 		.4byte	.LASF18
+ 481 00c7 04       		.byte	0x4
+ 482 00c8 8B02     		.2byte	0x28b
+ 483 00ca 69000000 		.4byte	0x69
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 12
+
+
+ 484 00ce 02       		.uleb128 0x2
+ 485 00cf 08       		.byte	0x8
+ 486 00d0 04       		.byte	0x4
+ 487 00d1 35030000 		.4byte	.LASF19
+ 488 00d5 02       		.uleb128 0x2
+ 489 00d6 04       		.byte	0x4
+ 490 00d7 07       		.byte	0x7
+ 491 00d8 B5020000 		.4byte	.LASF20
+ 492 00dc 06       		.uleb128 0x6
+ 493 00dd 8C000000 		.4byte	0x8c
+ 494 00e1 06       		.uleb128 0x6
+ 495 00e2 97000000 		.4byte	0x97
+ 496 00e6 07       		.uleb128 0x7
+ 497 00e7 E1010000 		.4byte	.LASF21
+ 498 00eb 01       		.byte	0x1
+ 499 00ec 30       		.byte	0x30
+ 500 00ed 00000000 		.4byte	.LFB64
+ 501 00f1 2C000000 		.4byte	.LFE64-.LFB64
+ 502 00f5 01       		.uleb128 0x1
+ 503 00f6 9C       		.byte	0x9c
+ 504 00f7 42010000 		.4byte	0x142
+ 505 00fb 08       		.uleb128 0x8
+ 506 00fc 63000000 		.4byte	.LASF24
+ 507 0100 01       		.byte	0x1
+ 508 0101 30       		.byte	0x30
+ 509 0102 7E000000 		.4byte	0x7e
+ 510 0106 00000000 		.4byte	.LLST0
+ 511 010a 09       		.uleb128 0x9
+ 512 010b 12000000 		.4byte	.LBB2
+ 513 010f 12000000 		.4byte	.LBE2-.LBB2
+ 514 0113 25010000 		.4byte	0x125
+ 515 0117 0A       		.uleb128 0xa
+ 516 0118 6900     		.ascii	"i\000"
+ 517 011a 01       		.byte	0x1
+ 518 011b 38       		.byte	0x38
+ 519 011c 8C000000 		.4byte	0x8c
+ 520 0120 2C000000 		.4byte	.LLST1
+ 521 0124 00       		.byte	0
+ 522 0125 0B       		.uleb128 0xb
+ 523 0126 12000000 		.4byte	.LVL2
+ 524 012a 59040000 		.4byte	0x459
+ 525 012e 0C       		.uleb128 0xc
+ 526 012f 01       		.uleb128 0x1
+ 527 0130 50       		.byte	0x50
+ 528 0131 05       		.uleb128 0x5
+ 529 0132 03       		.byte	0x3
+ 530 0133 00000000 		.4byte	data_to_send
+ 531 0137 0C       		.uleb128 0xc
+ 532 0138 01       		.uleb128 0x1
+ 533 0139 51       		.byte	0x51
+ 534 013a 05       		.uleb128 0x5
+ 535 013b F3       		.byte	0xf3
+ 536 013c 01       		.uleb128 0x1
+ 537 013d 50       		.byte	0x50
+ 538 013e 23       		.byte	0x23
+ 539 013f 01       		.uleb128 0x1
+ 540 0140 00       		.byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 13
+
+
+ 541 0141 00       		.byte	0
+ 542 0142 07       		.uleb128 0x7
+ 543 0143 24020000 		.4byte	.LASF22
+ 544 0147 01       		.byte	0x1
+ 545 0148 3D       		.byte	0x3d
+ 546 0149 00000000 		.4byte	.LFB65
+ 547 014d 10000000 		.4byte	.LFE65-.LFB65
+ 548 0151 01       		.uleb128 0x1
+ 549 0152 9C       		.byte	0x9c
+ 550 0153 6B010000 		.4byte	0x16b
+ 551 0157 0B       		.uleb128 0xb
+ 552 0158 08000000 		.4byte	.LVL7
+ 553 015c 64040000 		.4byte	0x464
+ 554 0160 0C       		.uleb128 0xc
+ 555 0161 01       		.uleb128 0x1
+ 556 0162 50       		.byte	0x50
+ 557 0163 05       		.uleb128 0x5
+ 558 0164 03       		.byte	0x3
+ 559 0165 00000000 		.4byte	.LC0
+ 560 0169 00       		.byte	0
+ 561 016a 00       		.byte	0
+ 562 016b 07       		.uleb128 0x7
+ 563 016c 6C020000 		.4byte	.LASF23
+ 564 0170 01       		.byte	0x1
+ 565 0171 50       		.byte	0x50
+ 566 0172 00000000 		.4byte	.LFB66
+ 567 0176 9C000000 		.4byte	.LFE66-.LFB66
+ 568 017a 01       		.uleb128 0x1
+ 569 017b 9C       		.byte	0x9c
+ 570 017c 14020000 		.4byte	0x214
+ 571 0180 08       		.uleb128 0x8
+ 572 0181 70000000 		.4byte	.LASF25
+ 573 0185 01       		.byte	0x1
+ 574 0186 50       		.byte	0x50
+ 575 0187 14020000 		.4byte	0x214
+ 576 018b 56000000 		.4byte	.LLST2
+ 577 018f 08       		.uleb128 0x8
+ 578 0190 63000000 		.4byte	.LASF24
+ 579 0194 01       		.byte	0x1
+ 580 0195 50       		.byte	0x50
+ 581 0196 7E000000 		.4byte	0x7e
+ 582 019a 82000000 		.4byte	.LLST3
+ 583 019e 0D       		.uleb128 0xd
+ 584 019f F6020000 		.4byte	.LASF26
+ 585 01a3 01       		.byte	0x1
+ 586 01a4 52       		.byte	0x52
+ 587 01a5 7E000000 		.4byte	0x7e
+ 588 01a9 AE000000 		.4byte	.LLST4
+ 589 01ad 09       		.uleb128 0x9
+ 590 01ae 38000000 		.4byte	.LBB3
+ 591 01b2 12000000 		.4byte	.LBE3-.LBB3
+ 592 01b6 C8010000 		.4byte	0x1c8
+ 593 01ba 0A       		.uleb128 0xa
+ 594 01bb 6900     		.ascii	"i\000"
+ 595 01bd 01       		.byte	0x1
+ 596 01be 5C       		.byte	0x5c
+ 597 01bf 8C000000 		.4byte	0x8c
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 14
+
+
+ 598 01c3 CD000000 		.4byte	.LLST5
+ 599 01c7 00       		.byte	0
+ 600 01c8 09       		.uleb128 0x9
+ 601 01c9 7E000000 		.4byte	.LBB4
+ 602 01cd 12000000 		.4byte	.LBE4-.LBB4
+ 603 01d1 E3010000 		.4byte	0x1e3
+ 604 01d5 0A       		.uleb128 0xa
+ 605 01d6 6900     		.ascii	"i\000"
+ 606 01d8 01       		.byte	0x1
+ 607 01d9 6D       		.byte	0x6d
+ 608 01da 8C000000 		.4byte	0x8c
+ 609 01de F7000000 		.4byte	.LLST6
+ 610 01e2 00       		.byte	0
+ 611 01e3 0E       		.uleb128 0xe
+ 612 01e4 38000000 		.4byte	.LVL11
+ 613 01e8 59040000 		.4byte	0x459
+ 614 01ec 00020000 		.4byte	0x200
+ 615 01f0 0C       		.uleb128 0xc
+ 616 01f1 01       		.uleb128 0x1
+ 617 01f2 50       		.byte	0x50
+ 618 01f3 05       		.uleb128 0x5
+ 619 01f4 03       		.byte	0x3
+ 620 01f5 00000000 		.4byte	data_to_send
+ 621 01f9 0C       		.uleb128 0xc
+ 622 01fa 01       		.uleb128 0x1
+ 623 01fb 51       		.byte	0x51
+ 624 01fc 02       		.uleb128 0x2
+ 625 01fd 08       		.byte	0x8
+ 626 01fe 78       		.byte	0x78
+ 627 01ff 00       		.byte	0
+ 628 0200 0B       		.uleb128 0xb
+ 629 0201 7E000000 		.4byte	.LVL17
+ 630 0205 59040000 		.4byte	0x459
+ 631 0209 0C       		.uleb128 0xc
+ 632 020a 01       		.uleb128 0x1
+ 633 020b 50       		.byte	0x50
+ 634 020c 05       		.uleb128 0x5
+ 635 020d 03       		.byte	0x3
+ 636 020e 00000000 		.4byte	data_to_send
+ 637 0212 00       		.byte	0
+ 638 0213 00       		.byte	0
+ 639 0214 0F       		.uleb128 0xf
+ 640 0215 04       		.byte	0x4
+ 641 0216 8C000000 		.4byte	0x8c
+ 642 021a 07       		.uleb128 0x7
+ 643 021b 24000000 		.4byte	.LASF27
+ 644 021f 01       		.byte	0x1
+ 645 0220 73       		.byte	0x73
+ 646 0221 00000000 		.4byte	.LFB67
+ 647 0225 70000000 		.4byte	.LFE67-.LFB67
+ 648 0229 01       		.uleb128 0x1
+ 649 022a 9C       		.byte	0x9c
+ 650 022b CD020000 		.4byte	0x2cd
+ 651 022f 09       		.uleb128 0x9
+ 652 0230 0E000000 		.4byte	.LBB5
+ 653 0234 18000000 		.4byte	.LBE5-.LBB5
+ 654 0238 4A020000 		.4byte	0x24a
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 15
+
+
+ 655 023c 0A       		.uleb128 0xa
+ 656 023d 6900     		.ascii	"i\000"
+ 657 023f 01       		.byte	0x1
+ 658 0240 77       		.byte	0x77
+ 659 0241 7E000000 		.4byte	0x7e
+ 660 0245 21010000 		.4byte	.LLST7
+ 661 0249 00       		.byte	0
+ 662 024a 09       		.uleb128 0x9
+ 663 024b 26000000 		.4byte	.LBB6
+ 664 024f 26000000 		.4byte	.LBE6-.LBB6
+ 665 0253 8D020000 		.4byte	0x28d
+ 666 0257 0A       		.uleb128 0xa
+ 667 0258 6900     		.ascii	"i\000"
+ 668 025a 01       		.byte	0x1
+ 669 025b 7B       		.byte	0x7b
+ 670 025c 7E000000 		.4byte	0x7e
+ 671 0260 40010000 		.4byte	.LLST8
+ 672 0264 10       		.uleb128 0x10
+ 673 0265 26000000 		.4byte	.LBB7
+ 674 0269 1C000000 		.4byte	.LBE7-.LBB7
+ 675 026d 0D       		.uleb128 0xd
+ 676 026e F3010000 		.4byte	.LASF28
+ 677 0272 01       		.byte	0x1
+ 678 0273 7C       		.byte	0x7c
+ 679 0274 8C000000 		.4byte	0x8c
+ 680 0278 53010000 		.4byte	.LLST9
+ 681 027c 0D       		.uleb128 0xd
+ 682 027d F8000000 		.4byte	.LASF29
+ 683 0281 01       		.byte	0x1
+ 684 0282 7D       		.byte	0x7d
+ 685 0283 8C000000 		.4byte	0x8c
+ 686 0287 66010000 		.4byte	.LLST10
+ 687 028b 00       		.byte	0
+ 688 028c 00       		.byte	0
+ 689 028d 0E       		.uleb128 0xe
+ 690 028e 0E000000 		.4byte	.LVL22
+ 691 0292 6B010000 		.4byte	0x16b
+ 692 0296 A4020000 		.4byte	0x2a4
+ 693 029a 0C       		.uleb128 0xc
+ 694 029b 01       		.uleb128 0x1
+ 695 029c 50       		.byte	0x50
+ 696 029d 05       		.uleb128 0x5
+ 697 029e 03       		.byte	0x3
+ 698 029f 00000000 		.4byte	data_long
+ 699 02a3 00       		.byte	0
+ 700 02a4 0E       		.uleb128 0xe
+ 701 02a5 54000000 		.4byte	.LVL30
+ 702 02a9 6F040000 		.4byte	0x46f
+ 703 02ad B9020000 		.4byte	0x2b9
+ 704 02b1 0C       		.uleb128 0xc
+ 705 02b2 01       		.uleb128 0x1
+ 706 02b3 50       		.byte	0x50
+ 707 02b4 03       		.uleb128 0x3
+ 708 02b5 0A       		.byte	0xa
+ 709 02b6 F401     		.2byte	0x1f4
+ 710 02b8 00       		.byte	0
+ 711 02b9 0B       		.uleb128 0xb
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 16
+
+
+ 712 02ba 60000000 		.4byte	.LVL31
+ 713 02be 6B010000 		.4byte	0x16b
+ 714 02c2 0C       		.uleb128 0xc
+ 715 02c3 01       		.uleb128 0x1
+ 716 02c4 50       		.byte	0x50
+ 717 02c5 05       		.uleb128 0x5
+ 718 02c6 03       		.byte	0x3
+ 719 02c7 00000000 		.4byte	data_long
+ 720 02cb 00       		.byte	0
+ 721 02cc 00       		.byte	0
+ 722 02cd 11       		.uleb128 0x11
+ 723 02ce E9020000 		.4byte	.LASF30
+ 724 02d2 05       		.byte	0x5
+ 725 02d3 B1       		.byte	0xb1
+ 726 02d4 DC000000 		.4byte	0xdc
+ 727 02d8 05       		.uleb128 0x5
+ 728 02d9 03       		.byte	0x3
+ 729 02da 02000000 		.4byte	buffer_index
+ 730 02de 11       		.uleb128 0x11
+ 731 02df 3B000000 		.4byte	.LASF31
+ 732 02e3 05       		.byte	0x5
+ 733 02e4 B2       		.byte	0xb2
+ 734 02e5 DC000000 		.4byte	0xdc
+ 735 02e9 05       		.uleb128 0x5
+ 736 02ea 03       		.byte	0x3
+ 737 02eb 01000000 		.4byte	connection_state
+ 738 02ef 11       		.uleb128 0x11
+ 739 02f0 35020000 		.4byte	.LASF32
+ 740 02f4 05       		.byte	0x5
+ 741 02f5 B3       		.byte	0xb3
+ 742 02f6 DC000000 		.4byte	0xdc
+ 743 02fa 05       		.uleb128 0x5
+ 744 02fb 03       		.byte	0x3
+ 745 02fc 00000000 		.4byte	input_flag
+ 746 0300 12       		.uleb128 0x12
+ 747 0301 D4010000 		.4byte	.LASF33
+ 748 0305 06       		.byte	0x6
+ 749 0306 1207     		.2byte	0x712
+ 750 0308 0C030000 		.4byte	0x30c
+ 751 030c 06       		.uleb128 0x6
+ 752 030d A2000000 		.4byte	0xa2
+ 753 0311 13       		.uleb128 0x13
+ 754 0312 81000000 		.4byte	.LASF34
+ 755 0316 05       		.byte	0x5
+ 756 0317 9A       		.byte	0x9a
+ 757 0318 97000000 		.4byte	0x97
+ 758 031c 05       		.uleb128 0x5
+ 759 031d 03       		.byte	0x3
+ 760 031e 00000000 		.4byte	dac_ground_value
+ 761 0322 13       		.uleb128 0x13
+ 762 0323 E5000000 		.4byte	.LASF35
+ 763 0327 05       		.byte	0x5
+ 764 0328 9C       		.byte	0x9c
+ 765 0329 C2000000 		.4byte	0xc2
+ 766 032d 05       		.uleb128 0x5
+ 767 032e 03       		.byte	0x3
+ 768 032f 00000000 		.4byte	return_value
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 17
+
+
+ 769 0333 13       		.uleb128 0x13
+ 770 0334 00000000 		.4byte	.LASF36
+ 771 0338 05       		.byte	0x5
+ 772 0339 A1       		.byte	0xa1
+ 773 033a 97000000 		.4byte	0x97
+ 774 033e 05       		.uleb128 0x5
+ 775 033f 03       		.byte	0x3
+ 776 0340 00000000 		.4byte	lut_value
+ 777 0344 14       		.uleb128 0x14
+ 778 0345 E1000000 		.4byte	0xe1
+ 779 0349 55030000 		.4byte	0x355
+ 780 034d 15       		.uleb128 0x15
+ 781 034e D5000000 		.4byte	0xd5
+ 782 0352 8C13     		.2byte	0x138c
+ 783 0354 00       		.byte	0
+ 784 0355 13       		.uleb128 0x13
+ 785 0356 4C000000 		.4byte	.LASF37
+ 786 035a 07       		.byte	0x7
+ 787 035b 2A       		.byte	0x2a
+ 788 035c 66030000 		.4byte	0x366
+ 789 0360 05       		.uleb128 0x5
+ 790 0361 03       		.byte	0x3
+ 791 0362 00000000 		.4byte	waveform_lut
+ 792 0366 06       		.uleb128 0x6
+ 793 0367 44030000 		.4byte	0x344
+ 794 036b 13       		.uleb128 0x13
+ 795 036c 97020000 		.4byte	.LASF38
+ 796 0370 05       		.byte	0x5
+ 797 0371 A6       		.byte	0xa6
+ 798 0372 97000000 		.4byte	0x97
+ 799 0376 05       		.uleb128 0x5
+ 800 0377 03       		.byte	0x3
+ 801 0378 00000000 		.4byte	lut_index
+ 802 037c 13       		.uleb128 0x13
+ 803 037d 0A000000 		.4byte	.LASF39
+ 804 0381 05       		.byte	0x5
+ 805 0382 A7       		.byte	0xa7
+ 806 0383 97000000 		.4byte	0x97
+ 807 0387 05       		.uleb128 0x5
+ 808 0388 03       		.byte	0x3
+ 809 0389 00000000 		.4byte	lut_length
+ 810 038d 14       		.uleb128 0x14
+ 811 038e 8C000000 		.4byte	0x8c
+ 812 0392 9D030000 		.4byte	0x39d
+ 813 0396 16       		.uleb128 0x16
+ 814 0397 D5000000 		.4byte	0xd5
+ 815 039b 14       		.byte	0x14
+ 816 039c 00       		.byte	0
+ 817 039d 13       		.uleb128 0x13
+ 818 039e 0D020000 		.4byte	.LASF40
+ 819 03a2 05       		.byte	0x5
+ 820 03a3 A9       		.byte	0xa9
+ 821 03a4 8D030000 		.4byte	0x38d
+ 822 03a8 05       		.uleb128 0x5
+ 823 03a9 03       		.byte	0x3
+ 824 03aa 00000000 		.4byte	tia_calibration_values
+ 825 03ae 13       		.uleb128 0x13
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 18
+
+
+ 826 03af 7F020000 		.4byte	.LASF41
+ 827 03b3 05       		.byte	0x5
+ 828 03b4 AC       		.byte	0xac
+ 829 03b5 8C000000 		.4byte	0x8c
+ 830 03b9 05       		.uleb128 0x5
+ 831 03ba 03       		.byte	0x3
+ 832 03bb 00000000 		.4byte	selected_voltage_source
+ 833 03bf 14       		.uleb128 0x14
+ 834 03c0 DC000000 		.4byte	0xdc
+ 835 03c4 CF030000 		.4byte	0x3cf
+ 836 03c8 16       		.uleb128 0x16
+ 837 03c9 D5000000 		.4byte	0xd5
+ 838 03cd 13       		.byte	0x13
+ 839 03ce 00       		.byte	0
+ 840 03cf 13       		.uleb128 0x13
+ 841 03d0 A1020000 		.4byte	.LASF42
+ 842 03d4 07       		.byte	0x7
+ 843 03d5 23       		.byte	0x23
+ 844 03d6 E0030000 		.4byte	0x3e0
+ 845 03da 05       		.uleb128 0x5
+ 846 03db 03       		.byte	0x3
+ 847 03dc 00000000 		.4byte	data_buffer
+ 848 03e0 06       		.uleb128 0x6
+ 849 03e1 BF030000 		.4byte	0x3bf
+ 850 03e5 13       		.uleb128 0x13
+ 851 03e6 BC010000 		.4byte	.LASF43
+ 852 03ea 07       		.byte	0x7
+ 853 03eb 24       		.byte	0x24
+ 854 03ec F6030000 		.4byte	0x3f6
+ 855 03f0 05       		.uleb128 0x5
+ 856 03f1 03       		.byte	0x3
+ 857 03f2 00000000 		.4byte	temp
+ 858 03f6 06       		.uleb128 0x6
+ 859 03f7 BF030000 		.4byte	0x3bf
+ 860 03fb 14       		.uleb128 0x14
+ 861 03fc DC000000 		.4byte	0xdc
+ 862 0400 0B040000 		.4byte	0x40b
+ 863 0404 16       		.uleb128 0x16
+ 864 0405 D5000000 		.4byte	0xd5
+ 865 0409 77       		.byte	0x77
+ 866 040a 00       		.byte	0
+ 867 040b 13       		.uleb128 0x13
+ 868 040c 9D010000 		.4byte	.LASF44
+ 869 0410 07       		.byte	0x7
+ 870 0411 28       		.byte	0x28
+ 871 0412 1C040000 		.4byte	0x41c
+ 872 0416 05       		.uleb128 0x5
+ 873 0417 03       		.byte	0x3
+ 874 0418 00000000 		.4byte	data_to_send
+ 875 041c 06       		.uleb128 0x6
+ 876 041d FB030000 		.4byte	0x3fb
+ 877 0421 14       		.uleb128 0x14
+ 878 0422 DC000000 		.4byte	0xdc
+ 879 0426 32040000 		.4byte	0x432
+ 880 042a 15       		.uleb128 0x15
+ 881 042b D5000000 		.4byte	0xd5
+ 882 042f 8713     		.2byte	0x1387
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 19
+
+
+ 883 0431 00       		.byte	0
+ 884 0432 13       		.uleb128 0x13
+ 885 0433 E9010000 		.4byte	.LASF45
+ 886 0437 07       		.byte	0x7
+ 887 0438 27       		.byte	0x27
+ 888 0439 43040000 		.4byte	0x443
+ 889 043d 05       		.uleb128 0x5
+ 890 043e 03       		.byte	0x3
+ 891 043f 00000000 		.4byte	data_long
+ 892 0443 06       		.uleb128 0x6
+ 893 0444 21040000 		.4byte	0x421
+ 894 0448 13       		.uleb128 0x13
+ 895 0449 CC020000 		.4byte	.LASF46
+ 896 044d 05       		.byte	0x5
+ 897 044e BC       		.byte	0xbc
+ 898 044f 8C000000 		.4byte	0x8c
+ 899 0453 05       		.uleb128 0x5
+ 900 0454 03       		.byte	0x3
+ 901 0455 00000000 		.4byte	finished_procedure_flag
+ 902 0459 17       		.uleb128 0x17
+ 903 045a FC010000 		.4byte	.LASF47
+ 904 045e FC010000 		.4byte	.LASF47
+ 905 0462 08       		.byte	0x8
+ 906 0463 8C       		.byte	0x8c
+ 907 0464 17       		.uleb128 0x17
+ 908 0465 1A030000 		.4byte	.LASF48
+ 909 0469 1A030000 		.4byte	.LASF48
+ 910 046d 08       		.byte	0x8
+ 911 046e 8B       		.byte	0x8b
+ 912 046f 17       		.uleb128 0x17
+ 913 0470 54030000 		.4byte	.LASF49
+ 914 0474 54030000 		.4byte	.LASF49
+ 915 0478 09       		.byte	0x9
+ 916 0479 76       		.byte	0x76
+ 917 047a 00       		.byte	0
+ 918              		.section	.debug_abbrev,"",%progbits
+ 919              	.Ldebug_abbrev0:
+ 920 0000 01       		.uleb128 0x1
+ 921 0001 11       		.uleb128 0x11
+ 922 0002 01       		.byte	0x1
+ 923 0003 25       		.uleb128 0x25
+ 924 0004 0E       		.uleb128 0xe
+ 925 0005 13       		.uleb128 0x13
+ 926 0006 0B       		.uleb128 0xb
+ 927 0007 03       		.uleb128 0x3
+ 928 0008 0E       		.uleb128 0xe
+ 929 0009 1B       		.uleb128 0x1b
+ 930 000a 0E       		.uleb128 0xe
+ 931 000b 55       		.uleb128 0x55
+ 932 000c 17       		.uleb128 0x17
+ 933 000d 11       		.uleb128 0x11
+ 934 000e 01       		.uleb128 0x1
+ 935 000f 10       		.uleb128 0x10
+ 936 0010 17       		.uleb128 0x17
+ 937 0011 00       		.byte	0
+ 938 0012 00       		.byte	0
+ 939 0013 02       		.uleb128 0x2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 20
+
+
+ 940 0014 24       		.uleb128 0x24
+ 941 0015 00       		.byte	0
+ 942 0016 0B       		.uleb128 0xb
+ 943 0017 0B       		.uleb128 0xb
+ 944 0018 3E       		.uleb128 0x3e
+ 945 0019 0B       		.uleb128 0xb
+ 946 001a 03       		.uleb128 0x3
+ 947 001b 0E       		.uleb128 0xe
+ 948 001c 00       		.byte	0
+ 949 001d 00       		.byte	0
+ 950 001e 03       		.uleb128 0x3
+ 951 001f 16       		.uleb128 0x16
+ 952 0020 00       		.byte	0
+ 953 0021 03       		.uleb128 0x3
+ 954 0022 0E       		.uleb128 0xe
+ 955 0023 3A       		.uleb128 0x3a
+ 956 0024 0B       		.uleb128 0xb
+ 957 0025 3B       		.uleb128 0x3b
+ 958 0026 0B       		.uleb128 0xb
+ 959 0027 49       		.uleb128 0x49
+ 960 0028 13       		.uleb128 0x13
+ 961 0029 00       		.byte	0
+ 962 002a 00       		.byte	0
+ 963 002b 04       		.uleb128 0x4
+ 964 002c 24       		.uleb128 0x24
+ 965 002d 00       		.byte	0
+ 966 002e 0B       		.uleb128 0xb
+ 967 002f 0B       		.uleb128 0xb
+ 968 0030 3E       		.uleb128 0x3e
+ 969 0031 0B       		.uleb128 0xb
+ 970 0032 03       		.uleb128 0x3
+ 971 0033 08       		.uleb128 0x8
+ 972 0034 00       		.byte	0
+ 973 0035 00       		.byte	0
+ 974 0036 05       		.uleb128 0x5
+ 975 0037 16       		.uleb128 0x16
+ 976 0038 00       		.byte	0
+ 977 0039 03       		.uleb128 0x3
+ 978 003a 0E       		.uleb128 0xe
+ 979 003b 3A       		.uleb128 0x3a
+ 980 003c 0B       		.uleb128 0xb
+ 981 003d 3B       		.uleb128 0x3b
+ 982 003e 05       		.uleb128 0x5
+ 983 003f 49       		.uleb128 0x49
+ 984 0040 13       		.uleb128 0x13
+ 985 0041 00       		.byte	0
+ 986 0042 00       		.byte	0
+ 987 0043 06       		.uleb128 0x6
+ 988 0044 35       		.uleb128 0x35
+ 989 0045 00       		.byte	0
+ 990 0046 49       		.uleb128 0x49
+ 991 0047 13       		.uleb128 0x13
+ 992 0048 00       		.byte	0
+ 993 0049 00       		.byte	0
+ 994 004a 07       		.uleb128 0x7
+ 995 004b 2E       		.uleb128 0x2e
+ 996 004c 01       		.byte	0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 21
+
+
+ 997 004d 3F       		.uleb128 0x3f
+ 998 004e 19       		.uleb128 0x19
+ 999 004f 03       		.uleb128 0x3
+ 1000 0050 0E       		.uleb128 0xe
+ 1001 0051 3A       		.uleb128 0x3a
+ 1002 0052 0B       		.uleb128 0xb
+ 1003 0053 3B       		.uleb128 0x3b
+ 1004 0054 0B       		.uleb128 0xb
+ 1005 0055 27       		.uleb128 0x27
+ 1006 0056 19       		.uleb128 0x19
+ 1007 0057 11       		.uleb128 0x11
+ 1008 0058 01       		.uleb128 0x1
+ 1009 0059 12       		.uleb128 0x12
+ 1010 005a 06       		.uleb128 0x6
+ 1011 005b 40       		.uleb128 0x40
+ 1012 005c 18       		.uleb128 0x18
+ 1013 005d 9742     		.uleb128 0x2117
+ 1014 005f 19       		.uleb128 0x19
+ 1015 0060 01       		.uleb128 0x1
+ 1016 0061 13       		.uleb128 0x13
+ 1017 0062 00       		.byte	0
+ 1018 0063 00       		.byte	0
+ 1019 0064 08       		.uleb128 0x8
+ 1020 0065 05       		.uleb128 0x5
+ 1021 0066 00       		.byte	0
+ 1022 0067 03       		.uleb128 0x3
+ 1023 0068 0E       		.uleb128 0xe
+ 1024 0069 3A       		.uleb128 0x3a
+ 1025 006a 0B       		.uleb128 0xb
+ 1026 006b 3B       		.uleb128 0x3b
+ 1027 006c 0B       		.uleb128 0xb
+ 1028 006d 49       		.uleb128 0x49
+ 1029 006e 13       		.uleb128 0x13
+ 1030 006f 02       		.uleb128 0x2
+ 1031 0070 17       		.uleb128 0x17
+ 1032 0071 00       		.byte	0
+ 1033 0072 00       		.byte	0
+ 1034 0073 09       		.uleb128 0x9
+ 1035 0074 0B       		.uleb128 0xb
+ 1036 0075 01       		.byte	0x1
+ 1037 0076 11       		.uleb128 0x11
+ 1038 0077 01       		.uleb128 0x1
+ 1039 0078 12       		.uleb128 0x12
+ 1040 0079 06       		.uleb128 0x6
+ 1041 007a 01       		.uleb128 0x1
+ 1042 007b 13       		.uleb128 0x13
+ 1043 007c 00       		.byte	0
+ 1044 007d 00       		.byte	0
+ 1045 007e 0A       		.uleb128 0xa
+ 1046 007f 34       		.uleb128 0x34
+ 1047 0080 00       		.byte	0
+ 1048 0081 03       		.uleb128 0x3
+ 1049 0082 08       		.uleb128 0x8
+ 1050 0083 3A       		.uleb128 0x3a
+ 1051 0084 0B       		.uleb128 0xb
+ 1052 0085 3B       		.uleb128 0x3b
+ 1053 0086 0B       		.uleb128 0xb
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 22
+
+
+ 1054 0087 49       		.uleb128 0x49
+ 1055 0088 13       		.uleb128 0x13
+ 1056 0089 02       		.uleb128 0x2
+ 1057 008a 17       		.uleb128 0x17
+ 1058 008b 00       		.byte	0
+ 1059 008c 00       		.byte	0
+ 1060 008d 0B       		.uleb128 0xb
+ 1061 008e 898201   		.uleb128 0x4109
+ 1062 0091 01       		.byte	0x1
+ 1063 0092 11       		.uleb128 0x11
+ 1064 0093 01       		.uleb128 0x1
+ 1065 0094 31       		.uleb128 0x31
+ 1066 0095 13       		.uleb128 0x13
+ 1067 0096 00       		.byte	0
+ 1068 0097 00       		.byte	0
+ 1069 0098 0C       		.uleb128 0xc
+ 1070 0099 8A8201   		.uleb128 0x410a
+ 1071 009c 00       		.byte	0
+ 1072 009d 02       		.uleb128 0x2
+ 1073 009e 18       		.uleb128 0x18
+ 1074 009f 9142     		.uleb128 0x2111
+ 1075 00a1 18       		.uleb128 0x18
+ 1076 00a2 00       		.byte	0
+ 1077 00a3 00       		.byte	0
+ 1078 00a4 0D       		.uleb128 0xd
+ 1079 00a5 34       		.uleb128 0x34
+ 1080 00a6 00       		.byte	0
+ 1081 00a7 03       		.uleb128 0x3
+ 1082 00a8 0E       		.uleb128 0xe
+ 1083 00a9 3A       		.uleb128 0x3a
+ 1084 00aa 0B       		.uleb128 0xb
+ 1085 00ab 3B       		.uleb128 0x3b
+ 1086 00ac 0B       		.uleb128 0xb
+ 1087 00ad 49       		.uleb128 0x49
+ 1088 00ae 13       		.uleb128 0x13
+ 1089 00af 02       		.uleb128 0x2
+ 1090 00b0 17       		.uleb128 0x17
+ 1091 00b1 00       		.byte	0
+ 1092 00b2 00       		.byte	0
+ 1093 00b3 0E       		.uleb128 0xe
+ 1094 00b4 898201   		.uleb128 0x4109
+ 1095 00b7 01       		.byte	0x1
+ 1096 00b8 11       		.uleb128 0x11
+ 1097 00b9 01       		.uleb128 0x1
+ 1098 00ba 31       		.uleb128 0x31
+ 1099 00bb 13       		.uleb128 0x13
+ 1100 00bc 01       		.uleb128 0x1
+ 1101 00bd 13       		.uleb128 0x13
+ 1102 00be 00       		.byte	0
+ 1103 00bf 00       		.byte	0
+ 1104 00c0 0F       		.uleb128 0xf
+ 1105 00c1 0F       		.uleb128 0xf
+ 1106 00c2 00       		.byte	0
+ 1107 00c3 0B       		.uleb128 0xb
+ 1108 00c4 0B       		.uleb128 0xb
+ 1109 00c5 49       		.uleb128 0x49
+ 1110 00c6 13       		.uleb128 0x13
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 23
+
+
+ 1111 00c7 00       		.byte	0
+ 1112 00c8 00       		.byte	0
+ 1113 00c9 10       		.uleb128 0x10
+ 1114 00ca 0B       		.uleb128 0xb
+ 1115 00cb 01       		.byte	0x1
+ 1116 00cc 11       		.uleb128 0x11
+ 1117 00cd 01       		.uleb128 0x1
+ 1118 00ce 12       		.uleb128 0x12
+ 1119 00cf 06       		.uleb128 0x6
+ 1120 00d0 00       		.byte	0
+ 1121 00d1 00       		.byte	0
+ 1122 00d2 11       		.uleb128 0x11
+ 1123 00d3 34       		.uleb128 0x34
+ 1124 00d4 00       		.byte	0
+ 1125 00d5 03       		.uleb128 0x3
+ 1126 00d6 0E       		.uleb128 0xe
+ 1127 00d7 3A       		.uleb128 0x3a
+ 1128 00d8 0B       		.uleb128 0xb
+ 1129 00d9 3B       		.uleb128 0x3b
+ 1130 00da 0B       		.uleb128 0xb
+ 1131 00db 49       		.uleb128 0x49
+ 1132 00dc 13       		.uleb128 0x13
+ 1133 00dd 02       		.uleb128 0x2
+ 1134 00de 18       		.uleb128 0x18
+ 1135 00df 00       		.byte	0
+ 1136 00e0 00       		.byte	0
+ 1137 00e1 12       		.uleb128 0x12
+ 1138 00e2 34       		.uleb128 0x34
+ 1139 00e3 00       		.byte	0
+ 1140 00e4 03       		.uleb128 0x3
+ 1141 00e5 0E       		.uleb128 0xe
+ 1142 00e6 3A       		.uleb128 0x3a
+ 1143 00e7 0B       		.uleb128 0xb
+ 1144 00e8 3B       		.uleb128 0x3b
+ 1145 00e9 05       		.uleb128 0x5
+ 1146 00ea 49       		.uleb128 0x49
+ 1147 00eb 13       		.uleb128 0x13
+ 1148 00ec 3F       		.uleb128 0x3f
+ 1149 00ed 19       		.uleb128 0x19
+ 1150 00ee 3C       		.uleb128 0x3c
+ 1151 00ef 19       		.uleb128 0x19
+ 1152 00f0 00       		.byte	0
+ 1153 00f1 00       		.byte	0
+ 1154 00f2 13       		.uleb128 0x13
+ 1155 00f3 34       		.uleb128 0x34
+ 1156 00f4 00       		.byte	0
+ 1157 00f5 03       		.uleb128 0x3
+ 1158 00f6 0E       		.uleb128 0xe
+ 1159 00f7 3A       		.uleb128 0x3a
+ 1160 00f8 0B       		.uleb128 0xb
+ 1161 00f9 3B       		.uleb128 0x3b
+ 1162 00fa 0B       		.uleb128 0xb
+ 1163 00fb 49       		.uleb128 0x49
+ 1164 00fc 13       		.uleb128 0x13
+ 1165 00fd 3F       		.uleb128 0x3f
+ 1166 00fe 19       		.uleb128 0x19
+ 1167 00ff 02       		.uleb128 0x2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 24
+
+
+ 1168 0100 18       		.uleb128 0x18
+ 1169 0101 00       		.byte	0
+ 1170 0102 00       		.byte	0
+ 1171 0103 14       		.uleb128 0x14
+ 1172 0104 01       		.uleb128 0x1
+ 1173 0105 01       		.byte	0x1
+ 1174 0106 49       		.uleb128 0x49
+ 1175 0107 13       		.uleb128 0x13
+ 1176 0108 01       		.uleb128 0x1
+ 1177 0109 13       		.uleb128 0x13
+ 1178 010a 00       		.byte	0
+ 1179 010b 00       		.byte	0
+ 1180 010c 15       		.uleb128 0x15
+ 1181 010d 21       		.uleb128 0x21
+ 1182 010e 00       		.byte	0
+ 1183 010f 49       		.uleb128 0x49
+ 1184 0110 13       		.uleb128 0x13
+ 1185 0111 2F       		.uleb128 0x2f
+ 1186 0112 05       		.uleb128 0x5
+ 1187 0113 00       		.byte	0
+ 1188 0114 00       		.byte	0
+ 1189 0115 16       		.uleb128 0x16
+ 1190 0116 21       		.uleb128 0x21
+ 1191 0117 00       		.byte	0
+ 1192 0118 49       		.uleb128 0x49
+ 1193 0119 13       		.uleb128 0x13
+ 1194 011a 2F       		.uleb128 0x2f
+ 1195 011b 0B       		.uleb128 0xb
+ 1196 011c 00       		.byte	0
+ 1197 011d 00       		.byte	0
+ 1198 011e 17       		.uleb128 0x17
+ 1199 011f 2E       		.uleb128 0x2e
+ 1200 0120 00       		.byte	0
+ 1201 0121 3F       		.uleb128 0x3f
+ 1202 0122 19       		.uleb128 0x19
+ 1203 0123 3C       		.uleb128 0x3c
+ 1204 0124 19       		.uleb128 0x19
+ 1205 0125 6E       		.uleb128 0x6e
+ 1206 0126 0E       		.uleb128 0xe
+ 1207 0127 03       		.uleb128 0x3
+ 1208 0128 0E       		.uleb128 0xe
+ 1209 0129 3A       		.uleb128 0x3a
+ 1210 012a 0B       		.uleb128 0xb
+ 1211 012b 3B       		.uleb128 0x3b
+ 1212 012c 0B       		.uleb128 0xb
+ 1213 012d 00       		.byte	0
+ 1214 012e 00       		.byte	0
+ 1215 012f 00       		.byte	0
+ 1216              		.section	.debug_loc,"",%progbits
+ 1217              	.Ldebug_loc0:
+ 1218              	.LLST0:
+ 1219 0000 00000000 		.4byte	.LVL0
+ 1220 0004 06000000 		.4byte	.LVL1
+ 1221 0008 0100     		.2byte	0x1
+ 1222 000a 50       		.byte	0x50
+ 1223 000b 06000000 		.4byte	.LVL1
+ 1224 000f 11000000 		.4byte	.LVL2-1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 25
+
+
+ 1225 0013 0100     		.2byte	0x1
+ 1226 0015 53       		.byte	0x53
+ 1227 0016 11000000 		.4byte	.LVL2-1
+ 1228 001a 2C000000 		.4byte	.LFE64
+ 1229 001e 0400     		.2byte	0x4
+ 1230 0020 F3       		.byte	0xf3
+ 1231 0021 01       		.uleb128 0x1
+ 1232 0022 50       		.byte	0x50
+ 1233 0023 9F       		.byte	0x9f
+ 1234 0024 00000000 		.4byte	0
+ 1235 0028 00000000 		.4byte	0
+ 1236              	.LLST1:
+ 1237 002c 12000000 		.4byte	.LVL2
+ 1238 0030 16000000 		.4byte	.LVL3
+ 1239 0034 0200     		.2byte	0x2
+ 1240 0036 30       		.byte	0x30
+ 1241 0037 9F       		.byte	0x9f
+ 1242 0038 16000000 		.4byte	.LVL3
+ 1243 003c 1E000000 		.4byte	.LVL4
+ 1244 0040 0100     		.2byte	0x1
+ 1245 0042 53       		.byte	0x53
+ 1246 0043 20000000 		.4byte	.LVL5
+ 1247 0047 26000000 		.4byte	.LVL6
+ 1248 004b 0100     		.2byte	0x1
+ 1249 004d 53       		.byte	0x53
+ 1250 004e 00000000 		.4byte	0
+ 1251 0052 00000000 		.4byte	0
+ 1252              	.LLST2:
+ 1253 0056 00000000 		.4byte	.LVL8
+ 1254 005a 0A000000 		.4byte	.LVL10
+ 1255 005e 0100     		.2byte	0x1
+ 1256 0060 50       		.byte	0x50
+ 1257 0061 0A000000 		.4byte	.LVL10
+ 1258 0065 92000000 		.4byte	.LVL21
+ 1259 0069 0100     		.2byte	0x1
+ 1260 006b 57       		.byte	0x57
+ 1261 006c 92000000 		.4byte	.LVL21
+ 1262 0070 9C000000 		.4byte	.LFE66
+ 1263 0074 0400     		.2byte	0x4
+ 1264 0076 F3       		.byte	0xf3
+ 1265 0077 01       		.uleb128 0x1
+ 1266 0078 50       		.byte	0x50
+ 1267 0079 9F       		.byte	0x9f
+ 1268 007a 00000000 		.4byte	0
+ 1269 007e 00000000 		.4byte	0
+ 1270              	.LLST3:
+ 1271 0082 00000000 		.4byte	.LVL8
+ 1272 0086 0A000000 		.4byte	.LVL10
+ 1273 008a 0100     		.2byte	0x1
+ 1274 008c 51       		.byte	0x51
+ 1275 008d 0A000000 		.4byte	.LVL10
+ 1276 0091 92000000 		.4byte	.LVL21
+ 1277 0095 0100     		.2byte	0x1
+ 1278 0097 56       		.byte	0x56
+ 1279 0098 92000000 		.4byte	.LVL21
+ 1280 009c 9C000000 		.4byte	.LFE66
+ 1281 00a0 0400     		.2byte	0x4
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 26
+
+
+ 1282 00a2 F3       		.byte	0xf3
+ 1283 00a3 01       		.uleb128 0x1
+ 1284 00a4 51       		.byte	0x51
+ 1285 00a5 9F       		.byte	0x9f
+ 1286 00a6 00000000 		.4byte	0
+ 1287 00aa 00000000 		.4byte	0
+ 1288              	.LLST4:
+ 1289 00ae 06000000 		.4byte	.LVL9
+ 1290 00b2 0A000000 		.4byte	.LVL10
+ 1291 00b6 0200     		.2byte	0x2
+ 1292 00b8 30       		.byte	0x30
+ 1293 00b9 9F       		.byte	0x9f
+ 1294 00ba 0A000000 		.4byte	.LVL10
+ 1295 00be 92000000 		.4byte	.LVL21
+ 1296 00c2 0100     		.2byte	0x1
+ 1297 00c4 54       		.byte	0x54
+ 1298 00c5 00000000 		.4byte	0
+ 1299 00c9 00000000 		.4byte	0
+ 1300              	.LLST5:
+ 1301 00cd 38000000 		.4byte	.LVL11
+ 1302 00d1 3C000000 		.4byte	.LVL12
+ 1303 00d5 0200     		.2byte	0x2
+ 1304 00d7 30       		.byte	0x30
+ 1305 00d8 9F       		.byte	0x9f
+ 1306 00d9 3C000000 		.4byte	.LVL12
+ 1307 00dd 44000000 		.4byte	.LVL13
+ 1308 00e1 0100     		.2byte	0x1
+ 1309 00e3 53       		.byte	0x53
+ 1310 00e4 46000000 		.4byte	.LVL14
+ 1311 00e8 4A000000 		.4byte	.LVL15
+ 1312 00ec 0100     		.2byte	0x1
+ 1313 00ee 53       		.byte	0x53
+ 1314 00ef 00000000 		.4byte	0
+ 1315 00f3 00000000 		.4byte	0
+ 1316              	.LLST6:
+ 1317 00f7 7E000000 		.4byte	.LVL17
+ 1318 00fb 82000000 		.4byte	.LVL18
+ 1319 00ff 0200     		.2byte	0x2
+ 1320 0101 30       		.byte	0x30
+ 1321 0102 9F       		.byte	0x9f
+ 1322 0103 82000000 		.4byte	.LVL18
+ 1323 0107 8A000000 		.4byte	.LVL19
+ 1324 010b 0100     		.2byte	0x1
+ 1325 010d 53       		.byte	0x53
+ 1326 010e 8C000000 		.4byte	.LVL20
+ 1327 0112 92000000 		.4byte	.LVL21
+ 1328 0116 0100     		.2byte	0x1
+ 1329 0118 53       		.byte	0x53
+ 1330 0119 00000000 		.4byte	0
+ 1331 011d 00000000 		.4byte	0
+ 1332              	.LLST7:
+ 1333 0121 0E000000 		.4byte	.LVL22
+ 1334 0125 12000000 		.4byte	.LVL23
+ 1335 0129 0200     		.2byte	0x2
+ 1336 012b 30       		.byte	0x30
+ 1337 012c 9F       		.byte	0x9f
+ 1338 012d 12000000 		.4byte	.LVL23
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 27
+
+
+ 1339 0131 24000000 		.4byte	.LVL25
+ 1340 0135 0100     		.2byte	0x1
+ 1341 0137 53       		.byte	0x53
+ 1342 0138 00000000 		.4byte	0
+ 1343 013c 00000000 		.4byte	0
+ 1344              	.LLST8:
+ 1345 0140 26000000 		.4byte	.LVL26
+ 1346 0144 53000000 		.4byte	.LVL30-1
+ 1347 0148 0100     		.2byte	0x1
+ 1348 014a 53       		.byte	0x53
+ 1349 014b 00000000 		.4byte	0
+ 1350 014f 00000000 		.4byte	0
+ 1351              	.LLST9:
+ 1352 0153 2E000000 		.4byte	.LVL27
+ 1353 0157 44000000 		.4byte	.LVL29
+ 1354 015b 0100     		.2byte	0x1
+ 1355 015d 51       		.byte	0x51
+ 1356 015e 00000000 		.4byte	0
+ 1357 0162 00000000 		.4byte	0
+ 1358              	.LLST10:
+ 1359 0166 36000000 		.4byte	.LVL28
+ 1360 016a 44000000 		.4byte	.LVL29
+ 1361 016e 0100     		.2byte	0x1
+ 1362 0170 50       		.byte	0x50
+ 1363 0171 00000000 		.4byte	0
+ 1364 0175 00000000 		.4byte	0
+ 1365              		.section	.debug_aranges,"",%progbits
+ 1366 0000 34000000 		.4byte	0x34
+ 1367 0004 0200     		.2byte	0x2
+ 1368 0006 00000000 		.4byte	.Ldebug_info0
+ 1369 000a 04       		.byte	0x4
+ 1370 000b 00       		.byte	0
+ 1371 000c 0000     		.2byte	0
+ 1372 000e 0000     		.2byte	0
+ 1373 0010 00000000 		.4byte	.LFB64
+ 1374 0014 2C000000 		.4byte	.LFE64-.LFB64
+ 1375 0018 00000000 		.4byte	.LFB65
+ 1376 001c 10000000 		.4byte	.LFE65-.LFB65
+ 1377 0020 00000000 		.4byte	.LFB66
+ 1378 0024 9C000000 		.4byte	.LFE66-.LFB66
+ 1379 0028 00000000 		.4byte	.LFB67
+ 1380 002c 70000000 		.4byte	.LFE67-.LFB67
+ 1381 0030 00000000 		.4byte	0
+ 1382 0034 00000000 		.4byte	0
+ 1383              		.section	.debug_ranges,"",%progbits
+ 1384              	.Ldebug_ranges0:
+ 1385 0000 00000000 		.4byte	.LFB64
+ 1386 0004 2C000000 		.4byte	.LFE64
+ 1387 0008 00000000 		.4byte	.LFB65
+ 1388 000c 10000000 		.4byte	.LFE65
+ 1389 0010 00000000 		.4byte	.LFB66
+ 1390 0014 9C000000 		.4byte	.LFE66
+ 1391 0018 00000000 		.4byte	.LFB67
+ 1392 001c 70000000 		.4byte	.LFE67
+ 1393 0020 00000000 		.4byte	0
+ 1394 0024 00000000 		.4byte	0
+ 1395              		.section	.debug_line,"",%progbits
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 28
+
+
+ 1396              	.Ldebug_line0:
+ 1397 0000 5F020000 		.section	.debug_str,"MS",%progbits,1
+ 1397      02008B01 
+ 1397      00000201 
+ 1397      FB0E0D00 
+ 1397      01010101 
+ 1398              	.LASF36:
+ 1399 0000 6C75745F 		.ascii	"lut_value\000"
+ 1399      76616C75 
+ 1399      6500
+ 1400              	.LASF39:
+ 1401 000a 6C75745F 		.ascii	"lut_length\000"
+ 1401      6C656E67 
+ 1401      746800
+ 1402              	.LASF51:
+ 1403 0015 42545F70 		.ascii	"BT_protocols.c\000"
+ 1403      726F746F 
+ 1403      636F6C73 
+ 1403      2E6300
+ 1404              	.LASF27:
+ 1405 0024 73656E64 		.ascii	"sendMeasures\000"
+ 1405      4D656173 
+ 1405      75726573 
+ 1405      00
+ 1406              	.LASF3:
+ 1407 0031 5F5F7569 		.ascii	"__uint8_t\000"
+ 1407      6E74385F 
+ 1407      7400
+ 1408              	.LASF31:
+ 1409 003b 636F6E6E 		.ascii	"connection_state\000"
+ 1409      65637469 
+ 1409      6F6E5F73 
+ 1409      74617465 
+ 1409      00
+ 1410              	.LASF37:
+ 1411 004c 77617665 		.ascii	"waveform_lut\000"
+ 1411      666F726D 
+ 1411      5F6C7574 
+ 1411      00
+ 1412              	.LASF6:
+ 1413 0059 5F5F696E 		.ascii	"__int32_t\000"
+ 1413      7433325F 
+ 1413      7400
+ 1414              	.LASF24:
+ 1415 0063 73656E64 		.ascii	"sending_size\000"
+ 1415      696E675F 
+ 1415      73697A65 
+ 1415      00
+ 1416              	.LASF25:
+ 1417 0070 64617461 		.ascii	"data_long_BT_man\000"
+ 1417      5F6C6F6E 
+ 1417      675F4254 
+ 1417      5F6D616E 
+ 1417      00
+ 1418              	.LASF34:
+ 1419 0081 6461635F 		.ascii	"dac_ground_value\000"
+ 1419      67726F75 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 29
+
+
+ 1419      6E645F76 
+ 1419      616C7565 
+ 1419      00
+ 1420              	.LASF52:
+ 1421 0092 5C5C2E70 		.ascii	"\\\\.psf\\Home\\Desktop\\LAB_TEBS\\_Progetto\\TEBS_"
+ 1421      73665C48 
+ 1421      6F6D655C 
+ 1421      4465736B 
+ 1421      746F705C 
+ 1422 00be 47697448 		.ascii	"GitHub\\PSoC_Project\\PSoC_Project.cydsn\000"
+ 1422      75625C50 
+ 1422      536F435F 
+ 1422      50726F6A 
+ 1422      6563745C 
+ 1423              	.LASF35:
+ 1424 00e5 72657475 		.ascii	"return_value\000"
+ 1424      726E5F76 
+ 1424      616C7565 
+ 1424      00
+ 1425              	.LASF15:
+ 1426 00f2 666C6F61 		.ascii	"float\000"
+ 1426      7400
+ 1427              	.LASF29:
+ 1428 00f8 4D53425F 		.ascii	"MSB_data\000"
+ 1428      64617461 
+ 1428      00
+ 1429              	.LASF1:
+ 1430 0101 756E7369 		.ascii	"unsigned char\000"
+ 1430      676E6564 
+ 1430      20636861 
+ 1430      7200
+ 1431              	.LASF50:
+ 1432 010f 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 1432      43313120 
+ 1432      352E342E 
+ 1432      31203230 
+ 1432      31363036 
+ 1433 0142 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m3 -mthumb -g -O"
+ 1433      20726576 
+ 1433      6973696F 
+ 1433      6E203233 
+ 1433      37373135 
+ 1434 0175 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 1434      66756E63 
+ 1434      74696F6E 
+ 1434      2D736563 
+ 1434      74696F6E 
+ 1435              	.LASF44:
+ 1436 019d 64617461 		.ascii	"data_to_send\000"
+ 1436      5F746F5F 
+ 1436      73656E64 
+ 1436      00
+ 1437              	.LASF8:
+ 1438 01aa 6C6F6E67 		.ascii	"long unsigned int\000"
+ 1438      20756E73 
+ 1438      69676E65 
+ 1438      6420696E 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 30
+
+
+ 1438      7400
+ 1439              	.LASF43:
+ 1440 01bc 74656D70 		.ascii	"temp\000"
+ 1440      00
+ 1441              	.LASF5:
+ 1442 01c1 73686F72 		.ascii	"short unsigned int\000"
+ 1442      7420756E 
+ 1442      7369676E 
+ 1442      65642069 
+ 1442      6E7400
+ 1443              	.LASF33:
+ 1444 01d4 49544D5F 		.ascii	"ITM_RxBuffer\000"
+ 1444      52784275 
+ 1444      66666572 
+ 1444      00
+ 1445              	.LASF21:
+ 1446 01e1 77726974 		.ascii	"writeBT\000"
+ 1446      65425400 
+ 1447              	.LASF45:
+ 1448 01e9 64617461 		.ascii	"data_long\000"
+ 1448      5F6C6F6E 
+ 1448      6700
+ 1449              	.LASF28:
+ 1450 01f3 4C53425F 		.ascii	"LSB_data\000"
+ 1450      64617461 
+ 1450      00
+ 1451              	.LASF47:
+ 1452 01fc 55415254 		.ascii	"UART_BT_PutArray\000"
+ 1452      5F42545F 
+ 1452      50757441 
+ 1452      72726179 
+ 1452      00
+ 1453              	.LASF40:
+ 1454 020d 7469615F 		.ascii	"tia_calibration_values\000"
+ 1454      63616C69 
+ 1454      62726174 
+ 1454      696F6E5F 
+ 1454      76616C75 
+ 1455              	.LASF22:
+ 1456 0224 6572726F 		.ascii	"errorBT\000"
+ 1456      72425400 
+ 1457              	.LASF18:
+ 1458 022c 63797374 		.ascii	"cystatus\000"
+ 1458      61747573 
+ 1458      00
+ 1459              	.LASF32:
+ 1460 0235 696E7075 		.ascii	"input_flag\000"
+ 1460      745F666C 
+ 1460      616700
+ 1461              	.LASF11:
+ 1462 0240 756E7369 		.ascii	"unsigned int\000"
+ 1462      676E6564 
+ 1462      20696E74 
+ 1462      00
+ 1463              	.LASF10:
+ 1464 024d 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 1464      206C6F6E 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 31
+
+
+ 1464      6720756E 
+ 1464      7369676E 
+ 1464      65642069 
+ 1465              	.LASF12:
+ 1466 0264 75696E74 		.ascii	"uint8_t\000"
+ 1466      385F7400 
+ 1467              	.LASF23:
+ 1468 026c 42545F73 		.ascii	"BT_sending_manager\000"
+ 1468      656E6469 
+ 1468      6E675F6D 
+ 1468      616E6167 
+ 1468      657200
+ 1469              	.LASF41:
+ 1470 027f 73656C65 		.ascii	"selected_voltage_source\000"
+ 1470      63746564 
+ 1470      5F766F6C 
+ 1470      74616765 
+ 1470      5F736F75 
+ 1471              	.LASF38:
+ 1472 0297 6C75745F 		.ascii	"lut_index\000"
+ 1472      696E6465 
+ 1472      7800
+ 1473              	.LASF42:
+ 1474 02a1 64617461 		.ascii	"data_buffer\000"
+ 1474      5F627566 
+ 1474      66657200 
+ 1475              	.LASF14:
+ 1476 02ad 696E7433 		.ascii	"int32_t\000"
+ 1476      325F7400 
+ 1477              	.LASF20:
+ 1478 02b5 73697A65 		.ascii	"sizetype\000"
+ 1478      74797065 
+ 1478      00
+ 1479              	.LASF9:
+ 1480 02be 6C6F6E67 		.ascii	"long long int\000"
+ 1480      206C6F6E 
+ 1480      6720696E 
+ 1480      7400
+ 1481              	.LASF46:
+ 1482 02cc 66696E69 		.ascii	"finished_procedure_flag\000"
+ 1482      73686564 
+ 1482      5F70726F 
+ 1482      63656475 
+ 1482      72655F66 
+ 1483              	.LASF17:
+ 1484 02e4 63686172 		.ascii	"char\000"
+ 1484      00
+ 1485              	.LASF30:
+ 1486 02e9 62756666 		.ascii	"buffer_index\000"
+ 1486      65725F69 
+ 1486      6E646578 
+ 1486      00
+ 1487              	.LASF26:
+ 1488 02f6 696E6465 		.ascii	"index\000"
+ 1488      7800
+ 1489              	.LASF2:
+ 1490 02fc 73686F72 		.ascii	"short int\000"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccjdbxlS.s 			page 32
+
+
+ 1490      7420696E 
+ 1490      7400
+ 1491              	.LASF4:
+ 1492 0306 5F5F7569 		.ascii	"__uint16_t\000"
+ 1492      6E743136 
+ 1492      5F7400
+ 1493              	.LASF13:
+ 1494 0311 75696E74 		.ascii	"uint16_t\000"
+ 1494      31365F74 
+ 1494      00
+ 1495              	.LASF48:
+ 1496 031a 55415254 		.ascii	"UART_BT_PutString\000"
+ 1496      5F42545F 
+ 1496      50757453 
+ 1496      7472696E 
+ 1496      6700
+ 1497              	.LASF7:
+ 1498 032c 6C6F6E67 		.ascii	"long int\000"
+ 1498      20696E74 
+ 1498      00
+ 1499              	.LASF19:
+ 1500 0335 6C6F6E67 		.ascii	"long double\000"
+ 1500      20646F75 
+ 1500      626C6500 
+ 1501              	.LASF0:
+ 1502 0341 7369676E 		.ascii	"signed char\000"
+ 1502      65642063 
+ 1502      68617200 
+ 1503              	.LASF16:
+ 1504 034d 646F7562 		.ascii	"double\000"
+ 1504      6C6500
+ 1505              	.LASF49:
+ 1506 0354 43794465 		.ascii	"CyDelay\000"
+ 1506      6C617900 
+ 1507              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran

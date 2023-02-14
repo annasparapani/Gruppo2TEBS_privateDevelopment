@@ -1,0 +1,3126 @@
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"main.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.dacInterrupt,"ax",%progbits
+  20              		.align	2
+  21              		.global	dacInterrupt
+  22              		.thumb
+  23              		.thumb_func
+  24              		.type	dacInterrupt, %function
+  25              	dacInterrupt:
+  26              	.LFB64:
+  27              		.file 1 "main.c"
+   1:main.c        **** /* ========================================
+   2:main.c        ****  *
+   3:main.c        ****  * Copyright YOUR COMPANY, THE YEAR
+   4:main.c        ****  * All Rights Reserved
+   5:main.c        ****  * UNPUBLISHED, LICENSED SOFTWARE.
+   6:main.c        ****  *
+   7:main.c        ****  * CONFIDENTIAL AND PROPRIETARY INFORMATION
+   8:main.c        ****  * WHICH IS THE PROPERTY OF your company.
+   9:main.c        ****  *
+  10:main.c        ****  * ========================================
+  11:main.c        **** */
+  12:main.c        **** 
+  13:main.c        **** #include "project.h"
+  14:main.c        **** #include "stdio.h"
+  15:main.c        **** #include "stdlib.h"
+  16:main.c        **** #include "math.h"
+  17:main.c        **** 
+  18:main.c        **** 
+  19:main.c        **** // local files
+  20:main.c        **** #include "TIA_calibrate.h"
+  21:main.c        **** #include "DAC_management.h"
+  22:main.c        **** #include "globals.h"
+  23:main.c        **** #include "hardware_management.h"
+  24:main.c        **** #include "user_inputs.h"
+  25:main.c        **** #include "parametric_lut.h"
+  26:main.c        **** #include "BT_protocols.h"
+  27:main.c        **** #include "Interrupt_Routines.h"
+  28:main.c        **** 
+  29:main.c        **** 
+  30:main.c        **** /************************************
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 2
+
+
+  31:main.c        **** ******* ISRs Custom Defined *********
+  32:main.c        **** ************************************/
+  33:main.c        **** 
+  34:main.c        **** CY_ISR(dacInterrupt) // enabled by function that start CV and CA procedures 
+  35:main.c        **** {
+  28              		.loc 1 35 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32 0000 08B5     		push	{r3, lr}
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 3, -8
+  35              		.cfi_offset 14, -4
+  36:main.c        ****     Opamp_Aux_Start();  
+  36              		.loc 1 36 0
+  37 0002 FFF7FEFF 		bl	Opamp_Aux_Start
+  38              	.LVL0:
+  37:main.c        ****     DAC_SetValue(lut_value);
+  39              		.loc 1 37 0
+  40 0006 164B     		ldr	r3, .L4
+  41 0008 1888     		ldrh	r0, [r3]
+  42 000a FFF7FEFF 		bl	DAC_SetValue
+  43              	.LVL1:
+  38:main.c        ****     LED_DAC_Write(1); 
+  44              		.loc 1 38 0
+  45 000e 0120     		movs	r0, #1
+  46 0010 FFF7FEFF 		bl	LED_DAC_Write
+  47              	.LVL2:
+  39:main.c        ****     LED_ADC_Write(0);
+  48              		.loc 1 39 0
+  49 0014 0020     		movs	r0, #0
+  50 0016 FFF7FEFF 		bl	LED_ADC_Write
+  51              	.LVL3:
+  40:main.c        **** 
+  41:main.c        ****     lut_index++;
+  52              		.loc 1 41 0
+  53 001a 124A     		ldr	r2, .L4+4
+  54 001c 1388     		ldrh	r3, [r2]
+  55 001e 0133     		adds	r3, r3, #1
+  56 0020 9BB2     		uxth	r3, r3
+  57 0022 1380     		strh	r3, [r2]	@ movhi
+  42:main.c        ****     
+  43:main.c        ****     if (lut_index >= lut_length) { // all the data points have been given and sent 
+  58              		.loc 1 43 0
+  59 0024 104A     		ldr	r2, .L4+8
+  60 0026 1288     		ldrh	r2, [r2]
+  61 0028 9342     		cmp	r3, r2
+  62 002a 10D3     		bcc	.L2
+  44:main.c        ****         isr_adc_Disable();
+  63              		.loc 1 44 0
+  64 002c FFF7FEFF 		bl	isr_adc_Disable
+  65              	.LVL4:
+  45:main.c        ****         isr_dac_Disable();
+  66              		.loc 1 45 0
+  67 0030 FFF7FEFF 		bl	isr_dac_Disable
+  68              	.LVL5:
+  46:main.c        ****         finished_procedure_flag=1;
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 3
+
+
+  69              		.loc 1 46 0
+  70 0034 0122     		movs	r2, #1
+  71 0036 0D4B     		ldr	r3, .L4+12
+  72 0038 1A70     		strb	r2, [r3]
+  47:main.c        ****         
+  48:main.c        ****         UART_BT_PutChar(CV_DATA);
+  73              		.loc 1 48 0
+  74 003a 4D20     		movs	r0, #77
+  75 003c FFF7FEFF 		bl	UART_BT_PutChar
+  76              	.LVL6:
+  49:main.c        ****         // we are sending first one Byte with the header, and after that the array with all the dat
+  50:main.c        ****         // otherwise we would have to shift everything to the right
+  51:main.c        ****         
+  52:main.c        ****         sendMeasures();
+  77              		.loc 1 52 0
+  78 0040 FFF7FEFF 		bl	sendMeasures
+  79              	.LVL7:
+  53:main.c        ****         helper_HardwareSleep();
+  80              		.loc 1 53 0
+  81 0044 FFF7FEFF 		bl	helper_HardwareSleep
+  82              	.LVL8:
+  54:main.c        ****         lut_index = 0; 
+  83              		.loc 1 54 0
+  84 0048 0022     		movs	r2, #0
+  85 004a 064B     		ldr	r3, .L4+4
+  86 004c 1A80     		strh	r2, [r3]	@ movhi
+  87              	.L2:
+  55:main.c        ****     }
+  56:main.c        ****     lut_value = waveform_lut[lut_index];
+  88              		.loc 1 56 0
+  89 004e 054B     		ldr	r3, .L4+4
+  90 0050 1A88     		ldrh	r2, [r3]
+  91 0052 074B     		ldr	r3, .L4+16
+  92 0054 33F81220 		ldrh	r2, [r3, r2, lsl #1]
+  93 0058 014B     		ldr	r3, .L4
+  94 005a 1A80     		strh	r2, [r3]	@ movhi
+  95 005c 08BD     		pop	{r3, pc}
+  96              	.L5:
+  97 005e 00BF     		.align	2
+  98              	.L4:
+  99 0060 00000000 		.word	lut_value
+ 100 0064 00000000 		.word	lut_index
+ 101 0068 00000000 		.word	lut_length
+ 102 006c 00000000 		.word	finished_procedure_flag
+ 103 0070 00000000 		.word	waveform_lut
+ 104              		.cfi_endproc
+ 105              	.LFE64:
+ 106              		.size	dacInterrupt, .-dacInterrupt
+ 107              		.section	.text.adcInterrupt,"ax",%progbits
+ 108              		.align	2
+ 109              		.global	adcInterrupt
+ 110              		.thumb
+ 111              		.thumb_func
+ 112              		.type	adcInterrupt, %function
+ 113              	adcInterrupt:
+ 114              	.LFB65:
+  57:main.c        **** }
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 4
+
+
+  58:main.c        **** 
+  59:main.c        **** CY_ISR(adcInterrupt){ // enabled by function that starts CV and CA procedures 
+ 115              		.loc 1 59 0
+ 116              		.cfi_startproc
+ 117              		@ args = 0, pretend = 0, frame = 0
+ 118              		@ frame_needed = 0, uses_anonymous_args = 0
+ 119 0000 10B5     		push	{r4, lr}
+ 120              		.cfi_def_cfa_offset 8
+ 121              		.cfi_offset 4, -8
+ 122              		.cfi_offset 14, -4
+  60:main.c        ****     LED_DAC_Write(0); 
+ 123              		.loc 1 60 0
+ 124 0002 0020     		movs	r0, #0
+ 125 0004 FFF7FEFF 		bl	LED_DAC_Write
+ 126              	.LVL9:
+  61:main.c        ****     LED_ADC_Write(1);
+ 127              		.loc 1 61 0
+ 128 0008 0120     		movs	r0, #1
+ 129 000a FFF7FEFF 		bl	LED_ADC_Write
+ 130              	.LVL10:
+  62:main.c        ****     
+  63:main.c        ****     //ADC_SigDel_Start();
+  64:main.c        ****     //ADC_SigDel_StartConvert();
+  65:main.c        ****     
+  66:main.c        ****     int16 measure = ADC_SigDel_GetResult16(); 
+ 131              		.loc 1 66 0
+ 132 000e FFF7FEFF 		bl	ADC_SigDel_GetResult16
+ 133              	.LVL11:
+  67:main.c        ****     
+  68:main.c        ****     uint8_t LSB_data = measure & 0xFF;
+ 134              		.loc 1 68 0
+ 135 0012 C4B2     		uxtb	r4, r0
+ 136              	.LVL12:
+  69:main.c        ****     uint8_t MSB_data = measure >> 8;
+ 137              		.loc 1 69 0
+ 138 0014 C0F30720 		ubfx	r0, r0, #8, #8
+ 139              	.LVL13:
+  70:main.c        ****     data_long[2*lut_index] = MSB_data;
+ 140              		.loc 1 70 0
+ 141 0018 044B     		ldr	r3, .L8
+ 142 001a 1988     		ldrh	r1, [r3]
+ 143 001c 4B00     		lsls	r3, r1, #1
+ 144 001e 044A     		ldr	r2, .L8+4
+ 145 0020 02F81100 		strb	r0, [r2, r1, lsl #1]
+  71:main.c        ****     data_long[2*lut_index+1] = LSB_data;
+ 146              		.loc 1 71 0
+ 147 0024 0133     		adds	r3, r3, #1
+ 148 0026 D454     		strb	r4, [r2, r3]
+ 149 0028 10BD     		pop	{r4, pc}
+ 150              	.LVL14:
+ 151              	.L9:
+ 152 002a 00BF     		.align	2
+ 153              	.L8:
+ 154 002c 00000000 		.word	lut_index
+ 155 0030 00000000 		.word	data_long
+ 156              		.cfi_endproc
+ 157              	.LFE65:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 5
+
+
+ 158              		.size	adcInterrupt, .-adcInterrupt
+ 159              		.section	.text.Custom_UART_BT_RX_Interrupt,"ax",%progbits
+ 160              		.align	2
+ 161              		.global	Custom_UART_BT_RX_Interrupt
+ 162              		.thumb
+ 163              		.thumb_func
+ 164              		.type	Custom_UART_BT_RX_Interrupt, %function
+ 165              	Custom_UART_BT_RX_Interrupt:
+ 166              	.LFB66:
+  72:main.c        **** }
+  73:main.c        **** 
+  74:main.c        **** CY_ISR(Custom_UART_BT_RX_Interrupt){ // called when incoming data is available on the RX of the UAR
+ 167              		.loc 1 74 0
+ 168              		.cfi_startproc
+ 169              		@ args = 0, pretend = 0, frame = 0
+ 170              		@ frame_needed = 0, uses_anonymous_args = 0
+ 171 0000 38B5     		push	{r3, r4, r5, lr}
+ 172              		.cfi_def_cfa_offset 16
+ 173              		.cfi_offset 3, -16
+ 174              		.cfi_offset 4, -12
+ 175              		.cfi_offset 5, -8
+ 176              		.cfi_offset 14, -4
+  75:main.c        ****     //WARNING: this function is called each time a new byte arrive, so if we receive the byte array
+  76:main.c        ****     // to change it, we must change "Interrupt Source" parameter on the TopDesign
+  77:main.c        ****     LED_DAC_Write(1);
+ 177              		.loc 1 77 0
+ 178 0002 0120     		movs	r0, #1
+ 179 0004 FFF7FEFF 		bl	LED_DAC_Write
+ 180              	.LVL15:
+  78:main.c        ****     temp[buffer_index] = UART_BT_GetByte();   
+ 181              		.loc 1 78 0
+ 182 0008 154D     		ldr	r5, .L17
+ 183 000a 2C78     		ldrb	r4, [r5]	@ zero_extendqisi2
+ 184 000c E4B2     		uxtb	r4, r4
+ 185 000e FFF7FEFF 		bl	UART_BT_GetByte
+ 186              	.LVL16:
+ 187 0012 C0B2     		uxtb	r0, r0
+ 188 0014 134A     		ldr	r2, .L17+4
+ 189 0016 1055     		strb	r0, [r2, r4]
+  79:main.c        ****     
+  80:main.c        ****     if(temp[buffer_index] == 'Z'){
+ 190              		.loc 1 80 0
+ 191 0018 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 192 001a DBB2     		uxtb	r3, r3
+ 193 001c D35C     		ldrb	r3, [r2, r3]	@ zero_extendqisi2
+ 194 001e DBB2     		uxtb	r3, r3
+ 195 0020 5A2B     		cmp	r3, #90
+ 196 0022 0ED1     		bne	.L11
+  81:main.c        ****         input_flag = 1; // raises input flag, so that te main calls the BT reading at the next whil
+ 197              		.loc 1 81 0
+ 198 0024 0122     		movs	r2, #1
+ 199 0026 6A70     		strb	r2, [r5, #1]
+ 200              	.LVL17:
+ 201              	.LBB2:
+  82:main.c        ****         
+  83:main.c        ****         
+  84:main.c        ****         for(uint16_t i=0; i<DATA_MAX_READING_SIZE ; i++){
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 6
+
+
+ 202              		.loc 1 84 0
+ 203 0028 0023     		movs	r3, #0
+ 204 002a 08E0     		b	.L12
+ 205              	.LVL18:
+ 206              	.L13:
+  85:main.c        ****             data_buffer[i] = temp[i];
+ 207              		.loc 1 85 0 discriminator 3
+ 208 002c 0D49     		ldr	r1, .L17+4
+ 209 002e CA5C     		ldrb	r2, [r1, r3]	@ zero_extendqisi2
+ 210 0030 D2B2     		uxtb	r2, r2
+ 211 0032 0D48     		ldr	r0, .L17+8
+ 212 0034 C254     		strb	r2, [r0, r3]
+  86:main.c        ****             temp[i] =0; //clearing data buffer
+ 213              		.loc 1 86 0 discriminator 3
+ 214 0036 0022     		movs	r2, #0
+ 215 0038 CA54     		strb	r2, [r1, r3]
+  84:main.c        ****             data_buffer[i] = temp[i];
+ 216              		.loc 1 84 0 discriminator 3
+ 217 003a 0133     		adds	r3, r3, #1
+ 218              	.LVL19:
+ 219 003c 9BB2     		uxth	r3, r3
+ 220              	.LVL20:
+ 221              	.L12:
+  84:main.c        ****             data_buffer[i] = temp[i];
+ 222              		.loc 1 84 0 is_stmt 0 discriminator 1
+ 223 003e 132B     		cmp	r3, #19
+ 224 0040 F4D9     		bls	.L13
+ 225              	.LVL21:
+ 226              	.L11:
+ 227              	.LBE2:
+  87:main.c        ****         }   
+  88:main.c        ****     }
+  89:main.c        ****     
+  90:main.c        ****     if(input_flag){
+ 228              		.loc 1 90 0 is_stmt 1
+ 229 0042 074B     		ldr	r3, .L17
+ 230 0044 5B78     		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 231 0046 13F0FF0F 		tst	r3, #255
+ 232 004a 03D0     		beq	.L14
+  91:main.c        ****         buffer_index = 0;
+ 233              		.loc 1 91 0
+ 234 004c 0022     		movs	r2, #0
+ 235 004e 044B     		ldr	r3, .L17
+ 236 0050 1A70     		strb	r2, [r3]
+ 237 0052 38BD     		pop	{r3, r4, r5, pc}
+ 238              	.L14:
+  92:main.c        ****     } else {
+  93:main.c        ****         buffer_index++;
+ 239              		.loc 1 93 0
+ 240 0054 024A     		ldr	r2, .L17
+ 241 0056 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 242 0058 0133     		adds	r3, r3, #1
+ 243 005a DBB2     		uxtb	r3, r3
+ 244 005c 1370     		strb	r3, [r2]
+ 245 005e 38BD     		pop	{r3, r4, r5, pc}
+ 246              	.L18:
+ 247              		.align	2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 7
+
+
+ 248              	.L17:
+ 249 0060 00000000 		.word	.LANCHOR0
+ 250 0064 00000000 		.word	temp
+ 251 0068 00000000 		.word	data_buffer
+ 252              		.cfi_endproc
+ 253              	.LFE66:
+ 254              		.size	Custom_UART_BT_RX_Interrupt, .-Custom_UART_BT_RX_Interrupt
+ 255              		.section	.text.main,"ax",%progbits
+ 256              		.align	2
+ 257              		.global	main
+ 258              		.thumb
+ 259              		.thumb_func
+ 260              		.type	main, %function
+ 261              	main:
+ 262              	.LFB67:
+  94:main.c        ****     }
+  95:main.c        **** }
+  96:main.c        **** 
+  97:main.c        **** int main(void){
+ 263              		.loc 1 97 0
+ 264              		.cfi_startproc
+ 265              		@ args = 0, pretend = 0, frame = 0
+ 266              		@ frame_needed = 0, uses_anonymous_args = 0
+ 267 0000 10B5     		push	{r4, lr}
+ 268              		.cfi_def_cfa_offset 8
+ 269              		.cfi_offset 4, -8
+ 270              		.cfi_offset 14, -4
+  98:main.c        ****     
+  99:main.c        ****     CyGlobalIntEnable; // Enable global interrupts
+ 271              		.loc 1 99 0
+ 272              		.syntax unified
+ 273              	@ 99 "main.c" 1
+ 274 0002 62B6     		CPSIE   i
+ 275              	@ 0 "" 2
+ 100:main.c        ****     
+ 101:main.c        ****     input_flag = 0; 
+ 276              		.loc 1 101 0
+ 277              		.thumb
+ 278              		.syntax unified
+ 279 0004 794B     		ldr	r3, .L46
+ 280 0006 0024     		movs	r4, #0
+ 281 0008 5C70     		strb	r4, [r3, #1]
+ 102:main.c        ****     connection_state = 0;
+ 282              		.loc 1 102 0
+ 283 000a 9C70     		strb	r4, [r3, #2]
+ 103:main.c        ****     buffer_index = 0;
+ 284              		.loc 1 103 0
+ 285 000c 1C70     		strb	r4, [r3]
+ 104:main.c        ****     lut_index=0; 
+ 286              		.loc 1 104 0
+ 287 000e 784B     		ldr	r3, .L46+4
+ 288 0010 1C80     		strh	r4, [r3]	@ movhi
+ 105:main.c        ****     finished_procedure_flag=0; // DEBUG CHANGE -- delete later 
+ 289              		.loc 1 105 0
+ 290 0012 784B     		ldr	r3, .L46+8
+ 291 0014 1C70     		strb	r4, [r3]
+ 106:main.c        **** 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 8
+
+
+ 107:main.c        ****     /* *********************************
+ 108:main.c        ****        ******* INITIALIZATION CODE *****
+ 109:main.c        ****        *********************************
+ 110:main.c        ****        all the steps to perform when the device is switched on 
+ 111:main.c        ****        1. hardware wakeup (bluetooth and all the other hw) 
+ 112:main.c        ****        2. enable of interrupts
+ 113:main.c        ****        3. calibration of the TIA with default value of R */
+ 114:main.c        ****     
+ 115:main.c        ****     helper_HardwareSetup(); /* from hardware_management.c 
+ 292              		.loc 1 115 0
+ 293 0016 FFF7FEFF 		bl	helper_HardwareSetup
+ 294              	.LVL22:
+ 116:main.c        ****                                1. calls Init() API functions of all AMUX
+ 117:main.c        ****                                2. calls Start() from DAC_management.c, which starts the DAC selecte
+ 118:main.c        ****                                 -> in the beginning no DAC is selected - we can change this 
+ 119:main.c        ****                                3. selects 3 electrodes configuration
+ 120:main.c        ****                                4. connects the TIA to the working electrode */
+ 121:main.c        ****     
+ 122:main.c        ****     ADC_SigDel_SelectConfiguration(2, DO_NOT_RESTART_ADC); /* selects configuration of the ADC 
+ 295              		.loc 1 122 0
+ 296 001a 2146     		mov	r1, r4
+ 297 001c 0220     		movs	r0, #2
+ 298 001e FFF7FEFF 		bl	ADC_SigDel_SelectConfiguration
+ 299              	.LVL23:
+ 123:main.c        ****                                                               config2 has +- 1.024 V of input range
+ 124:main.c        ****     
+ 125:main.c        ****     /* Start end then disable the CV and CA ISR */
+ 126:main.c        ****     isr_dac_StartEx(dacInterrupt);
+ 300              		.loc 1 126 0
+ 301 0022 7548     		ldr	r0, .L46+12
+ 302 0024 FFF7FEFF 		bl	isr_dac_StartEx
+ 303              	.LVL24:
+ 127:main.c        ****     isr_dac_Disable();  // disable interrupt until a voltage signal needs to be given
+ 304              		.loc 1 127 0
+ 305 0028 FFF7FEFF 		bl	isr_dac_Disable
+ 306              	.LVL25:
+ 128:main.c        ****     isr_adc_StartEx(adcInterrupt);
+ 307              		.loc 1 128 0
+ 308 002c 7348     		ldr	r0, .L46+16
+ 309 002e FFF7FEFF 		bl	isr_adc_StartEx
+ 310              	.LVL26:
+ 129:main.c        ****     isr_adc_Disable();
+ 311              		.loc 1 129 0
+ 312 0032 FFF7FEFF 		bl	isr_adc_Disable
+ 313              	.LVL27:
+ 130:main.c        ****     isr_UART_BT_RX_StartEx(Custom_UART_BT_RX_Interrupt); 
+ 314              		.loc 1 130 0
+ 315 0036 7248     		ldr	r0, .L46+20
+ 316 0038 FFF7FEFF 		bl	isr_UART_BT_RX_StartEx
+ 317              	.LVL28:
+ 131:main.c        ****    
+ 132:main.c        ****     
+ 133:main.c        ****     UART_BT_Start(); // switch on the communication with the Bluetooth 
+ 318              		.loc 1 133 0
+ 319 003c FFF7FEFF 		bl	UART_BT_Start
+ 320              	.LVL29:
+ 134:main.c        ****     CyDelay(100); // give a little time to the BT module to tune and set
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 9
+
+
+ 321              		.loc 1 134 0
+ 322 0040 6420     		movs	r0, #100
+ 323 0042 FFF7FEFF 		bl	CyDelay
+ 324              	.LVL30:
+ 325              	.LBB3:
+ 135:main.c        ****     
+ 136:main.c        ****     //Clear the data_buffer and the data_to_send arrays
+ 137:main.c        ****     for(uint16_t i=0; i<DATA_MAX_SENDING_SIZE ; i++){
+ 326              		.loc 1 137 0
+ 327 0046 06E0     		b	.L20
+ 328              	.LVL31:
+ 329              	.L21:
+ 138:main.c        ****         data_buffer[i] = 0;
+ 330              		.loc 1 138 0 discriminator 3
+ 331 0048 0023     		movs	r3, #0
+ 332 004a 6E4A     		ldr	r2, .L46+24
+ 333 004c 1355     		strb	r3, [r2, r4]
+ 139:main.c        ****         data_to_send[i] = 0;
+ 334              		.loc 1 139 0 discriminator 3
+ 335 004e 6E4A     		ldr	r2, .L46+28
+ 336 0050 1355     		strb	r3, [r2, r4]
+ 137:main.c        ****         data_buffer[i] = 0;
+ 337              		.loc 1 137 0 discriminator 3
+ 338 0052 0134     		adds	r4, r4, #1
+ 339              	.LVL32:
+ 340 0054 A4B2     		uxth	r4, r4
+ 341              	.LVL33:
+ 342              	.L20:
+ 137:main.c        ****         data_buffer[i] = 0;
+ 343              		.loc 1 137 0 is_stmt 0 discriminator 1
+ 344 0056 772C     		cmp	r4, #119
+ 345 0058 F6D9     		bls	.L21
+ 346 005a 0023     		movs	r3, #0
+ 347 005c 04E0     		b	.L22
+ 348              	.LVL34:
+ 349              	.L23:
+ 350              	.LBE3:
+ 351              	.LBB4:
+ 140:main.c        ****     }
+ 141:main.c        ****     
+ 142:main.c        ****     for(uint16_t i=0; i<DATA_LONG_SIZE ; i++){
+ 143:main.c        ****         data_long[i] = 0;
+ 352              		.loc 1 143 0 is_stmt 1 discriminator 3
+ 353 005e 0021     		movs	r1, #0
+ 354 0060 6A4A     		ldr	r2, .L46+32
+ 355 0062 D154     		strb	r1, [r2, r3]
+ 142:main.c        ****         data_long[i] = 0;
+ 356              		.loc 1 142 0 discriminator 3
+ 357 0064 0133     		adds	r3, r3, #1
+ 358              	.LVL35:
+ 359 0066 9BB2     		uxth	r3, r3
+ 360              	.LVL36:
+ 361              	.L22:
+ 142:main.c        ****         data_long[i] = 0;
+ 362              		.loc 1 142 0 is_stmt 0 discriminator 1
+ 363 0068 41F28732 		movw	r2, #4999
+ 364 006c 9342     		cmp	r3, r2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 10
+
+
+ 365 006e F6D9     		bls	.L23
+ 366              	.LBE4:
+ 144:main.c        ****     }
+ 145:main.c        ****     
+ 146:main.c        ****     // TIA INITIALIZATION
+ 147:main.c        ****     TIA_SetResFB(TIA_RESISTOR_DEFAULT_VALUE_INDEX); 
+ 367              		.loc 1 147 0 is_stmt 1
+ 368 0070 0020     		movs	r0, #0
+ 369 0072 FFF7FEFF 		bl	TIA_SetResFB
+ 370              	.LVL37:
+ 148:main.c        ****     calibrate_TIA(TIA_RESISTOR_DEFAULT_VALUE_INDEX); // calibration of the TIA with default R = 20 
+ 371              		.loc 1 148 0
+ 372 0076 0020     		movs	r0, #0
+ 373 0078 FFF7FEFF 		bl	calibrate_TIA
+ 374              	.LVL38:
+ 149:main.c        ****     
+ 150:main.c        ****     // EEPROM INITIALIZATION
+ 151:main.c        ****     EEPROM_Start();
+ 375              		.loc 1 151 0
+ 376 007c FFF7FEFF 		bl	EEPROM_Start
+ 377              	.LVL39:
+ 152:main.c        ****     if(EEPROM_ReadByte(EEPROM_FLAG_ADD)!=1){
+ 378              		.loc 1 152 0
+ 379 0080 FF20     		movs	r0, #255
+ 380 0082 FFF7FEFF 		bl	EEPROM_ReadByte
+ 381              	.LVL40:
+ 382 0086 0128     		cmp	r0, #1
+ 383 0088 03D0     		beq	.L24
+ 153:main.c        ****         EEPROM_WriteByte(EEPROM_FLAG, EEPROM_FLAG_ADD);
+ 384              		.loc 1 153 0
+ 385 008a FF21     		movs	r1, #255
+ 386 008c 0020     		movs	r0, #0
+ 387 008e FFF7FEFF 		bl	EEPROM_WriteByte
+ 388              	.LVL41:
+ 389              	.L24:
+ 154:main.c        ****     }
+ 155:main.c        ****     
+ 156:main.c        ****     if(EEPROM_ReadByte(EEPROM_FLAG_ADD) == 0){
+ 390              		.loc 1 156 0
+ 391 0092 FF20     		movs	r0, #255
+ 392 0094 FFF7FEFF 		bl	EEPROM_ReadByte
+ 393              	.LVL42:
+ 394 0098 08B9     		cbnz	r0, .L41
+ 157:main.c        ****        initialize_default_values(); // the default values in the EEPROM are initialized
+ 395              		.loc 1 157 0
+ 396 009a FFF7FEFF 		bl	initialize_default_values
+ 397              	.LVL43:
+ 398              	.L41:
+ 158:main.c        ****     }
+ 159:main.c        ****     
+ 160:main.c        ****     //CyWdtStart(CYWDT_1024_TICKS, CYWDT_LPMODE_NOCHANGE); -- si può toglierlo
+ 161:main.c        ****     
+ 162:main.c        ****     
+ 163:main.c        ****     
+ 164:main.c        ****     for(;;) {
+ 165:main.c        ****         
+ 166:main.c        ****         //input_flag = 1; //DEBUG CHANGE -- delete later
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 11
+
+
+ 167:main.c        ****         
+ 168:main.c        ****         CyDelay(100);
+ 399              		.loc 1 168 0
+ 400 009e 6420     		movs	r0, #100
+ 401 00a0 FFF7FEFF 		bl	CyDelay
+ 402              	.LVL44:
+ 169:main.c        ****         
+ 170:main.c        ****     
+ 171:main.c        ****         //CyWdtClear(); // clears the watchdog timer -> stops here
+ 172:main.c        ****         
+ 173:main.c        ****         /* ************************
+ 174:main.c        ****            ******* CASES CODE *****
+ 175:main.c        ****            ************************ 
+ 176:main.c        ****            during the while(1) - normal functioning - of the device, the state of the device is set
+ 177:main.c        ****            switch(cases) structure which depends on the input coming from the Bluetooth UART 
+ 178:main.c        ****            - the Bluetooth packets are defined in such a way [header][data][tail] that the header i
+ 179:main.c        ****              identifier for the information the data is carrying and can be used to enter the corre
+ 180:main.c        ****              >> [headers] need to be declared and defined in globals.h for accessing the cases
+ 181:main.c        ****            - for the timing, at each while(1) iteration the input is checked, and if a new input is
+ 182:main.c        ****              state is changed 
+ 183:main.c        ****              >> for this reason when before exiting a state and repeating the while(1) all the opea
+ 184:main.c        ****                 state need to be concluded 
+ 185:main.c        ****              >> in the GUI the user should not be able to send data on the BT while the device is p
+ 186:main.c        ****                 processes of a specific case 
+ 187:main.c        ****         */ 
+ 188:main.c        ****         if(input_flag==1){ // we have a new  iput -> go to the related state (case) 
+ 403              		.loc 1 188 0
+ 404 00a4 514B     		ldr	r3, .L46
+ 405 00a6 5B78     		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 406 00a8 DBB2     		uxtb	r3, r3
+ 407 00aa 012B     		cmp	r3, #1
+ 408 00ac 7BD1     		bne	.L26
+ 189:main.c        ****             
+ 190:main.c        ****             input_flag=0;
+ 409              		.loc 1 190 0
+ 410 00ae 0022     		movs	r2, #0
+ 411 00b0 4E4B     		ldr	r3, .L46
+ 412 00b2 5A70     		strb	r2, [r3, #1]
+ 191:main.c        ****             
+ 192:main.c        ****             
+ 193:main.c        ****             
+ 194:main.c        ****             // DEBUG CHANGE -- hard coding of data buffer 
+ 195:main.c        ****             //data_buffer[0]='D'; // CV change parameters
+ 196:main.c        ****             //data_buffer[1]= 10; // scan rate
+ 197:main.c        ****             //data_buffer[2]= 20; // start value 
+ 198:main.c        ****             //data_buffer[3]= 150; // end value
+ 199:main.c        ****             //data_buffer[4]= 0; // cv type = linear
+ 200:main.c        **** 
+ 201:main.c        ****             switch (data_buffer[0]) { //switch based on the header of the incoming packet  
+ 413              		.loc 1 201 0
+ 414 00b4 534B     		ldr	r3, .L46+24
+ 415 00b6 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 416 00b8 413B     		subs	r3, r3, #65
+ 417 00ba 122B     		cmp	r3, #18
+ 418 00bc 73D8     		bhi	.L26
+ 419 00be DFE803F0 		tbb	[pc, r3]
+ 420              	.L28:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 12
+
+
+ 421 00c2 24       		.byte	(.L27-.L28)/2
+ 422 00c3 40       		.byte	(.L29-.L28)/2
+ 423 00c4 53       		.byte	(.L30-.L28)/2
+ 424 00c5 5F       		.byte	(.L31-.L28)/2
+ 425 00c6 62       		.byte	(.L32-.L28)/2
+ 426 00c7 0A       		.byte	(.L33-.L28)/2
+ 427 00c8 72       		.byte	(.L26-.L28)/2
+ 428 00c9 72       		.byte	(.L26-.L28)/2
+ 429 00ca 14       		.byte	(.L34-.L28)/2
+ 430 00cb 72       		.byte	(.L26-.L28)/2
+ 431 00cc 72       		.byte	(.L26-.L28)/2
+ 432 00cd 72       		.byte	(.L26-.L28)/2
+ 433 00ce 72       		.byte	(.L26-.L28)/2
+ 434 00cf 72       		.byte	(.L26-.L28)/2
+ 435 00d0 72       		.byte	(.L26-.L28)/2
+ 436 00d1 72       		.byte	(.L26-.L28)/2
+ 437 00d2 72       		.byte	(.L26-.L28)/2
+ 438 00d3 65       		.byte	(.L35-.L28)/2
+ 439 00d4 6F       		.byte	(.L36-.L28)/2
+ 440 00d5 00       		.p2align 1
+ 441              	.L33:
+ 202:main.c        ****                
+ 203:main.c        ****             case CONNECT_BT:;
+ 204:main.c        ****                     
+ 205:main.c        ****                     data_to_send[0]=BT_SET; // send back to Py the 0xFF flag, so that Py can open t
+ 442              		.loc 1 205 0
+ 443 00d6 4622     		movs	r2, #70
+ 444 00d8 4B4B     		ldr	r3, .L46+28
+ 445 00da 1A70     		strb	r2, [r3]
+ 206:main.c        ****                     writeBT(1); 
+ 446              		.loc 1 206 0
+ 447 00dc 0120     		movs	r0, #1
+ 448 00de FFF7FEFF 		bl	writeBT
+ 449              	.LVL45:
+ 207:main.c        ****                     CyDelay(100);
+ 450              		.loc 1 207 0
+ 451 00e2 6420     		movs	r0, #100
+ 452 00e4 FFF7FEFF 		bl	CyDelay
+ 453              	.LVL46:
+ 208:main.c        ****             break;
+ 454              		.loc 1 208 0
+ 455 00e8 5DE0     		b	.L26
+ 456              	.L34:
+ 209:main.c        ****                     
+ 210:main.c        ****             case TIA_INITIALIZATION:;
+ 211:main.c        ****                     connection_state=1;
+ 457              		.loc 1 211 0
+ 458 00ea 0122     		movs	r2, #1
+ 459 00ec 3F4B     		ldr	r3, .L46
+ 460 00ee 9A70     		strb	r2, [r3, #2]
+ 461              	.LVL47:
+ 462              	.LBB5:
+ 212:main.c        ****                     for(int i=0; i<(Number_calibration_points*4)+1; i++){
+ 463              		.loc 1 212 0
+ 464 00f0 0023     		movs	r3, #0
+ 465 00f2 04E0     		b	.L37
+ 466              	.LVL48:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 13
+
+
+ 467              	.L38:
+ 213:main.c        ****                         data_to_send[i] = tia_calibration_values[i];
+ 468              		.loc 1 213 0 discriminator 3
+ 469 00f4 464A     		ldr	r2, .L46+36
+ 470 00f6 D15C     		ldrb	r1, [r2, r3]	@ zero_extendqisi2
+ 471 00f8 434A     		ldr	r2, .L46+28
+ 472 00fa D154     		strb	r1, [r2, r3]
+ 212:main.c        ****                     for(int i=0; i<(Number_calibration_points*4)+1; i++){
+ 473              		.loc 1 212 0 discriminator 3
+ 474 00fc 0133     		adds	r3, r3, #1
+ 475              	.LVL49:
+ 476              	.L37:
+ 212:main.c        ****                     for(int i=0; i<(Number_calibration_points*4)+1; i++){
+ 477              		.loc 1 212 0 is_stmt 0 discriminator 1
+ 478 00fe 142B     		cmp	r3, #20
+ 479 0100 F8DD     		ble	.L38
+ 480              	.LBE5:
+ 214:main.c        ****                     }
+ 215:main.c        ****                     writeBT((Number_calibration_points*4)+1);               
+ 481              		.loc 1 215 0 is_stmt 1
+ 482 0102 1520     		movs	r0, #21
+ 483 0104 FFF7FEFF 		bl	writeBT
+ 484              	.LVL50:
+ 216:main.c        ****             break;    
+ 485              		.loc 1 216 0
+ 486 0108 4DE0     		b	.L26
+ 487              	.L27:
+ 217:main.c        ****                     
+ 218:main.c        ****             case TIA_CALIBRATE: ; // user has changed some parameters regarding the TIA (impedance,
+ 219:main.c        ****                                   // the TIA is calibrated again
+ 220:main.c        ****                 if(data_buffer[1] == 0x00){
+ 488              		.loc 1 220 0
+ 489 010a 3E4B     		ldr	r3, .L46+24
+ 490 010c 5B78     		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 491 010e 13F0FF0F 		tst	r3, #255
+ 492 0112 07D1     		bne	.L39
+ 221:main.c        ****                     user_setup_TIA_ADC(data_buffer);
+ 493              		.loc 1 221 0
+ 494 0114 3B4C     		ldr	r4, .L46+24
+ 495 0116 2046     		mov	r0, r4
+ 496 0118 FFF7FEFF 		bl	user_setup_TIA_ADC
+ 497              	.LVL51:
+ 222:main.c        ****                     calibrate_TIA(data_buffer[2]); 
+ 498              		.loc 1 222 0
+ 499 011c A078     		ldrb	r0, [r4, #2]	@ zero_extendqisi2
+ 500 011e FFF7FEFF 		bl	calibrate_TIA
+ 501              	.LVL52:
+ 223:main.c        ****                     break;
+ 502              		.loc 1 223 0
+ 503 0122 40E0     		b	.L26
+ 504              	.L39:
+ 224:main.c        ****                 }else if(data_buffer[1] == 0x01){
+ 505              		.loc 1 224 0
+ 506 0124 374B     		ldr	r3, .L46+24
+ 507 0126 5B78     		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 508 0128 DBB2     		uxtb	r3, r3
+ 509 012a 012B     		cmp	r3, #1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 14
+
+
+ 510 012c 3BD1     		bne	.L26
+ 225:main.c        ****                     EEPROM_WriteByte(data_buffer[2], R_TIA_CALIBRATION);
+ 511              		.loc 1 225 0
+ 512 012e 354C     		ldr	r4, .L46+24
+ 513 0130 A078     		ldrb	r0, [r4, #2]	@ zero_extendqisi2
+ 514 0132 1421     		movs	r1, #20
+ 515 0134 FFF7FEFF 		bl	EEPROM_WriteByte
+ 516              	.LVL53:
+ 226:main.c        ****                     EEPROM_WriteByte(data_buffer[3], Q_TIA_CALIBRATION);
+ 517              		.loc 1 226 0
+ 518 0138 E078     		ldrb	r0, [r4, #3]	@ zero_extendqisi2
+ 519 013a 1521     		movs	r1, #21
+ 520 013c FFF7FEFF 		bl	EEPROM_WriteByte
+ 521              	.LVL54:
+ 227:main.c        ****                     break;
+ 522              		.loc 1 227 0
+ 523 0140 31E0     		b	.L26
+ 524              	.L29:
+ 228:main.c        ****                 }
+ 229:main.c        ****             break;
+ 230:main.c        **** 
+ 231:main.c        ****             
+ 232:main.c        ****             //****************** CHANGE VOLTAMMETRY PARMS CASE ************************************
+ 233:main.c        ****             case CHANGE_CV_PARAMETERS: ; /* user has changed parameters of the CV from the GUI need
+ 234:main.c        ****                                             (1) update the T_PWM according to the scan rate,
+ 235:main.c        ****                                             (2) create the LUT according to start and end values */
+ 236:main.c        ****                 user_set_isr_timer(data_buffer); /*give the scan rate in ms (from UART)*/
+ 525              		.loc 1 236 0
+ 526 0142 304C     		ldr	r4, .L46+24
+ 527 0144 2046     		mov	r0, r4
+ 528 0146 FFF7FEFF 		bl	user_set_isr_timer
+ 529              	.LVL55:
+ 237:main.c        ****                 lut_length = LUT_MakeTriangle_Wave(data_buffer);
+ 530              		.loc 1 237 0
+ 531 014a 2046     		mov	r0, r4
+ 532 014c FFF7FEFF 		bl	LUT_MakeTriangle_Wave
+ 533              	.LVL56:
+ 534 0150 304B     		ldr	r3, .L46+40
+ 535 0152 1880     		strh	r0, [r3]	@ movhi
+ 238:main.c        ****                     /*start and end values in bits (mv->bit processing in Py) from UART
+ 239:main.c        ****                                         and which type of cv to perform*/
+ 240:main.c        ****                                       // for now, pulse height and increment of SWV are hard coded 
+ 241:main.c        ****                                       // can add later option to change them 
+ 242:main.c        ****                                       // to keep the same function, can pass 0 and 0 in case of sim
+ 243:main.c        ****                 
+ 244:main.c        ****                 
+ 245:main.c        ****                 // send confirmation that parameters have been set to Python 
+ 246:main.c        ****                 data_to_send[0] = CV_PARAMS_SET; 
+ 536              		.loc 1 246 0
+ 537 0154 4222     		movs	r2, #66
+ 538 0156 2C4B     		ldr	r3, .L46+28
+ 539 0158 1A70     		strb	r2, [r3]
+ 247:main.c        ****                 writeBT(1);   
+ 540              		.loc 1 247 0
+ 541 015a 0120     		movs	r0, #1
+ 542 015c FFF7FEFF 		bl	writeBT
+ 543              	.LVL57:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 15
+
+
+ 248:main.c        ****                 CyDelay(100);
+ 544              		.loc 1 248 0
+ 545 0160 6420     		movs	r0, #100
+ 546 0162 FFF7FEFF 		bl	CyDelay
+ 547              	.LVL58:
+ 249:main.c        ****      
+ 250:main.c        ****             break; 
+ 548              		.loc 1 250 0
+ 549 0166 1EE0     		b	.L26
+ 550              	.L30:
+ 251:main.c        ****            
+ 252:main.c        ****             //****************** CHANGE CHRONOAMPEROMETRY PARMS CASE ******************************
+ 253:main.c        ****             case CHANGE_CA_PARAMETERS: ; /* can set 
+ 254:main.c        ****                                             - which CA to make (1) with parameters (2) measure with
+ 255:main.c        ****                                             - if parameters: Voltage and duration of stimulation*/
+ 256:main.c        ****                 lut_length = user_chrono_lut_maker(data_buffer);
+ 551              		.loc 1 256 0
+ 552 0168 2648     		ldr	r0, .L46+24
+ 553 016a FFF7FEFF 		bl	user_chrono_lut_maker
+ 554              	.LVL59:
+ 555 016e 294B     		ldr	r3, .L46+40
+ 556 0170 1880     		strh	r0, [r3]	@ movhi
+ 257:main.c        ****                                        /*type of CV, voltage and duration
+ 258:main.c        ****                                         if measure -> duration = 0 (not used by user_chrono_lut_mak
+ 259:main.c        ****                                                        >> this in Py! 
+ 260:main.c        ****                                         if not CA  -> duration and V chosen by the user */
+ 261:main.c        **** 
+ 262:main.c        ****                 //send confirmation that parameters have been set to Python 
+ 263:main.c        ****                 data_to_send[0] = CA_PARAMS_SET; 
+ 557              		.loc 1 263 0
+ 558 0172 4322     		movs	r2, #67
+ 559 0174 244B     		ldr	r3, .L46+28
+ 560 0176 1A70     		strb	r2, [r3]
+ 264:main.c        ****                 writeBT(1); 
+ 561              		.loc 1 264 0
+ 562 0178 0120     		movs	r0, #1
+ 563 017a FFF7FEFF 		bl	writeBT
+ 564              	.LVL60:
+ 265:main.c        ****                 
+ 266:main.c        ****                 //if (data_buffer[1]==1) goto case E; // go directly to running the CA if measuring
+ 267:main.c        ****                                                       // look up  the correct syntax for this!
+ 268:main.c        ****             break; 
+ 565              		.loc 1 268 0
+ 566 017e 12E0     		b	.L26
+ 567              	.L31:
+ 269:main.c        ****                 
+ 270:main.c        ****             case RUN_CV : ; // user has pressed "start" on the CV (available after setting paramete
+ 271:main.c        ****                 //user_set_isr_timer(data_buffer); // DEBUG CHANGE -- remove later
+ 272:main.c        ****                 //lut_length = LUT_MakeTriangle_Wave(data_buffer); // DEBUG CHANGE -- remove later 
+ 273:main.c        ****                 
+ 274:main.c        ****                 user_run_procedure(); 
+ 568              		.loc 1 274 0
+ 569 0180 FFF7FEFF 		bl	user_run_procedure
+ 570              	.LVL61:
+ 275:main.c        ****                 
+ 276:main.c        ****             break; 
+ 571              		.loc 1 276 0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 16
+
+
+ 572 0184 0FE0     		b	.L26
+ 573              	.L32:
+ 277:main.c        ****                 
+ 278:main.c        ****             case RUN_CA : ; // user has pressed "start" on the CA interface (or coming from MEASURE
+ 279:main.c        ****                 //lut_length = user_chrono_lut_maker(data_buffer);
+ 280:main.c        ****                 user_run_procedure(); 
+ 574              		.loc 1 280 0
+ 575 0186 FFF7FEFF 		bl	user_run_procedure
+ 576              	.LVL62:
+ 281:main.c        ****                 /* using the same function for CV and CA, since a differentiated look up table has 
+ 282:main.c        ****             break;
+ 577              		.loc 1 282 0
+ 578 018a 0CE0     		b	.L26
+ 579              	.L35:
+ 283:main.c        ****             
+ 284:main.c        ****             case EEPROM_MANAGEMENT: ;             
+ 285:main.c        ****                 user_EEPROM_management(data_buffer);
+ 580              		.loc 1 285 0
+ 581 018c 1D48     		ldr	r0, .L46+24
+ 582 018e FFF7FEFF 		bl	user_EEPROM_management
+ 583              	.LVL63:
+ 286:main.c        ****                 data_to_send[0]=EEPROM_SET; 
+ 584              		.loc 1 286 0
+ 585 0192 5222     		movs	r2, #82
+ 586 0194 1C4B     		ldr	r3, .L46+28
+ 587 0196 1A70     		strb	r2, [r3]
+ 287:main.c        ****                 writeBT(PARAMS_SENDING_SIZE); 
+ 588              		.loc 1 287 0
+ 589 0198 0220     		movs	r0, #2
+ 590 019a FFF7FEFF 		bl	writeBT
+ 591              	.LVL64:
+ 288:main.c        ****             break;
+ 592              		.loc 1 288 0
+ 593 019e 02E0     		b	.L26
+ 594              	.L36:
+ 289:main.c        ****                 
+ 290:main.c        ****             case DAC_MANAGEMENT:;
+ 291:main.c        ****                 user_voltage_source_funcs(data_buffer); 
+ 595              		.loc 1 291 0
+ 596 01a0 1848     		ldr	r0, .L46+24
+ 597 01a2 FFF7FEFF 		bl	user_voltage_source_funcs
+ 598              	.LVL65:
+ 599              	.L26:
+ 292:main.c        ****             break; 
+ 293:main.c        ****         } 
+ 294:main.c        ****     }
+ 295:main.c        ****         if(finished_procedure_flag){ // DEBUG CHANGE -- delete later the if case
+ 600              		.loc 1 295 0
+ 601 01a6 134B     		ldr	r3, .L46+8
+ 602 01a8 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 603 01aa 002B     		cmp	r3, #0
+ 604 01ac 3FF477AF 		beq	.L41
+ 605 01b0 15E0     		b	.L44
+ 606              	.LVL66:
+ 607              	.L42:
+ 608              	.LBB6:
+ 296:main.c        ****             
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 17
+
+
+ 297:main.c        ****             for (int i = 0; i<5 ; i++){
+ 298:main.c        ****                 LED_ADC_Write(1); 
+ 609              		.loc 1 298 0 discriminator 3
+ 610 01b2 0120     		movs	r0, #1
+ 611 01b4 FFF7FEFF 		bl	LED_ADC_Write
+ 612              	.LVL67:
+ 299:main.c        ****                 LED_DAC_Write(1); 
+ 613              		.loc 1 299 0 discriminator 3
+ 614 01b8 0120     		movs	r0, #1
+ 615 01ba FFF7FEFF 		bl	LED_DAC_Write
+ 616              	.LVL68:
+ 300:main.c        ****                 CyDelay(500);
+ 617              		.loc 1 300 0 discriminator 3
+ 618 01be 4FF4FA70 		mov	r0, #500
+ 619 01c2 FFF7FEFF 		bl	CyDelay
+ 620              	.LVL69:
+ 301:main.c        ****                 LED_ADC_Write(0); 
+ 621              		.loc 1 301 0 discriminator 3
+ 622 01c6 0020     		movs	r0, #0
+ 623 01c8 FFF7FEFF 		bl	LED_ADC_Write
+ 624              	.LVL70:
+ 302:main.c        ****                 LED_DAC_Write(0); 
+ 625              		.loc 1 302 0 discriminator 3
+ 626 01cc 0020     		movs	r0, #0
+ 627 01ce FFF7FEFF 		bl	LED_DAC_Write
+ 628              	.LVL71:
+ 303:main.c        ****                 CyDelay(500); 
+ 629              		.loc 1 303 0 discriminator 3
+ 630 01d2 4FF4FA70 		mov	r0, #500
+ 631 01d6 FFF7FEFF 		bl	CyDelay
+ 632              	.LVL72:
+ 297:main.c        ****                 LED_ADC_Write(1); 
+ 633              		.loc 1 297 0 discriminator 3
+ 634 01da 0134     		adds	r4, r4, #1
+ 635              	.LVL73:
+ 636 01dc 00E0     		b	.L40
+ 637              	.LVL74:
+ 638              	.L44:
+ 639              	.LBE6:
+ 640 01de 0024     		movs	r4, #0
+ 641              	.L40:
+ 642              	.LVL75:
+ 643              	.LBB7:
+ 297:main.c        ****                 LED_ADC_Write(1); 
+ 644              		.loc 1 297 0 is_stmt 0 discriminator 1
+ 645 01e0 042C     		cmp	r4, #4
+ 646 01e2 E6DD     		ble	.L42
+ 647              	.LBE7:
+ 304:main.c        ****             }  
+ 305:main.c        ****             finished_procedure_flag=0; 
+ 648              		.loc 1 305 0 is_stmt 1
+ 649 01e4 0022     		movs	r2, #0
+ 650 01e6 034B     		ldr	r3, .L46+8
+ 651 01e8 1A70     		strb	r2, [r3]
+ 652 01ea 58E7     		b	.L41
+ 653              	.L47:
+ 654              		.align	2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 18
+
+
+ 655              	.L46:
+ 656 01ec 00000000 		.word	.LANCHOR0
+ 657 01f0 00000000 		.word	lut_index
+ 658 01f4 00000000 		.word	finished_procedure_flag
+ 659 01f8 00000000 		.word	dacInterrupt
+ 660 01fc 00000000 		.word	adcInterrupt
+ 661 0200 00000000 		.word	Custom_UART_BT_RX_Interrupt
+ 662 0204 00000000 		.word	data_buffer
+ 663 0208 00000000 		.word	data_to_send
+ 664 020c 00000000 		.word	data_long
+ 665 0210 00000000 		.word	tia_calibration_values
+ 666 0214 00000000 		.word	lut_length
+ 667              		.cfi_endproc
+ 668              	.LFE67:
+ 669              		.size	main, .-main
+ 670              		.comm	TIA_resistor_value_index,1,1
+ 671              		.comm	calibrate_array,20,4
+ 672              		.comm	finished_procedure_flag,1,1
+ 673              		.comm	data_long,5000,4
+ 674              		.comm	data_to_send,120,4
+ 675              		.comm	temp,20,4
+ 676              		.comm	data_buffer,20,4
+ 677              		.comm	selected_voltage_source,1,1
+ 678              		.comm	tia_calibration_values,21,4
+ 679              		.comm	lut_length,2,2
+ 680              		.comm	lut_index,2,2
+ 681              		.comm	waveform_lut,10010,4
+ 682              		.comm	lut_value,2,2
+ 683              		.comm	return_value,4,4
+ 684              		.comm	dac_ground_value,2,2
+ 685              		.bss
+ 686              		.set	.LANCHOR0,. + 0
+ 687              		.type	buffer_index, %object
+ 688              		.size	buffer_index, 1
+ 689              	buffer_index:
+ 690 0000 00       		.space	1
+ 691              		.type	input_flag, %object
+ 692              		.size	input_flag, 1
+ 693              	input_flag:
+ 694 0001 00       		.space	1
+ 695              		.type	connection_state, %object
+ 696              		.size	connection_state, 1
+ 697              	connection_state:
+ 698 0002 00       		.space	1
+ 699              		.text
+ 700              	.Letext0:
+ 701              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 702              		.file 3 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 703              		.file 4 "Generated_Source\\PSoC5/cytypes.h"
+ 704              		.file 5 "globals.h"
+ 705              		.file 6 "Generated_Source\\PSoC5/core_cm3.h"
+ 706              		.file 7 "parametric_lut.h"
+ 707              		.file 8 "BT_protocols.h"
+ 708              		.file 9 "TIA_calibrate.h"
+ 709              		.file 10 "user_inputs.h"
+ 710              		.file 11 "Generated_Source\\PSoC5/Opamp_Aux.h"
+ 711              		.file 12 "DAC_management.h"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 19
+
+
+ 712              		.file 13 "Generated_Source\\PSoC5/LED_DAC.h"
+ 713              		.file 14 "Generated_Source\\PSoC5/LED_ADC.h"
+ 714              		.file 15 "Generated_Source\\PSoC5/isr_adc.h"
+ 715              		.file 16 "Generated_Source\\PSoC5/isr_dac.h"
+ 716              		.file 17 "Generated_Source\\PSoC5/UART_BT.h"
+ 717              		.file 18 "hardware_management.h"
+ 718              		.file 19 "Generated_Source\\PSoC5/ADC_SigDel.h"
+ 719              		.file 20 "Generated_Source\\PSoC5/CyLib.h"
+ 720              		.file 21 "Generated_Source\\PSoC5/isr_UART_BT_RX.h"
+ 721              		.file 22 "Generated_Source\\PSoC5/TIA.h"
+ 722              		.file 23 "Generated_Source\\PSoC5/EEPROM.h"
+ 723              		.section	.debug_info,"",%progbits
+ 724              	.Ldebug_info0:
+ 725 0000 AD080000 		.4byte	0x8ad
+ 726 0004 0400     		.2byte	0x4
+ 727 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 728 000a 04       		.byte	0x4
+ 729 000b 01       		.uleb128 0x1
+ 730 000c C8040000 		.4byte	.LASF79
+ 731 0010 0C       		.byte	0xc
+ 732 0011 09040000 		.4byte	.LASF80
+ 733 0015 37040000 		.4byte	.LASF81
+ 734 0019 18000000 		.4byte	.Ldebug_ranges0+0x18
+ 735 001d 00000000 		.4byte	0
+ 736 0021 00000000 		.4byte	.Ldebug_line0
+ 737 0025 02       		.uleb128 0x2
+ 738 0026 01       		.byte	0x1
+ 739 0027 06       		.byte	0x6
+ 740 0028 6A010000 		.4byte	.LASF0
+ 741 002c 03       		.uleb128 0x3
+ 742 002d E9010000 		.4byte	.LASF3
+ 743 0031 02       		.byte	0x2
+ 744 0032 1D       		.byte	0x1d
+ 745 0033 37000000 		.4byte	0x37
+ 746 0037 02       		.uleb128 0x2
+ 747 0038 01       		.byte	0x1
+ 748 0039 08       		.byte	0x8
+ 749 003a 29020000 		.4byte	.LASF1
+ 750 003e 02       		.uleb128 0x2
+ 751 003f 02       		.byte	0x2
+ 752 0040 05       		.byte	0x5
+ 753 0041 51000000 		.4byte	.LASF2
+ 754 0045 03       		.uleb128 0x3
+ 755 0046 DA000000 		.4byte	.LASF4
+ 756 004a 02       		.byte	0x2
+ 757 004b 2B       		.byte	0x2b
+ 758 004c 50000000 		.4byte	0x50
+ 759 0050 02       		.uleb128 0x2
+ 760 0051 02       		.byte	0x2
+ 761 0052 07       		.byte	0x7
+ 762 0053 77030000 		.4byte	.LASF5
+ 763 0057 03       		.uleb128 0x3
+ 764 0058 8A040000 		.4byte	.LASF6
+ 765 005c 02       		.byte	0x2
+ 766 005d 3F       		.byte	0x3f
+ 767 005e 62000000 		.4byte	0x62
+ 768 0062 02       		.uleb128 0x2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 20
+
+
+ 769 0063 04       		.byte	0x4
+ 770 0064 05       		.byte	0x5
+ 771 0065 D0010000 		.4byte	.LASF7
+ 772 0069 02       		.uleb128 0x2
+ 773 006a 04       		.byte	0x4
+ 774 006b 07       		.byte	0x7
+ 775 006c 10040000 		.4byte	.LASF8
+ 776 0070 02       		.uleb128 0x2
+ 777 0071 08       		.byte	0x8
+ 778 0072 05       		.byte	0x5
+ 779 0073 98010000 		.4byte	.LASF9
+ 780 0077 02       		.uleb128 0x2
+ 781 0078 08       		.byte	0x8
+ 782 0079 07       		.byte	0x7
+ 783 007a 95020000 		.4byte	.LASF10
+ 784 007e 04       		.uleb128 0x4
+ 785 007f 04       		.byte	0x4
+ 786 0080 05       		.byte	0x5
+ 787 0081 696E7400 		.ascii	"int\000"
+ 788 0085 02       		.uleb128 0x2
+ 789 0086 04       		.byte	0x4
+ 790 0087 07       		.byte	0x7
+ 791 0088 B9020000 		.4byte	.LASF11
+ 792 008c 03       		.uleb128 0x3
+ 793 008d 0F010000 		.4byte	.LASF12
+ 794 0091 03       		.byte	0x3
+ 795 0092 18       		.byte	0x18
+ 796 0093 2C000000 		.4byte	0x2c
+ 797 0097 03       		.uleb128 0x3
+ 798 0098 C6020000 		.4byte	.LASF13
+ 799 009c 03       		.byte	0x3
+ 800 009d 24       		.byte	0x24
+ 801 009e 45000000 		.4byte	0x45
+ 802 00a2 03       		.uleb128 0x3
+ 803 00a3 6F030000 		.4byte	.LASF14
+ 804 00a7 03       		.byte	0x3
+ 805 00a8 2C       		.byte	0x2c
+ 806 00a9 57000000 		.4byte	0x57
+ 807 00ad 05       		.uleb128 0x5
+ 808 00ae 17010000 		.4byte	.LASF15
+ 809 00b2 04       		.byte	0x4
+ 810 00b3 ED01     		.2byte	0x1ed
+ 811 00b5 3E000000 		.4byte	0x3e
+ 812 00b9 02       		.uleb128 0x2
+ 813 00ba 04       		.byte	0x4
+ 814 00bb 04       		.byte	0x4
+ 815 00bc 76010000 		.4byte	.LASF16
+ 816 00c0 02       		.uleb128 0x2
+ 817 00c1 08       		.byte	0x8
+ 818 00c2 04       		.byte	0x4
+ 819 00c3 A7040000 		.4byte	.LASF17
+ 820 00c7 02       		.uleb128 0x2
+ 821 00c8 01       		.byte	0x1
+ 822 00c9 08       		.byte	0x8
+ 823 00ca 57030000 		.4byte	.LASF18
+ 824 00ce 05       		.uleb128 0x5
+ 825 00cf 5C030000 		.4byte	.LASF19
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 21
+
+
+ 826 00d3 04       		.byte	0x4
+ 827 00d4 8B02     		.2byte	0x28b
+ 828 00d6 69000000 		.4byte	0x69
+ 829 00da 02       		.uleb128 0x2
+ 830 00db 08       		.byte	0x8
+ 831 00dc 04       		.byte	0x4
+ 832 00dd 15020000 		.4byte	.LASF20
+ 833 00e1 02       		.uleb128 0x2
+ 834 00e2 04       		.byte	0x4
+ 835 00e3 07       		.byte	0x7
+ 836 00e4 74000000 		.4byte	.LASF21
+ 837 00e8 06       		.uleb128 0x6
+ 838 00e9 8C000000 		.4byte	0x8c
+ 839 00ed 06       		.uleb128 0x6
+ 840 00ee 97000000 		.4byte	0x97
+ 841 00f2 07       		.uleb128 0x7
+ 842 00f3 2C030000 		.4byte	.LASF22
+ 843 00f7 01       		.byte	0x1
+ 844 00f8 22       		.byte	0x22
+ 845 00f9 00000000 		.4byte	.LFB64
+ 846 00fd 74000000 		.4byte	.LFE64-.LFB64
+ 847 0101 01       		.uleb128 0x1
+ 848 0102 9C       		.byte	0x9c
+ 849 0103 78010000 		.4byte	0x178
+ 850 0107 08       		.uleb128 0x8
+ 851 0108 06000000 		.4byte	.LVL0
+ 852 010c 50070000 		.4byte	0x750
+ 853 0110 08       		.uleb128 0x8
+ 854 0111 0E000000 		.4byte	.LVL1
+ 855 0115 5B070000 		.4byte	0x75b
+ 856 0119 09       		.uleb128 0x9
+ 857 011a 14000000 		.4byte	.LVL2
+ 858 011e 66070000 		.4byte	0x766
+ 859 0122 2C010000 		.4byte	0x12c
+ 860 0126 0A       		.uleb128 0xa
+ 861 0127 01       		.uleb128 0x1
+ 862 0128 50       		.byte	0x50
+ 863 0129 01       		.uleb128 0x1
+ 864 012a 31       		.byte	0x31
+ 865 012b 00       		.byte	0
+ 866 012c 09       		.uleb128 0x9
+ 867 012d 1A000000 		.4byte	.LVL3
+ 868 0131 71070000 		.4byte	0x771
+ 869 0135 3F010000 		.4byte	0x13f
+ 870 0139 0A       		.uleb128 0xa
+ 871 013a 01       		.uleb128 0x1
+ 872 013b 50       		.byte	0x50
+ 873 013c 01       		.uleb128 0x1
+ 874 013d 30       		.byte	0x30
+ 875 013e 00       		.byte	0
+ 876 013f 08       		.uleb128 0x8
+ 877 0140 30000000 		.4byte	.LVL4
+ 878 0144 7C070000 		.4byte	0x77c
+ 879 0148 08       		.uleb128 0x8
+ 880 0149 34000000 		.4byte	.LVL5
+ 881 014d 87070000 		.4byte	0x787
+ 882 0151 09       		.uleb128 0x9
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 22
+
+
+ 883 0152 40000000 		.4byte	.LVL6
+ 884 0156 92070000 		.4byte	0x792
+ 885 015a 65010000 		.4byte	0x165
+ 886 015e 0A       		.uleb128 0xa
+ 887 015f 01       		.uleb128 0x1
+ 888 0160 50       		.byte	0x50
+ 889 0161 02       		.uleb128 0x2
+ 890 0162 08       		.byte	0x8
+ 891 0163 4D       		.byte	0x4d
+ 892 0164 00       		.byte	0
+ 893 0165 08       		.uleb128 0x8
+ 894 0166 44000000 		.4byte	.LVL7
+ 895 016a 9D070000 		.4byte	0x79d
+ 896 016e 08       		.uleb128 0x8
+ 897 016f 48000000 		.4byte	.LVL8
+ 898 0173 A8070000 		.4byte	0x7a8
+ 899 0177 00       		.byte	0
+ 900 0178 07       		.uleb128 0x7
+ 901 0179 02010000 		.4byte	.LASF23
+ 902 017d 01       		.byte	0x1
+ 903 017e 3B       		.byte	0x3b
+ 904 017f 00000000 		.4byte	.LFB65
+ 905 0183 34000000 		.4byte	.LFE65-.LFB65
+ 906 0187 01       		.uleb128 0x1
+ 907 0188 9C       		.byte	0x9c
+ 908 0189 E8010000 		.4byte	0x1e8
+ 909 018d 0B       		.uleb128 0xb
+ 910 018e 21020000 		.4byte	.LASF24
+ 911 0192 01       		.byte	0x1
+ 912 0193 42       		.byte	0x42
+ 913 0194 AD000000 		.4byte	0xad
+ 914 0198 00000000 		.4byte	.LLST0
+ 915 019c 0B       		.uleb128 0xb
+ 916 019d E5030000 		.4byte	.LASF25
+ 917 01a1 01       		.byte	0x1
+ 918 01a2 44       		.byte	0x44
+ 919 01a3 8C000000 		.4byte	0x8c
+ 920 01a7 13000000 		.4byte	.LLST1
+ 921 01ab 0C       		.uleb128 0xc
+ 922 01ac 38000000 		.4byte	.LASF26
+ 923 01b0 01       		.byte	0x1
+ 924 01b1 45       		.byte	0x45
+ 925 01b2 8C000000 		.4byte	0x8c
+ 926 01b6 01       		.uleb128 0x1
+ 927 01b7 50       		.byte	0x50
+ 928 01b8 09       		.uleb128 0x9
+ 929 01b9 08000000 		.4byte	.LVL9
+ 930 01bd 66070000 		.4byte	0x766
+ 931 01c1 CB010000 		.4byte	0x1cb
+ 932 01c5 0A       		.uleb128 0xa
+ 933 01c6 01       		.uleb128 0x1
+ 934 01c7 50       		.byte	0x50
+ 935 01c8 01       		.uleb128 0x1
+ 936 01c9 30       		.byte	0x30
+ 937 01ca 00       		.byte	0
+ 938 01cb 09       		.uleb128 0x9
+ 939 01cc 0E000000 		.4byte	.LVL10
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 23
+
+
+ 940 01d0 71070000 		.4byte	0x771
+ 941 01d4 DE010000 		.4byte	0x1de
+ 942 01d8 0A       		.uleb128 0xa
+ 943 01d9 01       		.uleb128 0x1
+ 944 01da 50       		.byte	0x50
+ 945 01db 01       		.uleb128 0x1
+ 946 01dc 31       		.byte	0x31
+ 947 01dd 00       		.byte	0
+ 948 01de 08       		.uleb128 0x8
+ 949 01df 12000000 		.4byte	.LVL11
+ 950 01e3 B3070000 		.4byte	0x7b3
+ 951 01e7 00       		.byte	0
+ 952 01e8 07       		.uleb128 0x7
+ 953 01e9 63020000 		.4byte	.LASF27
+ 954 01ed 01       		.byte	0x1
+ 955 01ee 4A       		.byte	0x4a
+ 956 01ef 00000000 		.4byte	.LFB66
+ 957 01f3 6C000000 		.4byte	.LFE66-.LFB66
+ 958 01f7 01       		.uleb128 0x1
+ 959 01f8 9C       		.byte	0x9c
+ 960 01f9 35020000 		.4byte	0x235
+ 961 01fd 0D       		.uleb128 0xd
+ 962 01fe 28000000 		.4byte	.LBB2
+ 963 0202 1A000000 		.4byte	.LBE2-.LBB2
+ 964 0206 18020000 		.4byte	0x218
+ 965 020a 0E       		.uleb128 0xe
+ 966 020b 6900     		.ascii	"i\000"
+ 967 020d 01       		.byte	0x1
+ 968 020e 54       		.byte	0x54
+ 969 020f 97000000 		.4byte	0x97
+ 970 0213 35000000 		.4byte	.LLST2
+ 971 0217 00       		.byte	0
+ 972 0218 09       		.uleb128 0x9
+ 973 0219 08000000 		.4byte	.LVL15
+ 974 021d 66070000 		.4byte	0x766
+ 975 0221 2B020000 		.4byte	0x22b
+ 976 0225 0A       		.uleb128 0xa
+ 977 0226 01       		.uleb128 0x1
+ 978 0227 50       		.byte	0x50
+ 979 0228 01       		.uleb128 0x1
+ 980 0229 31       		.byte	0x31
+ 981 022a 00       		.byte	0
+ 982 022b 08       		.uleb128 0x8
+ 983 022c 12000000 		.4byte	.LVL16
+ 984 0230 BE070000 		.4byte	0x7be
+ 985 0234 00       		.byte	0
+ 986 0235 0F       		.uleb128 0xf
+ 987 0236 C5000000 		.4byte	.LASF82
+ 988 023a 01       		.byte	0x1
+ 989 023b 61       		.byte	0x61
+ 990 023c 7E000000 		.4byte	0x7e
+ 991 0240 00000000 		.4byte	.LFB67
+ 992 0244 18020000 		.4byte	.LFE67-.LFB67
+ 993 0248 01       		.uleb128 0x1
+ 994 0249 9C       		.byte	0x9c
+ 995 024a 92050000 		.4byte	0x592
+ 996 024e 0D       		.uleb128 0xd
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 24
+
+
+ 997 024f 46000000 		.4byte	.LBB3
+ 998 0253 18000000 		.4byte	.LBE3-.LBB3
+ 999 0257 69020000 		.4byte	0x269
+ 1000 025b 0E       		.uleb128 0xe
+ 1001 025c 6900     		.ascii	"i\000"
+ 1002 025e 01       		.byte	0x1
+ 1003 025f 89       		.byte	0x89
+ 1004 0260 97000000 		.4byte	0x97
+ 1005 0264 5F000000 		.4byte	.LLST3
+ 1006 0268 00       		.byte	0
+ 1007 0269 0D       		.uleb128 0xd
+ 1008 026a 5E000000 		.4byte	.LBB4
+ 1009 026e 12000000 		.4byte	.LBE4-.LBB4
+ 1010 0272 84020000 		.4byte	0x284
+ 1011 0276 0E       		.uleb128 0xe
+ 1012 0277 6900     		.ascii	"i\000"
+ 1013 0279 01       		.byte	0x1
+ 1014 027a 8E       		.byte	0x8e
+ 1015 027b 97000000 		.4byte	0x97
+ 1016 027f 89000000 		.4byte	.LLST4
+ 1017 0283 00       		.byte	0
+ 1018 0284 0D       		.uleb128 0xd
+ 1019 0285 F0000000 		.4byte	.LBB5
+ 1020 0289 12000000 		.4byte	.LBE5-.LBB5
+ 1021 028d 9F020000 		.4byte	0x29f
+ 1022 0291 0E       		.uleb128 0xe
+ 1023 0292 6900     		.ascii	"i\000"
+ 1024 0294 01       		.byte	0x1
+ 1025 0295 D4       		.byte	0xd4
+ 1026 0296 7E000000 		.4byte	0x7e
+ 1027 029a A7000000 		.4byte	.LLST5
+ 1028 029e 00       		.byte	0
+ 1029 029f 10       		.uleb128 0x10
+ 1030 02a0 00000000 		.4byte	.Ldebug_ranges0+0
+ 1031 02a4 29030000 		.4byte	0x329
+ 1032 02a8 11       		.uleb128 0x11
+ 1033 02a9 6900     		.ascii	"i\000"
+ 1034 02ab 01       		.byte	0x1
+ 1035 02ac 2901     		.2byte	0x129
+ 1036 02ae 7E000000 		.4byte	0x7e
+ 1037 02b2 C6000000 		.4byte	.LLST6
+ 1038 02b6 09       		.uleb128 0x9
+ 1039 02b7 B8010000 		.4byte	.LVL67
+ 1040 02bb 71070000 		.4byte	0x771
+ 1041 02bf C9020000 		.4byte	0x2c9
+ 1042 02c3 0A       		.uleb128 0xa
+ 1043 02c4 01       		.uleb128 0x1
+ 1044 02c5 50       		.byte	0x50
+ 1045 02c6 01       		.uleb128 0x1
+ 1046 02c7 31       		.byte	0x31
+ 1047 02c8 00       		.byte	0
+ 1048 02c9 09       		.uleb128 0x9
+ 1049 02ca BE010000 		.4byte	.LVL68
+ 1050 02ce 66070000 		.4byte	0x766
+ 1051 02d2 DC020000 		.4byte	0x2dc
+ 1052 02d6 0A       		.uleb128 0xa
+ 1053 02d7 01       		.uleb128 0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 25
+
+
+ 1054 02d8 50       		.byte	0x50
+ 1055 02d9 01       		.uleb128 0x1
+ 1056 02da 31       		.byte	0x31
+ 1057 02db 00       		.byte	0
+ 1058 02dc 09       		.uleb128 0x9
+ 1059 02dd C6010000 		.4byte	.LVL69
+ 1060 02e1 C9070000 		.4byte	0x7c9
+ 1061 02e5 F1020000 		.4byte	0x2f1
+ 1062 02e9 0A       		.uleb128 0xa
+ 1063 02ea 01       		.uleb128 0x1
+ 1064 02eb 50       		.byte	0x50
+ 1065 02ec 03       		.uleb128 0x3
+ 1066 02ed 0A       		.byte	0xa
+ 1067 02ee F401     		.2byte	0x1f4
+ 1068 02f0 00       		.byte	0
+ 1069 02f1 09       		.uleb128 0x9
+ 1070 02f2 CC010000 		.4byte	.LVL70
+ 1071 02f6 71070000 		.4byte	0x771
+ 1072 02fa 04030000 		.4byte	0x304
+ 1073 02fe 0A       		.uleb128 0xa
+ 1074 02ff 01       		.uleb128 0x1
+ 1075 0300 50       		.byte	0x50
+ 1076 0301 01       		.uleb128 0x1
+ 1077 0302 30       		.byte	0x30
+ 1078 0303 00       		.byte	0
+ 1079 0304 09       		.uleb128 0x9
+ 1080 0305 D2010000 		.4byte	.LVL71
+ 1081 0309 66070000 		.4byte	0x766
+ 1082 030d 17030000 		.4byte	0x317
+ 1083 0311 0A       		.uleb128 0xa
+ 1084 0312 01       		.uleb128 0x1
+ 1085 0313 50       		.byte	0x50
+ 1086 0314 01       		.uleb128 0x1
+ 1087 0315 30       		.byte	0x30
+ 1088 0316 00       		.byte	0
+ 1089 0317 12       		.uleb128 0x12
+ 1090 0318 DA010000 		.4byte	.LVL72
+ 1091 031c C9070000 		.4byte	0x7c9
+ 1092 0320 0A       		.uleb128 0xa
+ 1093 0321 01       		.uleb128 0x1
+ 1094 0322 50       		.byte	0x50
+ 1095 0323 03       		.uleb128 0x3
+ 1096 0324 0A       		.byte	0xa
+ 1097 0325 F401     		.2byte	0x1f4
+ 1098 0327 00       		.byte	0
+ 1099 0328 00       		.byte	0
+ 1100 0329 08       		.uleb128 0x8
+ 1101 032a 1A000000 		.4byte	.LVL22
+ 1102 032e D4070000 		.4byte	0x7d4
+ 1103 0332 09       		.uleb128 0x9
+ 1104 0333 22000000 		.4byte	.LVL23
+ 1105 0337 DF070000 		.4byte	0x7df
+ 1106 033b 4B030000 		.4byte	0x34b
+ 1107 033f 0A       		.uleb128 0xa
+ 1108 0340 01       		.uleb128 0x1
+ 1109 0341 50       		.byte	0x50
+ 1110 0342 01       		.uleb128 0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 26
+
+
+ 1111 0343 32       		.byte	0x32
+ 1112 0344 0A       		.uleb128 0xa
+ 1113 0345 01       		.uleb128 0x1
+ 1114 0346 51       		.byte	0x51
+ 1115 0347 02       		.uleb128 0x2
+ 1116 0348 74       		.byte	0x74
+ 1117 0349 00       		.sleb128 0
+ 1118 034a 00       		.byte	0
+ 1119 034b 09       		.uleb128 0x9
+ 1120 034c 28000000 		.4byte	.LVL24
+ 1121 0350 EA070000 		.4byte	0x7ea
+ 1122 0354 62030000 		.4byte	0x362
+ 1123 0358 0A       		.uleb128 0xa
+ 1124 0359 01       		.uleb128 0x1
+ 1125 035a 50       		.byte	0x50
+ 1126 035b 05       		.uleb128 0x5
+ 1127 035c 03       		.byte	0x3
+ 1128 035d 00000000 		.4byte	dacInterrupt
+ 1129 0361 00       		.byte	0
+ 1130 0362 08       		.uleb128 0x8
+ 1131 0363 2C000000 		.4byte	.LVL25
+ 1132 0367 87070000 		.4byte	0x787
+ 1133 036b 09       		.uleb128 0x9
+ 1134 036c 32000000 		.4byte	.LVL26
+ 1135 0370 F5070000 		.4byte	0x7f5
+ 1136 0374 82030000 		.4byte	0x382
+ 1137 0378 0A       		.uleb128 0xa
+ 1138 0379 01       		.uleb128 0x1
+ 1139 037a 50       		.byte	0x50
+ 1140 037b 05       		.uleb128 0x5
+ 1141 037c 03       		.byte	0x3
+ 1142 037d 00000000 		.4byte	adcInterrupt
+ 1143 0381 00       		.byte	0
+ 1144 0382 08       		.uleb128 0x8
+ 1145 0383 36000000 		.4byte	.LVL27
+ 1146 0387 7C070000 		.4byte	0x77c
+ 1147 038b 09       		.uleb128 0x9
+ 1148 038c 3C000000 		.4byte	.LVL28
+ 1149 0390 00080000 		.4byte	0x800
+ 1150 0394 A2030000 		.4byte	0x3a2
+ 1151 0398 0A       		.uleb128 0xa
+ 1152 0399 01       		.uleb128 0x1
+ 1153 039a 50       		.byte	0x50
+ 1154 039b 05       		.uleb128 0x5
+ 1155 039c 03       		.byte	0x3
+ 1156 039d 00000000 		.4byte	Custom_UART_BT_RX_Interrupt
+ 1157 03a1 00       		.byte	0
+ 1158 03a2 08       		.uleb128 0x8
+ 1159 03a3 40000000 		.4byte	.LVL29
+ 1160 03a7 0B080000 		.4byte	0x80b
+ 1161 03ab 09       		.uleb128 0x9
+ 1162 03ac 46000000 		.4byte	.LVL30
+ 1163 03b0 C9070000 		.4byte	0x7c9
+ 1164 03b4 BF030000 		.4byte	0x3bf
+ 1165 03b8 0A       		.uleb128 0xa
+ 1166 03b9 01       		.uleb128 0x1
+ 1167 03ba 50       		.byte	0x50
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 27
+
+
+ 1168 03bb 02       		.uleb128 0x2
+ 1169 03bc 08       		.byte	0x8
+ 1170 03bd 64       		.byte	0x64
+ 1171 03be 00       		.byte	0
+ 1172 03bf 09       		.uleb128 0x9
+ 1173 03c0 76000000 		.4byte	.LVL37
+ 1174 03c4 16080000 		.4byte	0x816
+ 1175 03c8 D2030000 		.4byte	0x3d2
+ 1176 03cc 0A       		.uleb128 0xa
+ 1177 03cd 01       		.uleb128 0x1
+ 1178 03ce 50       		.byte	0x50
+ 1179 03cf 01       		.uleb128 0x1
+ 1180 03d0 30       		.byte	0x30
+ 1181 03d1 00       		.byte	0
+ 1182 03d2 09       		.uleb128 0x9
+ 1183 03d3 7C000000 		.4byte	.LVL38
+ 1184 03d7 21080000 		.4byte	0x821
+ 1185 03db E5030000 		.4byte	0x3e5
+ 1186 03df 0A       		.uleb128 0xa
+ 1187 03e0 01       		.uleb128 0x1
+ 1188 03e1 50       		.byte	0x50
+ 1189 03e2 01       		.uleb128 0x1
+ 1190 03e3 30       		.byte	0x30
+ 1191 03e4 00       		.byte	0
+ 1192 03e5 08       		.uleb128 0x8
+ 1193 03e6 80000000 		.4byte	.LVL39
+ 1194 03ea 2C080000 		.4byte	0x82c
+ 1195 03ee 09       		.uleb128 0x9
+ 1196 03ef 86000000 		.4byte	.LVL40
+ 1197 03f3 37080000 		.4byte	0x837
+ 1198 03f7 02040000 		.4byte	0x402
+ 1199 03fb 0A       		.uleb128 0xa
+ 1200 03fc 01       		.uleb128 0x1
+ 1201 03fd 50       		.byte	0x50
+ 1202 03fe 02       		.uleb128 0x2
+ 1203 03ff 08       		.byte	0x8
+ 1204 0400 FF       		.byte	0xff
+ 1205 0401 00       		.byte	0
+ 1206 0402 09       		.uleb128 0x9
+ 1207 0403 92000000 		.4byte	.LVL41
+ 1208 0407 42080000 		.4byte	0x842
+ 1209 040b 1B040000 		.4byte	0x41b
+ 1210 040f 0A       		.uleb128 0xa
+ 1211 0410 01       		.uleb128 0x1
+ 1212 0411 50       		.byte	0x50
+ 1213 0412 01       		.uleb128 0x1
+ 1214 0413 30       		.byte	0x30
+ 1215 0414 0A       		.uleb128 0xa
+ 1216 0415 01       		.uleb128 0x1
+ 1217 0416 51       		.byte	0x51
+ 1218 0417 02       		.uleb128 0x2
+ 1219 0418 08       		.byte	0x8
+ 1220 0419 FF       		.byte	0xff
+ 1221 041a 00       		.byte	0
+ 1222 041b 09       		.uleb128 0x9
+ 1223 041c 98000000 		.4byte	.LVL42
+ 1224 0420 37080000 		.4byte	0x837
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 28
+
+
+ 1225 0424 2F040000 		.4byte	0x42f
+ 1226 0428 0A       		.uleb128 0xa
+ 1227 0429 01       		.uleb128 0x1
+ 1228 042a 50       		.byte	0x50
+ 1229 042b 02       		.uleb128 0x2
+ 1230 042c 08       		.byte	0x8
+ 1231 042d FF       		.byte	0xff
+ 1232 042e 00       		.byte	0
+ 1233 042f 08       		.uleb128 0x8
+ 1234 0430 9E000000 		.4byte	.LVL43
+ 1235 0434 4D080000 		.4byte	0x84d
+ 1236 0438 09       		.uleb128 0x9
+ 1237 0439 A4000000 		.4byte	.LVL44
+ 1238 043d C9070000 		.4byte	0x7c9
+ 1239 0441 4C040000 		.4byte	0x44c
+ 1240 0445 0A       		.uleb128 0xa
+ 1241 0446 01       		.uleb128 0x1
+ 1242 0447 50       		.byte	0x50
+ 1243 0448 02       		.uleb128 0x2
+ 1244 0449 08       		.byte	0x8
+ 1245 044a 64       		.byte	0x64
+ 1246 044b 00       		.byte	0
+ 1247 044c 09       		.uleb128 0x9
+ 1248 044d E2000000 		.4byte	.LVL45
+ 1249 0451 58080000 		.4byte	0x858
+ 1250 0455 5F040000 		.4byte	0x45f
+ 1251 0459 0A       		.uleb128 0xa
+ 1252 045a 01       		.uleb128 0x1
+ 1253 045b 50       		.byte	0x50
+ 1254 045c 01       		.uleb128 0x1
+ 1255 045d 31       		.byte	0x31
+ 1256 045e 00       		.byte	0
+ 1257 045f 09       		.uleb128 0x9
+ 1258 0460 E8000000 		.4byte	.LVL46
+ 1259 0464 C9070000 		.4byte	0x7c9
+ 1260 0468 73040000 		.4byte	0x473
+ 1261 046c 0A       		.uleb128 0xa
+ 1262 046d 01       		.uleb128 0x1
+ 1263 046e 50       		.byte	0x50
+ 1264 046f 02       		.uleb128 0x2
+ 1265 0470 08       		.byte	0x8
+ 1266 0471 64       		.byte	0x64
+ 1267 0472 00       		.byte	0
+ 1268 0473 09       		.uleb128 0x9
+ 1269 0474 08010000 		.4byte	.LVL50
+ 1270 0478 58080000 		.4byte	0x858
+ 1271 047c 86040000 		.4byte	0x486
+ 1272 0480 0A       		.uleb128 0xa
+ 1273 0481 01       		.uleb128 0x1
+ 1274 0482 50       		.byte	0x50
+ 1275 0483 01       		.uleb128 0x1
+ 1276 0484 45       		.byte	0x45
+ 1277 0485 00       		.byte	0
+ 1278 0486 09       		.uleb128 0x9
+ 1279 0487 1C010000 		.4byte	.LVL51
+ 1280 048b 63080000 		.4byte	0x863
+ 1281 048f 9A040000 		.4byte	0x49a
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 29
+
+
+ 1282 0493 0A       		.uleb128 0xa
+ 1283 0494 01       		.uleb128 0x1
+ 1284 0495 50       		.byte	0x50
+ 1285 0496 02       		.uleb128 0x2
+ 1286 0497 74       		.byte	0x74
+ 1287 0498 00       		.sleb128 0
+ 1288 0499 00       		.byte	0
+ 1289 049a 08       		.uleb128 0x8
+ 1290 049b 22010000 		.4byte	.LVL52
+ 1291 049f 21080000 		.4byte	0x821
+ 1292 04a3 09       		.uleb128 0x9
+ 1293 04a4 38010000 		.4byte	.LVL53
+ 1294 04a8 42080000 		.4byte	0x842
+ 1295 04ac B6040000 		.4byte	0x4b6
+ 1296 04b0 0A       		.uleb128 0xa
+ 1297 04b1 01       		.uleb128 0x1
+ 1298 04b2 51       		.byte	0x51
+ 1299 04b3 01       		.uleb128 0x1
+ 1300 04b4 44       		.byte	0x44
+ 1301 04b5 00       		.byte	0
+ 1302 04b6 09       		.uleb128 0x9
+ 1303 04b7 40010000 		.4byte	.LVL54
+ 1304 04bb 42080000 		.4byte	0x842
+ 1305 04bf C9040000 		.4byte	0x4c9
+ 1306 04c3 0A       		.uleb128 0xa
+ 1307 04c4 01       		.uleb128 0x1
+ 1308 04c5 51       		.byte	0x51
+ 1309 04c6 01       		.uleb128 0x1
+ 1310 04c7 45       		.byte	0x45
+ 1311 04c8 00       		.byte	0
+ 1312 04c9 09       		.uleb128 0x9
+ 1313 04ca 4A010000 		.4byte	.LVL55
+ 1314 04ce 6E080000 		.4byte	0x86e
+ 1315 04d2 DD040000 		.4byte	0x4dd
+ 1316 04d6 0A       		.uleb128 0xa
+ 1317 04d7 01       		.uleb128 0x1
+ 1318 04d8 50       		.byte	0x50
+ 1319 04d9 02       		.uleb128 0x2
+ 1320 04da 74       		.byte	0x74
+ 1321 04db 00       		.sleb128 0
+ 1322 04dc 00       		.byte	0
+ 1323 04dd 09       		.uleb128 0x9
+ 1324 04de 50010000 		.4byte	.LVL56
+ 1325 04e2 79080000 		.4byte	0x879
+ 1326 04e6 F1040000 		.4byte	0x4f1
+ 1327 04ea 0A       		.uleb128 0xa
+ 1328 04eb 01       		.uleb128 0x1
+ 1329 04ec 50       		.byte	0x50
+ 1330 04ed 02       		.uleb128 0x2
+ 1331 04ee 74       		.byte	0x74
+ 1332 04ef 00       		.sleb128 0
+ 1333 04f0 00       		.byte	0
+ 1334 04f1 09       		.uleb128 0x9
+ 1335 04f2 60010000 		.4byte	.LVL57
+ 1336 04f6 58080000 		.4byte	0x858
+ 1337 04fa 04050000 		.4byte	0x504
+ 1338 04fe 0A       		.uleb128 0xa
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 30
+
+
+ 1339 04ff 01       		.uleb128 0x1
+ 1340 0500 50       		.byte	0x50
+ 1341 0501 01       		.uleb128 0x1
+ 1342 0502 31       		.byte	0x31
+ 1343 0503 00       		.byte	0
+ 1344 0504 09       		.uleb128 0x9
+ 1345 0505 66010000 		.4byte	.LVL58
+ 1346 0509 C9070000 		.4byte	0x7c9
+ 1347 050d 18050000 		.4byte	0x518
+ 1348 0511 0A       		.uleb128 0xa
+ 1349 0512 01       		.uleb128 0x1
+ 1350 0513 50       		.byte	0x50
+ 1351 0514 02       		.uleb128 0x2
+ 1352 0515 08       		.byte	0x8
+ 1353 0516 64       		.byte	0x64
+ 1354 0517 00       		.byte	0
+ 1355 0518 09       		.uleb128 0x9
+ 1356 0519 6E010000 		.4byte	.LVL59
+ 1357 051d 84080000 		.4byte	0x884
+ 1358 0521 2F050000 		.4byte	0x52f
+ 1359 0525 0A       		.uleb128 0xa
+ 1360 0526 01       		.uleb128 0x1
+ 1361 0527 50       		.byte	0x50
+ 1362 0528 05       		.uleb128 0x5
+ 1363 0529 03       		.byte	0x3
+ 1364 052a 00000000 		.4byte	data_buffer
+ 1365 052e 00       		.byte	0
+ 1366 052f 09       		.uleb128 0x9
+ 1367 0530 7E010000 		.4byte	.LVL60
+ 1368 0534 58080000 		.4byte	0x858
+ 1369 0538 42050000 		.4byte	0x542
+ 1370 053c 0A       		.uleb128 0xa
+ 1371 053d 01       		.uleb128 0x1
+ 1372 053e 50       		.byte	0x50
+ 1373 053f 01       		.uleb128 0x1
+ 1374 0540 31       		.byte	0x31
+ 1375 0541 00       		.byte	0
+ 1376 0542 08       		.uleb128 0x8
+ 1377 0543 84010000 		.4byte	.LVL61
+ 1378 0547 8F080000 		.4byte	0x88f
+ 1379 054b 08       		.uleb128 0x8
+ 1380 054c 8A010000 		.4byte	.LVL62
+ 1381 0550 8F080000 		.4byte	0x88f
+ 1382 0554 09       		.uleb128 0x9
+ 1383 0555 92010000 		.4byte	.LVL63
+ 1384 0559 9A080000 		.4byte	0x89a
+ 1385 055d 6B050000 		.4byte	0x56b
+ 1386 0561 0A       		.uleb128 0xa
+ 1387 0562 01       		.uleb128 0x1
+ 1388 0563 50       		.byte	0x50
+ 1389 0564 05       		.uleb128 0x5
+ 1390 0565 03       		.byte	0x3
+ 1391 0566 00000000 		.4byte	data_buffer
+ 1392 056a 00       		.byte	0
+ 1393 056b 09       		.uleb128 0x9
+ 1394 056c 9E010000 		.4byte	.LVL64
+ 1395 0570 58080000 		.4byte	0x858
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 31
+
+
+ 1396 0574 7E050000 		.4byte	0x57e
+ 1397 0578 0A       		.uleb128 0xa
+ 1398 0579 01       		.uleb128 0x1
+ 1399 057a 50       		.byte	0x50
+ 1400 057b 01       		.uleb128 0x1
+ 1401 057c 32       		.byte	0x32
+ 1402 057d 00       		.byte	0
+ 1403 057e 12       		.uleb128 0x12
+ 1404 057f A6010000 		.4byte	.LVL65
+ 1405 0583 A5080000 		.4byte	0x8a5
+ 1406 0587 0A       		.uleb128 0xa
+ 1407 0588 01       		.uleb128 0x1
+ 1408 0589 50       		.byte	0x50
+ 1409 058a 05       		.uleb128 0x5
+ 1410 058b 03       		.byte	0x3
+ 1411 058c 00000000 		.4byte	data_buffer
+ 1412 0590 00       		.byte	0
+ 1413 0591 00       		.byte	0
+ 1414 0592 0C       		.uleb128 0xc
+ 1415 0593 CF020000 		.4byte	.LASF28
+ 1416 0597 05       		.byte	0x5
+ 1417 0598 B1       		.byte	0xb1
+ 1418 0599 E8000000 		.4byte	0xe8
+ 1419 059d 05       		.uleb128 0x5
+ 1420 059e 03       		.byte	0x3
+ 1421 059f 00000000 		.4byte	buffer_index
+ 1422 05a3 0C       		.uleb128 0xc
+ 1423 05a4 39030000 		.4byte	.LASF29
+ 1424 05a8 05       		.byte	0x5
+ 1425 05a9 B2       		.byte	0xb2
+ 1426 05aa E8000000 		.4byte	0xe8
+ 1427 05ae 05       		.uleb128 0x5
+ 1428 05af 03       		.byte	0x3
+ 1429 05b0 02000000 		.4byte	connection_state
+ 1430 05b4 0C       		.uleb128 0xc
+ 1431 05b5 F3010000 		.4byte	.LASF30
+ 1432 05b9 05       		.byte	0x5
+ 1433 05ba B3       		.byte	0xb3
+ 1434 05bb E8000000 		.4byte	0xe8
+ 1435 05bf 05       		.uleb128 0x5
+ 1436 05c0 03       		.byte	0x3
+ 1437 05c1 01000000 		.4byte	input_flag
+ 1438 05c5 13       		.uleb128 0x13
+ 1439 05c6 BB040000 		.4byte	.LASF31
+ 1440 05ca 06       		.byte	0x6
+ 1441 05cb 1207     		.2byte	0x712
+ 1442 05cd D1050000 		.4byte	0x5d1
+ 1443 05d1 06       		.uleb128 0x6
+ 1444 05d2 A2000000 		.4byte	0xa2
+ 1445 05d6 14       		.uleb128 0x14
+ 1446 05d7 7D000000 		.4byte	.LASF32
+ 1447 05db 07       		.byte	0x7
+ 1448 05dc 2A       		.byte	0x2a
+ 1449 05dd 97000000 		.4byte	0x97
+ 1450 05e1 05       		.uleb128 0x5
+ 1451 05e2 03       		.byte	0x3
+ 1452 05e3 00000000 		.4byte	dac_ground_value
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 32
+
+
+ 1453 05e7 14       		.uleb128 0x14
+ 1454 05e8 DC020000 		.4byte	.LASF33
+ 1455 05ec 05       		.byte	0x5
+ 1456 05ed 9C       		.byte	0x9c
+ 1457 05ee CE000000 		.4byte	0xce
+ 1458 05f2 05       		.uleb128 0x5
+ 1459 05f3 03       		.byte	0x3
+ 1460 05f4 00000000 		.4byte	return_value
+ 1461 05f8 14       		.uleb128 0x14
+ 1462 05f9 65030000 		.4byte	.LASF34
+ 1463 05fd 07       		.byte	0x7
+ 1464 05fe 28       		.byte	0x28
+ 1465 05ff 97000000 		.4byte	0x97
+ 1466 0603 05       		.uleb128 0x5
+ 1467 0604 03       		.byte	0x3
+ 1468 0605 00000000 		.4byte	lut_value
+ 1469 0609 15       		.uleb128 0x15
+ 1470 060a ED000000 		.4byte	0xed
+ 1471 060e 1A060000 		.4byte	0x61a
+ 1472 0612 16       		.uleb128 0x16
+ 1473 0613 E1000000 		.4byte	0xe1
+ 1474 0617 8C13     		.2byte	0x138c
+ 1475 0619 00       		.byte	0
+ 1476 061a 14       		.uleb128 0x14
+ 1477 061b AC020000 		.4byte	.LASF35
+ 1478 061f 08       		.byte	0x8
+ 1479 0620 2A       		.byte	0x2a
+ 1480 0621 2B060000 		.4byte	0x62b
+ 1481 0625 05       		.uleb128 0x5
+ 1482 0626 03       		.byte	0x3
+ 1483 0627 00000000 		.4byte	waveform_lut
+ 1484 062b 06       		.uleb128 0x6
+ 1485 062c 09060000 		.4byte	0x609
+ 1486 0630 14       		.uleb128 0x14
+ 1487 0631 8A030000 		.4byte	.LASF36
+ 1488 0635 05       		.byte	0x5
+ 1489 0636 A6       		.byte	0xa6
+ 1490 0637 97000000 		.4byte	0x97
+ 1491 063b 05       		.uleb128 0x5
+ 1492 063c 03       		.byte	0x3
+ 1493 063d 00000000 		.4byte	lut_index
+ 1494 0641 14       		.uleb128 0x14
+ 1495 0642 94040000 		.4byte	.LASF37
+ 1496 0646 07       		.byte	0x7
+ 1497 0647 2B       		.byte	0x2b
+ 1498 0648 97000000 		.4byte	0x97
+ 1499 064c 05       		.uleb128 0x5
+ 1500 064d 03       		.byte	0x3
+ 1501 064e 00000000 		.4byte	lut_length
+ 1502 0652 15       		.uleb128 0x15
+ 1503 0653 8C000000 		.4byte	0x8c
+ 1504 0657 62060000 		.4byte	0x662
+ 1505 065b 17       		.uleb128 0x17
+ 1506 065c E1000000 		.4byte	0xe1
+ 1507 0660 14       		.byte	0x14
+ 1508 0661 00       		.byte	0
+ 1509 0662 14       		.uleb128 0x14
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 33
+
+
+ 1510 0663 7C010000 		.4byte	.LASF38
+ 1511 0667 05       		.byte	0x5
+ 1512 0668 A9       		.byte	0xa9
+ 1513 0669 52060000 		.4byte	0x652
+ 1514 066d 05       		.uleb128 0x5
+ 1515 066e 03       		.byte	0x3
+ 1516 066f 00000000 		.4byte	tia_calibration_values
+ 1517 0673 14       		.uleb128 0x14
+ 1518 0674 E9020000 		.4byte	.LASF39
+ 1519 0678 05       		.byte	0x5
+ 1520 0679 AC       		.byte	0xac
+ 1521 067a 8C000000 		.4byte	0x8c
+ 1522 067e 05       		.uleb128 0x5
+ 1523 067f 03       		.byte	0x3
+ 1524 0680 00000000 		.4byte	selected_voltage_source
+ 1525 0684 15       		.uleb128 0x15
+ 1526 0685 E8000000 		.4byte	0xe8
+ 1527 0689 94060000 		.4byte	0x694
+ 1528 068d 17       		.uleb128 0x17
+ 1529 068e E1000000 		.4byte	0xe1
+ 1530 0692 13       		.byte	0x13
+ 1531 0693 00       		.byte	0
+ 1532 0694 14       		.uleb128 0x14
+ 1533 0695 5E050000 		.4byte	.LASF40
+ 1534 0699 08       		.byte	0x8
+ 1535 069a 23       		.byte	0x23
+ 1536 069b A5060000 		.4byte	0x6a5
+ 1537 069f 05       		.uleb128 0x5
+ 1538 06a0 03       		.byte	0x3
+ 1539 06a1 00000000 		.4byte	data_buffer
+ 1540 06a5 06       		.uleb128 0x6
+ 1541 06a6 84060000 		.4byte	0x684
+ 1542 06aa 14       		.uleb128 0x14
+ 1543 06ab 93010000 		.4byte	.LASF41
+ 1544 06af 08       		.byte	0x8
+ 1545 06b0 24       		.byte	0x24
+ 1546 06b1 BB060000 		.4byte	0x6bb
+ 1547 06b5 05       		.uleb128 0x5
+ 1548 06b6 03       		.byte	0x3
+ 1549 06b7 00000000 		.4byte	temp
+ 1550 06bb 06       		.uleb128 0x6
+ 1551 06bc 84060000 		.4byte	0x684
+ 1552 06c0 15       		.uleb128 0x15
+ 1553 06c1 E8000000 		.4byte	0xe8
+ 1554 06c5 D0060000 		.4byte	0x6d0
+ 1555 06c9 17       		.uleb128 0x17
+ 1556 06ca E1000000 		.4byte	0xe1
+ 1557 06ce 77       		.byte	0x77
+ 1558 06cf 00       		.byte	0
+ 1559 06d0 14       		.uleb128 0x14
+ 1560 06d1 AE040000 		.4byte	.LASF42
+ 1561 06d5 08       		.byte	0x8
+ 1562 06d6 28       		.byte	0x28
+ 1563 06d7 E1060000 		.4byte	0x6e1
+ 1564 06db 05       		.uleb128 0x5
+ 1565 06dc 03       		.byte	0x3
+ 1566 06dd 00000000 		.4byte	data_to_send
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 34
+
+
+ 1567 06e1 06       		.uleb128 0x6
+ 1568 06e2 C0060000 		.4byte	0x6c0
+ 1569 06e6 15       		.uleb128 0x15
+ 1570 06e7 E8000000 		.4byte	0xe8
+ 1571 06eb F7060000 		.4byte	0x6f7
+ 1572 06ef 16       		.uleb128 0x16
+ 1573 06f0 E1000000 		.4byte	0xe1
+ 1574 06f4 8713     		.2byte	0x1387
+ 1575 06f6 00       		.byte	0
+ 1576 06f7 14       		.uleb128 0x14
+ 1577 06f8 20000000 		.4byte	.LASF43
+ 1578 06fc 08       		.byte	0x8
+ 1579 06fd 27       		.byte	0x27
+ 1580 06fe 08070000 		.4byte	0x708
+ 1581 0702 05       		.uleb128 0x5
+ 1582 0703 03       		.byte	0x3
+ 1583 0704 00000000 		.4byte	data_long
+ 1584 0708 06       		.uleb128 0x6
+ 1585 0709 E6060000 		.4byte	0x6e6
+ 1586 070d 14       		.uleb128 0x14
+ 1587 070e 14030000 		.4byte	.LASF44
+ 1588 0712 05       		.byte	0x5
+ 1589 0713 BC       		.byte	0xbc
+ 1590 0714 8C000000 		.4byte	0x8c
+ 1591 0718 05       		.uleb128 0x5
+ 1592 0719 03       		.byte	0x3
+ 1593 071a 00000000 		.4byte	finished_procedure_flag
+ 1594 071e 15       		.uleb128 0x15
+ 1595 071f 97000000 		.4byte	0x97
+ 1596 0723 2E070000 		.4byte	0x72e
+ 1597 0727 17       		.uleb128 0x17
+ 1598 0728 E1000000 		.4byte	0xe1
+ 1599 072c 09       		.byte	0x9
+ 1600 072d 00       		.byte	0
+ 1601 072e 14       		.uleb128 0x14
+ 1602 072f C0010000 		.4byte	.LASF45
+ 1603 0733 09       		.byte	0x9
+ 1604 0734 2A       		.byte	0x2a
+ 1605 0735 1E070000 		.4byte	0x71e
+ 1606 0739 05       		.uleb128 0x5
+ 1607 073a 03       		.byte	0x3
+ 1608 073b 00000000 		.4byte	calibrate_array
+ 1609 073f 14       		.uleb128 0x14
+ 1610 0740 5B000000 		.4byte	.LASF46
+ 1611 0744 0A       		.byte	0xa
+ 1612 0745 29       		.byte	0x29
+ 1613 0746 8C000000 		.4byte	0x8c
+ 1614 074a 05       		.uleb128 0x5
+ 1615 074b 03       		.byte	0x3
+ 1616 074c 00000000 		.4byte	TIA_resistor_value_index
+ 1617 0750 18       		.uleb128 0x18
+ 1618 0751 D9010000 		.4byte	.LASF47
+ 1619 0755 D9010000 		.4byte	.LASF47
+ 1620 0759 0B       		.byte	0xb
+ 1621 075a 33       		.byte	0x33
+ 1622 075b 18       		.uleb128 0x18
+ 1623 075c 4A030000 		.4byte	.LASF48
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 35
+
+
+ 1624 0760 4A030000 		.4byte	.LASF48
+ 1625 0764 0C       		.byte	0xc
+ 1626 0765 2B       		.byte	0x2b
+ 1627 0766 18       		.uleb128 0x18
+ 1628 0767 A1000000 		.4byte	.LASF49
+ 1629 076b A1000000 		.4byte	.LASF49
+ 1630 076f 0D       		.byte	0xd
+ 1631 0770 26       		.byte	0x26
+ 1632 0771 18       		.uleb128 0x18
+ 1633 0772 2A000000 		.4byte	.LASF50
+ 1634 0776 2A000000 		.4byte	.LASF50
+ 1635 077a 0E       		.byte	0xe
+ 1636 077b 26       		.byte	0x26
+ 1637 077c 18       		.uleb128 0x18
+ 1638 077d 00000000 		.4byte	.LASF51
+ 1639 0781 00000000 		.4byte	.LASF51
+ 1640 0785 0F       		.byte	0xf
+ 1641 0786 25       		.byte	0x25
+ 1642 0787 18       		.uleb128 0x18
+ 1643 0788 10000000 		.4byte	.LASF52
+ 1644 078c 10000000 		.4byte	.LASF52
+ 1645 0790 10       		.byte	0x10
+ 1646 0791 25       		.byte	0x25
+ 1647 0792 18       		.uleb128 0x18
+ 1648 0793 F2000000 		.4byte	.LASF53
+ 1649 0797 F2000000 		.4byte	.LASF53
+ 1650 079b 11       		.byte	0x11
+ 1651 079c 8A       		.byte	0x8a
+ 1652 079d 18       		.uleb128 0x18
+ 1653 079e E5000000 		.4byte	.LASF54
+ 1654 07a2 E5000000 		.4byte	.LASF54
+ 1655 07a6 08       		.byte	0x8
+ 1656 07a7 18       		.byte	0x18
+ 1657 07a8 18       		.uleb128 0x18
+ 1658 07a9 22040000 		.4byte	.LASF55
+ 1659 07ad 22040000 		.4byte	.LASF55
+ 1660 07b1 12       		.byte	0x12
+ 1661 07b2 28       		.byte	0x28
+ 1662 07b3 18       		.uleb128 0x18
+ 1663 07b4 4C020000 		.4byte	.LASF56
+ 1664 07b8 4C020000 		.4byte	.LASF56
+ 1665 07bc 13       		.byte	0x13
+ 1666 07bd 41       		.byte	0x41
+ 1667 07be 18       		.uleb128 0x18
+ 1668 07bf CA000000 		.4byte	.LASF57
+ 1669 07c3 CA000000 		.4byte	.LASF57
+ 1670 07c7 11       		.byte	0x11
+ 1671 07c8 72       		.byte	0x72
+ 1672 07c9 18       		.uleb128 0x18
+ 1673 07ca 56050000 		.4byte	.LASF58
+ 1674 07ce 56050000 		.4byte	.LASF58
+ 1675 07d2 14       		.byte	0x14
+ 1676 07d3 76       		.byte	0x76
+ 1677 07d4 18       		.uleb128 0x18
+ 1678 07d5 37020000 		.4byte	.LASF59
+ 1679 07d9 37020000 		.4byte	.LASF59
+ 1680 07dd 12       		.byte	0x12
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 36
+
+
+ 1681 07de 26       		.byte	0x26
+ 1682 07df 18       		.uleb128 0x18
+ 1683 07e0 A1030000 		.4byte	.LASF60
+ 1684 07e4 A1030000 		.4byte	.LASF60
+ 1685 07e8 13       		.byte	0x13
+ 1686 07e9 44       		.byte	0x44
+ 1687 07ea 18       		.uleb128 0x18
+ 1688 07eb 2D010000 		.4byte	.LASF61
+ 1689 07ef 2D010000 		.4byte	.LASF61
+ 1690 07f3 10       		.byte	0x10
+ 1691 07f4 18       		.byte	0x18
+ 1692 07f5 18       		.uleb128 0x18
+ 1693 07f6 1D010000 		.4byte	.LASF62
+ 1694 07fa 1D010000 		.4byte	.LASF62
+ 1695 07fe 0F       		.byte	0xf
+ 1696 07ff 18       		.byte	0x18
+ 1697 0800 18       		.uleb128 0x18
+ 1698 0801 C0030000 		.4byte	.LASF63
+ 1699 0805 C0030000 		.4byte	.LASF63
+ 1700 0809 15       		.byte	0x15
+ 1701 080a 18       		.byte	0x18
+ 1702 080b 18       		.uleb128 0x18
+ 1703 080c EE030000 		.4byte	.LASF64
+ 1704 0810 EE030000 		.4byte	.LASF64
+ 1705 0814 11       		.byte	0x11
+ 1706 0815 54       		.byte	0x54
+ 1707 0816 18       		.uleb128 0x18
+ 1708 0817 FC030000 		.4byte	.LASF65
+ 1709 081b FC030000 		.4byte	.LASF65
+ 1710 081f 16       		.byte	0x16
+ 1711 0820 40       		.byte	0x40
+ 1712 0821 18       		.uleb128 0x18
+ 1713 0822 D7030000 		.4byte	.LASF66
+ 1714 0826 D7030000 		.4byte	.LASF66
+ 1715 082a 09       		.byte	0x9
+ 1716 082b 3D       		.byte	0x3d
+ 1717 082c 18       		.uleb128 0x18
+ 1718 082d 94030000 		.4byte	.LASF67
+ 1719 0831 94030000 		.4byte	.LASF67
+ 1720 0835 17       		.byte	0x17
+ 1721 0836 1F       		.byte	0x1f
+ 1722 0837 18       		.uleb128 0x18
+ 1723 0838 41000000 		.4byte	.LASF68
+ 1724 083c 41000000 		.4byte	.LASF68
+ 1725 0840 17       		.byte	0x17
+ 1726 0841 23       		.byte	0x23
+ 1727 0842 18       		.uleb128 0x18
+ 1728 0843 6A050000 		.4byte	.LASF69
+ 1729 0847 6A050000 		.4byte	.LASF69
+ 1730 084b 17       		.byte	0x17
+ 1731 084c 21       		.byte	0x21
+ 1732 084d 18       		.uleb128 0x18
+ 1733 084e A6010000 		.4byte	.LASF70
+ 1734 0852 A6010000 		.4byte	.LASF70
+ 1735 0856 12       		.byte	0x12
+ 1736 0857 2C       		.byte	0x2c
+ 1737 0858 18       		.uleb128 0x18
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 37
+
+
+ 1738 0859 9F040000 		.4byte	.LASF71
+ 1739 085d 9F040000 		.4byte	.LASF71
+ 1740 0861 08       		.byte	0x8
+ 1741 0862 15       		.byte	0x15
+ 1742 0863 18       		.uleb128 0x18
+ 1743 0864 57010000 		.4byte	.LASF72
+ 1744 0868 57010000 		.4byte	.LASF72
+ 1745 086c 0A       		.byte	0xa
+ 1746 086d 1D       		.byte	0x1d
+ 1747 086e 18       		.uleb128 0x18
+ 1748 086f 01030000 		.4byte	.LASF73
+ 1749 0873 01030000 		.4byte	.LASF73
+ 1750 0877 0A       		.byte	0xa
+ 1751 0878 21       		.byte	0x21
+ 1752 0879 18       		.uleb128 0x18
+ 1753 087a AF000000 		.4byte	.LASF74
+ 1754 087e AF000000 		.4byte	.LASF74
+ 1755 0882 07       		.byte	0x7
+ 1756 0883 1A       		.byte	0x1a
+ 1757 0884 18       		.uleb128 0x18
+ 1758 0885 7F020000 		.4byte	.LASF75
+ 1759 0889 7F020000 		.4byte	.LASF75
+ 1760 088d 0A       		.byte	0xa
+ 1761 088e 23       		.byte	0x23
+ 1762 088f 18       		.uleb128 0x18
+ 1763 0890 8E000000 		.4byte	.LASF76
+ 1764 0894 8E000000 		.4byte	.LASF76
+ 1765 0898 0A       		.byte	0xa
+ 1766 0899 1F       		.byte	0x1f
+ 1767 089a 18       		.uleb128 0x18
+ 1768 089b FE010000 		.4byte	.LASF77
+ 1769 089f FE010000 		.4byte	.LASF77
+ 1770 08a3 0A       		.byte	0xa
+ 1771 08a4 22       		.byte	0x22
+ 1772 08a5 18       		.uleb128 0x18
+ 1773 08a6 3D010000 		.4byte	.LASF78
+ 1774 08aa 3D010000 		.4byte	.LASF78
+ 1775 08ae 0A       		.byte	0xa
+ 1776 08af 1E       		.byte	0x1e
+ 1777 08b0 00       		.byte	0
+ 1778              		.section	.debug_abbrev,"",%progbits
+ 1779              	.Ldebug_abbrev0:
+ 1780 0000 01       		.uleb128 0x1
+ 1781 0001 11       		.uleb128 0x11
+ 1782 0002 01       		.byte	0x1
+ 1783 0003 25       		.uleb128 0x25
+ 1784 0004 0E       		.uleb128 0xe
+ 1785 0005 13       		.uleb128 0x13
+ 1786 0006 0B       		.uleb128 0xb
+ 1787 0007 03       		.uleb128 0x3
+ 1788 0008 0E       		.uleb128 0xe
+ 1789 0009 1B       		.uleb128 0x1b
+ 1790 000a 0E       		.uleb128 0xe
+ 1791 000b 55       		.uleb128 0x55
+ 1792 000c 17       		.uleb128 0x17
+ 1793 000d 11       		.uleb128 0x11
+ 1794 000e 01       		.uleb128 0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 38
+
+
+ 1795 000f 10       		.uleb128 0x10
+ 1796 0010 17       		.uleb128 0x17
+ 1797 0011 00       		.byte	0
+ 1798 0012 00       		.byte	0
+ 1799 0013 02       		.uleb128 0x2
+ 1800 0014 24       		.uleb128 0x24
+ 1801 0015 00       		.byte	0
+ 1802 0016 0B       		.uleb128 0xb
+ 1803 0017 0B       		.uleb128 0xb
+ 1804 0018 3E       		.uleb128 0x3e
+ 1805 0019 0B       		.uleb128 0xb
+ 1806 001a 03       		.uleb128 0x3
+ 1807 001b 0E       		.uleb128 0xe
+ 1808 001c 00       		.byte	0
+ 1809 001d 00       		.byte	0
+ 1810 001e 03       		.uleb128 0x3
+ 1811 001f 16       		.uleb128 0x16
+ 1812 0020 00       		.byte	0
+ 1813 0021 03       		.uleb128 0x3
+ 1814 0022 0E       		.uleb128 0xe
+ 1815 0023 3A       		.uleb128 0x3a
+ 1816 0024 0B       		.uleb128 0xb
+ 1817 0025 3B       		.uleb128 0x3b
+ 1818 0026 0B       		.uleb128 0xb
+ 1819 0027 49       		.uleb128 0x49
+ 1820 0028 13       		.uleb128 0x13
+ 1821 0029 00       		.byte	0
+ 1822 002a 00       		.byte	0
+ 1823 002b 04       		.uleb128 0x4
+ 1824 002c 24       		.uleb128 0x24
+ 1825 002d 00       		.byte	0
+ 1826 002e 0B       		.uleb128 0xb
+ 1827 002f 0B       		.uleb128 0xb
+ 1828 0030 3E       		.uleb128 0x3e
+ 1829 0031 0B       		.uleb128 0xb
+ 1830 0032 03       		.uleb128 0x3
+ 1831 0033 08       		.uleb128 0x8
+ 1832 0034 00       		.byte	0
+ 1833 0035 00       		.byte	0
+ 1834 0036 05       		.uleb128 0x5
+ 1835 0037 16       		.uleb128 0x16
+ 1836 0038 00       		.byte	0
+ 1837 0039 03       		.uleb128 0x3
+ 1838 003a 0E       		.uleb128 0xe
+ 1839 003b 3A       		.uleb128 0x3a
+ 1840 003c 0B       		.uleb128 0xb
+ 1841 003d 3B       		.uleb128 0x3b
+ 1842 003e 05       		.uleb128 0x5
+ 1843 003f 49       		.uleb128 0x49
+ 1844 0040 13       		.uleb128 0x13
+ 1845 0041 00       		.byte	0
+ 1846 0042 00       		.byte	0
+ 1847 0043 06       		.uleb128 0x6
+ 1848 0044 35       		.uleb128 0x35
+ 1849 0045 00       		.byte	0
+ 1850 0046 49       		.uleb128 0x49
+ 1851 0047 13       		.uleb128 0x13
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 39
+
+
+ 1852 0048 00       		.byte	0
+ 1853 0049 00       		.byte	0
+ 1854 004a 07       		.uleb128 0x7
+ 1855 004b 2E       		.uleb128 0x2e
+ 1856 004c 01       		.byte	0x1
+ 1857 004d 3F       		.uleb128 0x3f
+ 1858 004e 19       		.uleb128 0x19
+ 1859 004f 03       		.uleb128 0x3
+ 1860 0050 0E       		.uleb128 0xe
+ 1861 0051 3A       		.uleb128 0x3a
+ 1862 0052 0B       		.uleb128 0xb
+ 1863 0053 3B       		.uleb128 0x3b
+ 1864 0054 0B       		.uleb128 0xb
+ 1865 0055 27       		.uleb128 0x27
+ 1866 0056 19       		.uleb128 0x19
+ 1867 0057 11       		.uleb128 0x11
+ 1868 0058 01       		.uleb128 0x1
+ 1869 0059 12       		.uleb128 0x12
+ 1870 005a 06       		.uleb128 0x6
+ 1871 005b 40       		.uleb128 0x40
+ 1872 005c 18       		.uleb128 0x18
+ 1873 005d 9742     		.uleb128 0x2117
+ 1874 005f 19       		.uleb128 0x19
+ 1875 0060 01       		.uleb128 0x1
+ 1876 0061 13       		.uleb128 0x13
+ 1877 0062 00       		.byte	0
+ 1878 0063 00       		.byte	0
+ 1879 0064 08       		.uleb128 0x8
+ 1880 0065 898201   		.uleb128 0x4109
+ 1881 0068 00       		.byte	0
+ 1882 0069 11       		.uleb128 0x11
+ 1883 006a 01       		.uleb128 0x1
+ 1884 006b 31       		.uleb128 0x31
+ 1885 006c 13       		.uleb128 0x13
+ 1886 006d 00       		.byte	0
+ 1887 006e 00       		.byte	0
+ 1888 006f 09       		.uleb128 0x9
+ 1889 0070 898201   		.uleb128 0x4109
+ 1890 0073 01       		.byte	0x1
+ 1891 0074 11       		.uleb128 0x11
+ 1892 0075 01       		.uleb128 0x1
+ 1893 0076 31       		.uleb128 0x31
+ 1894 0077 13       		.uleb128 0x13
+ 1895 0078 01       		.uleb128 0x1
+ 1896 0079 13       		.uleb128 0x13
+ 1897 007a 00       		.byte	0
+ 1898 007b 00       		.byte	0
+ 1899 007c 0A       		.uleb128 0xa
+ 1900 007d 8A8201   		.uleb128 0x410a
+ 1901 0080 00       		.byte	0
+ 1902 0081 02       		.uleb128 0x2
+ 1903 0082 18       		.uleb128 0x18
+ 1904 0083 9142     		.uleb128 0x2111
+ 1905 0085 18       		.uleb128 0x18
+ 1906 0086 00       		.byte	0
+ 1907 0087 00       		.byte	0
+ 1908 0088 0B       		.uleb128 0xb
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 40
+
+
+ 1909 0089 34       		.uleb128 0x34
+ 1910 008a 00       		.byte	0
+ 1911 008b 03       		.uleb128 0x3
+ 1912 008c 0E       		.uleb128 0xe
+ 1913 008d 3A       		.uleb128 0x3a
+ 1914 008e 0B       		.uleb128 0xb
+ 1915 008f 3B       		.uleb128 0x3b
+ 1916 0090 0B       		.uleb128 0xb
+ 1917 0091 49       		.uleb128 0x49
+ 1918 0092 13       		.uleb128 0x13
+ 1919 0093 02       		.uleb128 0x2
+ 1920 0094 17       		.uleb128 0x17
+ 1921 0095 00       		.byte	0
+ 1922 0096 00       		.byte	0
+ 1923 0097 0C       		.uleb128 0xc
+ 1924 0098 34       		.uleb128 0x34
+ 1925 0099 00       		.byte	0
+ 1926 009a 03       		.uleb128 0x3
+ 1927 009b 0E       		.uleb128 0xe
+ 1928 009c 3A       		.uleb128 0x3a
+ 1929 009d 0B       		.uleb128 0xb
+ 1930 009e 3B       		.uleb128 0x3b
+ 1931 009f 0B       		.uleb128 0xb
+ 1932 00a0 49       		.uleb128 0x49
+ 1933 00a1 13       		.uleb128 0x13
+ 1934 00a2 02       		.uleb128 0x2
+ 1935 00a3 18       		.uleb128 0x18
+ 1936 00a4 00       		.byte	0
+ 1937 00a5 00       		.byte	0
+ 1938 00a6 0D       		.uleb128 0xd
+ 1939 00a7 0B       		.uleb128 0xb
+ 1940 00a8 01       		.byte	0x1
+ 1941 00a9 11       		.uleb128 0x11
+ 1942 00aa 01       		.uleb128 0x1
+ 1943 00ab 12       		.uleb128 0x12
+ 1944 00ac 06       		.uleb128 0x6
+ 1945 00ad 01       		.uleb128 0x1
+ 1946 00ae 13       		.uleb128 0x13
+ 1947 00af 00       		.byte	0
+ 1948 00b0 00       		.byte	0
+ 1949 00b1 0E       		.uleb128 0xe
+ 1950 00b2 34       		.uleb128 0x34
+ 1951 00b3 00       		.byte	0
+ 1952 00b4 03       		.uleb128 0x3
+ 1953 00b5 08       		.uleb128 0x8
+ 1954 00b6 3A       		.uleb128 0x3a
+ 1955 00b7 0B       		.uleb128 0xb
+ 1956 00b8 3B       		.uleb128 0x3b
+ 1957 00b9 0B       		.uleb128 0xb
+ 1958 00ba 49       		.uleb128 0x49
+ 1959 00bb 13       		.uleb128 0x13
+ 1960 00bc 02       		.uleb128 0x2
+ 1961 00bd 17       		.uleb128 0x17
+ 1962 00be 00       		.byte	0
+ 1963 00bf 00       		.byte	0
+ 1964 00c0 0F       		.uleb128 0xf
+ 1965 00c1 2E       		.uleb128 0x2e
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 41
+
+
+ 1966 00c2 01       		.byte	0x1
+ 1967 00c3 3F       		.uleb128 0x3f
+ 1968 00c4 19       		.uleb128 0x19
+ 1969 00c5 03       		.uleb128 0x3
+ 1970 00c6 0E       		.uleb128 0xe
+ 1971 00c7 3A       		.uleb128 0x3a
+ 1972 00c8 0B       		.uleb128 0xb
+ 1973 00c9 3B       		.uleb128 0x3b
+ 1974 00ca 0B       		.uleb128 0xb
+ 1975 00cb 27       		.uleb128 0x27
+ 1976 00cc 19       		.uleb128 0x19
+ 1977 00cd 49       		.uleb128 0x49
+ 1978 00ce 13       		.uleb128 0x13
+ 1979 00cf 8701     		.uleb128 0x87
+ 1980 00d1 19       		.uleb128 0x19
+ 1981 00d2 11       		.uleb128 0x11
+ 1982 00d3 01       		.uleb128 0x1
+ 1983 00d4 12       		.uleb128 0x12
+ 1984 00d5 06       		.uleb128 0x6
+ 1985 00d6 40       		.uleb128 0x40
+ 1986 00d7 18       		.uleb128 0x18
+ 1987 00d8 9742     		.uleb128 0x2117
+ 1988 00da 19       		.uleb128 0x19
+ 1989 00db 01       		.uleb128 0x1
+ 1990 00dc 13       		.uleb128 0x13
+ 1991 00dd 00       		.byte	0
+ 1992 00de 00       		.byte	0
+ 1993 00df 10       		.uleb128 0x10
+ 1994 00e0 0B       		.uleb128 0xb
+ 1995 00e1 01       		.byte	0x1
+ 1996 00e2 55       		.uleb128 0x55
+ 1997 00e3 17       		.uleb128 0x17
+ 1998 00e4 01       		.uleb128 0x1
+ 1999 00e5 13       		.uleb128 0x13
+ 2000 00e6 00       		.byte	0
+ 2001 00e7 00       		.byte	0
+ 2002 00e8 11       		.uleb128 0x11
+ 2003 00e9 34       		.uleb128 0x34
+ 2004 00ea 00       		.byte	0
+ 2005 00eb 03       		.uleb128 0x3
+ 2006 00ec 08       		.uleb128 0x8
+ 2007 00ed 3A       		.uleb128 0x3a
+ 2008 00ee 0B       		.uleb128 0xb
+ 2009 00ef 3B       		.uleb128 0x3b
+ 2010 00f0 05       		.uleb128 0x5
+ 2011 00f1 49       		.uleb128 0x49
+ 2012 00f2 13       		.uleb128 0x13
+ 2013 00f3 02       		.uleb128 0x2
+ 2014 00f4 17       		.uleb128 0x17
+ 2015 00f5 00       		.byte	0
+ 2016 00f6 00       		.byte	0
+ 2017 00f7 12       		.uleb128 0x12
+ 2018 00f8 898201   		.uleb128 0x4109
+ 2019 00fb 01       		.byte	0x1
+ 2020 00fc 11       		.uleb128 0x11
+ 2021 00fd 01       		.uleb128 0x1
+ 2022 00fe 31       		.uleb128 0x31
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 42
+
+
+ 2023 00ff 13       		.uleb128 0x13
+ 2024 0100 00       		.byte	0
+ 2025 0101 00       		.byte	0
+ 2026 0102 13       		.uleb128 0x13
+ 2027 0103 34       		.uleb128 0x34
+ 2028 0104 00       		.byte	0
+ 2029 0105 03       		.uleb128 0x3
+ 2030 0106 0E       		.uleb128 0xe
+ 2031 0107 3A       		.uleb128 0x3a
+ 2032 0108 0B       		.uleb128 0xb
+ 2033 0109 3B       		.uleb128 0x3b
+ 2034 010a 05       		.uleb128 0x5
+ 2035 010b 49       		.uleb128 0x49
+ 2036 010c 13       		.uleb128 0x13
+ 2037 010d 3F       		.uleb128 0x3f
+ 2038 010e 19       		.uleb128 0x19
+ 2039 010f 3C       		.uleb128 0x3c
+ 2040 0110 19       		.uleb128 0x19
+ 2041 0111 00       		.byte	0
+ 2042 0112 00       		.byte	0
+ 2043 0113 14       		.uleb128 0x14
+ 2044 0114 34       		.uleb128 0x34
+ 2045 0115 00       		.byte	0
+ 2046 0116 03       		.uleb128 0x3
+ 2047 0117 0E       		.uleb128 0xe
+ 2048 0118 3A       		.uleb128 0x3a
+ 2049 0119 0B       		.uleb128 0xb
+ 2050 011a 3B       		.uleb128 0x3b
+ 2051 011b 0B       		.uleb128 0xb
+ 2052 011c 49       		.uleb128 0x49
+ 2053 011d 13       		.uleb128 0x13
+ 2054 011e 3F       		.uleb128 0x3f
+ 2055 011f 19       		.uleb128 0x19
+ 2056 0120 02       		.uleb128 0x2
+ 2057 0121 18       		.uleb128 0x18
+ 2058 0122 00       		.byte	0
+ 2059 0123 00       		.byte	0
+ 2060 0124 15       		.uleb128 0x15
+ 2061 0125 01       		.uleb128 0x1
+ 2062 0126 01       		.byte	0x1
+ 2063 0127 49       		.uleb128 0x49
+ 2064 0128 13       		.uleb128 0x13
+ 2065 0129 01       		.uleb128 0x1
+ 2066 012a 13       		.uleb128 0x13
+ 2067 012b 00       		.byte	0
+ 2068 012c 00       		.byte	0
+ 2069 012d 16       		.uleb128 0x16
+ 2070 012e 21       		.uleb128 0x21
+ 2071 012f 00       		.byte	0
+ 2072 0130 49       		.uleb128 0x49
+ 2073 0131 13       		.uleb128 0x13
+ 2074 0132 2F       		.uleb128 0x2f
+ 2075 0133 05       		.uleb128 0x5
+ 2076 0134 00       		.byte	0
+ 2077 0135 00       		.byte	0
+ 2078 0136 17       		.uleb128 0x17
+ 2079 0137 21       		.uleb128 0x21
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 43
+
+
+ 2080 0138 00       		.byte	0
+ 2081 0139 49       		.uleb128 0x49
+ 2082 013a 13       		.uleb128 0x13
+ 2083 013b 2F       		.uleb128 0x2f
+ 2084 013c 0B       		.uleb128 0xb
+ 2085 013d 00       		.byte	0
+ 2086 013e 00       		.byte	0
+ 2087 013f 18       		.uleb128 0x18
+ 2088 0140 2E       		.uleb128 0x2e
+ 2089 0141 00       		.byte	0
+ 2090 0142 3F       		.uleb128 0x3f
+ 2091 0143 19       		.uleb128 0x19
+ 2092 0144 3C       		.uleb128 0x3c
+ 2093 0145 19       		.uleb128 0x19
+ 2094 0146 6E       		.uleb128 0x6e
+ 2095 0147 0E       		.uleb128 0xe
+ 2096 0148 03       		.uleb128 0x3
+ 2097 0149 0E       		.uleb128 0xe
+ 2098 014a 3A       		.uleb128 0x3a
+ 2099 014b 0B       		.uleb128 0xb
+ 2100 014c 3B       		.uleb128 0x3b
+ 2101 014d 0B       		.uleb128 0xb
+ 2102 014e 00       		.byte	0
+ 2103 014f 00       		.byte	0
+ 2104 0150 00       		.byte	0
+ 2105              		.section	.debug_loc,"",%progbits
+ 2106              	.Ldebug_loc0:
+ 2107              	.LLST0:
+ 2108 0000 12000000 		.4byte	.LVL11
+ 2109 0004 18000000 		.4byte	.LVL13
+ 2110 0008 0100     		.2byte	0x1
+ 2111 000a 50       		.byte	0x50
+ 2112 000b 00000000 		.4byte	0
+ 2113 000f 00000000 		.4byte	0
+ 2114              	.LLST1:
+ 2115 0013 14000000 		.4byte	.LVL12
+ 2116 0017 2A000000 		.4byte	.LVL14
+ 2117 001b 0100     		.2byte	0x1
+ 2118 001d 54       		.byte	0x54
+ 2119 001e 2A000000 		.4byte	.LVL14
+ 2120 0022 34000000 		.4byte	.LFE65
+ 2121 0026 0500     		.2byte	0x5
+ 2122 0028 72       		.byte	0x72
+ 2123 0029 00       		.sleb128 0
+ 2124 002a 73       		.byte	0x73
+ 2125 002b 00       		.sleb128 0
+ 2126 002c 22       		.byte	0x22
+ 2127 002d 00000000 		.4byte	0
+ 2128 0031 00000000 		.4byte	0
+ 2129              	.LLST2:
+ 2130 0035 28000000 		.4byte	.LVL17
+ 2131 0039 2C000000 		.4byte	.LVL18
+ 2132 003d 0200     		.2byte	0x2
+ 2133 003f 30       		.byte	0x30
+ 2134 0040 9F       		.byte	0x9f
+ 2135 0041 2C000000 		.4byte	.LVL18
+ 2136 0045 3C000000 		.4byte	.LVL19
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 44
+
+
+ 2137 0049 0100     		.2byte	0x1
+ 2138 004b 53       		.byte	0x53
+ 2139 004c 3E000000 		.4byte	.LVL20
+ 2140 0050 42000000 		.4byte	.LVL21
+ 2141 0054 0100     		.2byte	0x1
+ 2142 0056 53       		.byte	0x53
+ 2143 0057 00000000 		.4byte	0
+ 2144 005b 00000000 		.4byte	0
+ 2145              	.LLST3:
+ 2146 005f 46000000 		.4byte	.LVL30
+ 2147 0063 48000000 		.4byte	.LVL31
+ 2148 0067 0200     		.2byte	0x2
+ 2149 0069 30       		.byte	0x30
+ 2150 006a 9F       		.byte	0x9f
+ 2151 006b 48000000 		.4byte	.LVL31
+ 2152 006f 54000000 		.4byte	.LVL32
+ 2153 0073 0100     		.2byte	0x1
+ 2154 0075 54       		.byte	0x54
+ 2155 0076 56000000 		.4byte	.LVL33
+ 2156 007a 9E000000 		.4byte	.LVL43
+ 2157 007e 0100     		.2byte	0x1
+ 2158 0080 54       		.byte	0x54
+ 2159 0081 00000000 		.4byte	0
+ 2160 0085 00000000 		.4byte	0
+ 2161              	.LLST4:
+ 2162 0089 5E000000 		.4byte	.LVL34
+ 2163 008d 66000000 		.4byte	.LVL35
+ 2164 0091 0100     		.2byte	0x1
+ 2165 0093 53       		.byte	0x53
+ 2166 0094 68000000 		.4byte	.LVL36
+ 2167 0098 75000000 		.4byte	.LVL37-1
+ 2168 009c 0100     		.2byte	0x1
+ 2169 009e 53       		.byte	0x53
+ 2170 009f 00000000 		.4byte	0
+ 2171 00a3 00000000 		.4byte	0
+ 2172              	.LLST5:
+ 2173 00a7 F0000000 		.4byte	.LVL47
+ 2174 00ab F4000000 		.4byte	.LVL48
+ 2175 00af 0200     		.2byte	0x2
+ 2176 00b1 30       		.byte	0x30
+ 2177 00b2 9F       		.byte	0x9f
+ 2178 00b3 F4000000 		.4byte	.LVL48
+ 2179 00b7 07010000 		.4byte	.LVL50-1
+ 2180 00bb 0100     		.2byte	0x1
+ 2181 00bd 53       		.byte	0x53
+ 2182 00be 00000000 		.4byte	0
+ 2183 00c2 00000000 		.4byte	0
+ 2184              	.LLST6:
+ 2185 00c6 B2010000 		.4byte	.LVL66
+ 2186 00ca DE010000 		.4byte	.LVL74
+ 2187 00ce 0100     		.2byte	0x1
+ 2188 00d0 54       		.byte	0x54
+ 2189 00d1 E0010000 		.4byte	.LVL75
+ 2190 00d5 18020000 		.4byte	.LFE67
+ 2191 00d9 0100     		.2byte	0x1
+ 2192 00db 54       		.byte	0x54
+ 2193 00dc 00000000 		.4byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 45
+
+
+ 2194 00e0 00000000 		.4byte	0
+ 2195              		.section	.debug_aranges,"",%progbits
+ 2196 0000 34000000 		.4byte	0x34
+ 2197 0004 0200     		.2byte	0x2
+ 2198 0006 00000000 		.4byte	.Ldebug_info0
+ 2199 000a 04       		.byte	0x4
+ 2200 000b 00       		.byte	0
+ 2201 000c 0000     		.2byte	0
+ 2202 000e 0000     		.2byte	0
+ 2203 0010 00000000 		.4byte	.LFB64
+ 2204 0014 74000000 		.4byte	.LFE64-.LFB64
+ 2205 0018 00000000 		.4byte	.LFB65
+ 2206 001c 34000000 		.4byte	.LFE65-.LFB65
+ 2207 0020 00000000 		.4byte	.LFB66
+ 2208 0024 6C000000 		.4byte	.LFE66-.LFB66
+ 2209 0028 00000000 		.4byte	.LFB67
+ 2210 002c 18020000 		.4byte	.LFE67-.LFB67
+ 2211 0030 00000000 		.4byte	0
+ 2212 0034 00000000 		.4byte	0
+ 2213              		.section	.debug_ranges,"",%progbits
+ 2214              	.Ldebug_ranges0:
+ 2215 0000 B2010000 		.4byte	.LBB6
+ 2216 0004 DE010000 		.4byte	.LBE6
+ 2217 0008 E0010000 		.4byte	.LBB7
+ 2218 000c E4010000 		.4byte	.LBE7
+ 2219 0010 00000000 		.4byte	0
+ 2220 0014 00000000 		.4byte	0
+ 2221 0018 00000000 		.4byte	.LFB64
+ 2222 001c 74000000 		.4byte	.LFE64
+ 2223 0020 00000000 		.4byte	.LFB65
+ 2224 0024 34000000 		.4byte	.LFE65
+ 2225 0028 00000000 		.4byte	.LFB66
+ 2226 002c 6C000000 		.4byte	.LFE66
+ 2227 0030 00000000 		.4byte	.LFB67
+ 2228 0034 18020000 		.4byte	.LFE67
+ 2229 0038 00000000 		.4byte	0
+ 2230 003c 00000000 		.4byte	0
+ 2231              		.section	.debug_line,"",%progbits
+ 2232              	.Ldebug_line0:
+ 2233 0000 8C030000 		.section	.debug_str,"MS",%progbits,1
+ 2233      02006402 
+ 2233      00000201 
+ 2233      FB0E0D00 
+ 2233      01010101 
+ 2234              	.LASF51:
+ 2235 0000 6973725F 		.ascii	"isr_adc_Disable\000"
+ 2235      6164635F 
+ 2235      44697361 
+ 2235      626C6500 
+ 2236              	.LASF52:
+ 2237 0010 6973725F 		.ascii	"isr_dac_Disable\000"
+ 2237      6461635F 
+ 2237      44697361 
+ 2237      626C6500 
+ 2238              	.LASF43:
+ 2239 0020 64617461 		.ascii	"data_long\000"
+ 2239      5F6C6F6E 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 46
+
+
+ 2239      6700
+ 2240              	.LASF50:
+ 2241 002a 4C45445F 		.ascii	"LED_ADC_Write\000"
+ 2241      4144435F 
+ 2241      57726974 
+ 2241      6500
+ 2242              	.LASF26:
+ 2243 0038 4D53425F 		.ascii	"MSB_data\000"
+ 2243      64617461 
+ 2243      00
+ 2244              	.LASF68:
+ 2245 0041 45455052 		.ascii	"EEPROM_ReadByte\000"
+ 2245      4F4D5F52 
+ 2245      65616442 
+ 2245      79746500 
+ 2246              	.LASF2:
+ 2247 0051 73686F72 		.ascii	"short int\000"
+ 2247      7420696E 
+ 2247      7400
+ 2248              	.LASF46:
+ 2249 005b 5449415F 		.ascii	"TIA_resistor_value_index\000"
+ 2249      72657369 
+ 2249      73746F72 
+ 2249      5F76616C 
+ 2249      75655F69 
+ 2250              	.LASF21:
+ 2251 0074 73697A65 		.ascii	"sizetype\000"
+ 2251      74797065 
+ 2251      00
+ 2252              	.LASF32:
+ 2253 007d 6461635F 		.ascii	"dac_ground_value\000"
+ 2253      67726F75 
+ 2253      6E645F76 
+ 2253      616C7565 
+ 2253      00
+ 2254              	.LASF76:
+ 2255 008e 75736572 		.ascii	"user_run_procedure\000"
+ 2255      5F72756E 
+ 2255      5F70726F 
+ 2255      63656475 
+ 2255      726500
+ 2256              	.LASF49:
+ 2257 00a1 4C45445F 		.ascii	"LED_DAC_Write\000"
+ 2257      4441435F 
+ 2257      57726974 
+ 2257      6500
+ 2258              	.LASF74:
+ 2259 00af 4C55545F 		.ascii	"LUT_MakeTriangle_Wave\000"
+ 2259      4D616B65 
+ 2259      54726961 
+ 2259      6E676C65 
+ 2259      5F576176 
+ 2260              	.LASF82:
+ 2261 00c5 6D61696E 		.ascii	"main\000"
+ 2261      00
+ 2262              	.LASF57:
+ 2263 00ca 55415254 		.ascii	"UART_BT_GetByte\000"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 47
+
+
+ 2263      5F42545F 
+ 2263      47657442 
+ 2263      79746500 
+ 2264              	.LASF4:
+ 2265 00da 5F5F7569 		.ascii	"__uint16_t\000"
+ 2265      6E743136 
+ 2265      5F7400
+ 2266              	.LASF54:
+ 2267 00e5 73656E64 		.ascii	"sendMeasures\000"
+ 2267      4D656173 
+ 2267      75726573 
+ 2267      00
+ 2268              	.LASF53:
+ 2269 00f2 55415254 		.ascii	"UART_BT_PutChar\000"
+ 2269      5F42545F 
+ 2269      50757443 
+ 2269      68617200 
+ 2270              	.LASF23:
+ 2271 0102 61646349 		.ascii	"adcInterrupt\000"
+ 2271      6E746572 
+ 2271      72757074 
+ 2271      00
+ 2272              	.LASF12:
+ 2273 010f 75696E74 		.ascii	"uint8_t\000"
+ 2273      385F7400 
+ 2274              	.LASF15:
+ 2275 0117 696E7431 		.ascii	"int16\000"
+ 2275      3600
+ 2276              	.LASF62:
+ 2277 011d 6973725F 		.ascii	"isr_adc_StartEx\000"
+ 2277      6164635F 
+ 2277      53746172 
+ 2277      74457800 
+ 2278              	.LASF61:
+ 2279 012d 6973725F 		.ascii	"isr_dac_StartEx\000"
+ 2279      6461635F 
+ 2279      53746172 
+ 2279      74457800 
+ 2280              	.LASF78:
+ 2281 013d 75736572 		.ascii	"user_voltage_source_funcs\000"
+ 2281      5F766F6C 
+ 2281      74616765 
+ 2281      5F736F75 
+ 2281      7263655F 
+ 2282              	.LASF72:
+ 2283 0157 75736572 		.ascii	"user_setup_TIA_ADC\000"
+ 2283      5F736574 
+ 2283      75705F54 
+ 2283      49415F41 
+ 2283      444300
+ 2284              	.LASF0:
+ 2285 016a 7369676E 		.ascii	"signed char\000"
+ 2285      65642063 
+ 2285      68617200 
+ 2286              	.LASF16:
+ 2287 0176 666C6F61 		.ascii	"float\000"
+ 2287      7400
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 48
+
+
+ 2288              	.LASF38:
+ 2289 017c 7469615F 		.ascii	"tia_calibration_values\000"
+ 2289      63616C69 
+ 2289      62726174 
+ 2289      696F6E5F 
+ 2289      76616C75 
+ 2290              	.LASF41:
+ 2291 0193 74656D70 		.ascii	"temp\000"
+ 2291      00
+ 2292              	.LASF9:
+ 2293 0198 6C6F6E67 		.ascii	"long long int\000"
+ 2293      206C6F6E 
+ 2293      6720696E 
+ 2293      7400
+ 2294              	.LASF70:
+ 2295 01a6 696E6974 		.ascii	"initialize_default_values\000"
+ 2295      69616C69 
+ 2295      7A655F64 
+ 2295      65666175 
+ 2295      6C745F76 
+ 2296              	.LASF45:
+ 2297 01c0 63616C69 		.ascii	"calibrate_array\000"
+ 2297      62726174 
+ 2297      655F6172 
+ 2297      72617900 
+ 2298              	.LASF7:
+ 2299 01d0 6C6F6E67 		.ascii	"long int\000"
+ 2299      20696E74 
+ 2299      00
+ 2300              	.LASF47:
+ 2301 01d9 4F70616D 		.ascii	"Opamp_Aux_Start\000"
+ 2301      705F4175 
+ 2301      785F5374 
+ 2301      61727400 
+ 2302              	.LASF3:
+ 2303 01e9 5F5F7569 		.ascii	"__uint8_t\000"
+ 2303      6E74385F 
+ 2303      7400
+ 2304              	.LASF30:
+ 2305 01f3 696E7075 		.ascii	"input_flag\000"
+ 2305      745F666C 
+ 2305      616700
+ 2306              	.LASF77:
+ 2307 01fe 75736572 		.ascii	"user_EEPROM_management\000"
+ 2307      5F454550 
+ 2307      524F4D5F 
+ 2307      6D616E61 
+ 2307      67656D65 
+ 2308              	.LASF20:
+ 2309 0215 6C6F6E67 		.ascii	"long double\000"
+ 2309      20646F75 
+ 2309      626C6500 
+ 2310              	.LASF24:
+ 2311 0221 6D656173 		.ascii	"measure\000"
+ 2311      75726500 
+ 2312              	.LASF1:
+ 2313 0229 756E7369 		.ascii	"unsigned char\000"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 49
+
+
+ 2313      676E6564 
+ 2313      20636861 
+ 2313      7200
+ 2314              	.LASF59:
+ 2315 0237 68656C70 		.ascii	"helper_HardwareSetup\000"
+ 2315      65725F48 
+ 2315      61726477 
+ 2315      61726553 
+ 2315      65747570 
+ 2316              	.LASF56:
+ 2317 024c 4144435F 		.ascii	"ADC_SigDel_GetResult16\000"
+ 2317      53696744 
+ 2317      656C5F47 
+ 2317      65745265 
+ 2317      73756C74 
+ 2318              	.LASF27:
+ 2319 0263 43757374 		.ascii	"Custom_UART_BT_RX_Interrupt\000"
+ 2319      6F6D5F55 
+ 2319      4152545F 
+ 2319      42545F52 
+ 2319      585F496E 
+ 2320              	.LASF75:
+ 2321 027f 75736572 		.ascii	"user_chrono_lut_maker\000"
+ 2321      5F636872 
+ 2321      6F6E6F5F 
+ 2321      6C75745F 
+ 2321      6D616B65 
+ 2322              	.LASF10:
+ 2323 0295 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 2323      206C6F6E 
+ 2323      6720756E 
+ 2323      7369676E 
+ 2323      65642069 
+ 2324              	.LASF35:
+ 2325 02ac 77617665 		.ascii	"waveform_lut\000"
+ 2325      666F726D 
+ 2325      5F6C7574 
+ 2325      00
+ 2326              	.LASF11:
+ 2327 02b9 756E7369 		.ascii	"unsigned int\000"
+ 2327      676E6564 
+ 2327      20696E74 
+ 2327      00
+ 2328              	.LASF13:
+ 2329 02c6 75696E74 		.ascii	"uint16_t\000"
+ 2329      31365F74 
+ 2329      00
+ 2330              	.LASF28:
+ 2331 02cf 62756666 		.ascii	"buffer_index\000"
+ 2331      65725F69 
+ 2331      6E646578 
+ 2331      00
+ 2332              	.LASF33:
+ 2333 02dc 72657475 		.ascii	"return_value\000"
+ 2333      726E5F76 
+ 2333      616C7565 
+ 2333      00
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 50
+
+
+ 2334              	.LASF39:
+ 2335 02e9 73656C65 		.ascii	"selected_voltage_source\000"
+ 2335      63746564 
+ 2335      5F766F6C 
+ 2335      74616765 
+ 2335      5F736F75 
+ 2336              	.LASF73:
+ 2337 0301 75736572 		.ascii	"user_set_isr_timer\000"
+ 2337      5F736574 
+ 2337      5F697372 
+ 2337      5F74696D 
+ 2337      657200
+ 2338              	.LASF44:
+ 2339 0314 66696E69 		.ascii	"finished_procedure_flag\000"
+ 2339      73686564 
+ 2339      5F70726F 
+ 2339      63656475 
+ 2339      72655F66 
+ 2340              	.LASF22:
+ 2341 032c 64616349 		.ascii	"dacInterrupt\000"
+ 2341      6E746572 
+ 2341      72757074 
+ 2341      00
+ 2342              	.LASF29:
+ 2343 0339 636F6E6E 		.ascii	"connection_state\000"
+ 2343      65637469 
+ 2343      6F6E5F73 
+ 2343      74617465 
+ 2343      00
+ 2344              	.LASF48:
+ 2345 034a 4441435F 		.ascii	"DAC_SetValue\000"
+ 2345      53657456 
+ 2345      616C7565 
+ 2345      00
+ 2346              	.LASF18:
+ 2347 0357 63686172 		.ascii	"char\000"
+ 2347      00
+ 2348              	.LASF19:
+ 2349 035c 63797374 		.ascii	"cystatus\000"
+ 2349      61747573 
+ 2349      00
+ 2350              	.LASF34:
+ 2351 0365 6C75745F 		.ascii	"lut_value\000"
+ 2351      76616C75 
+ 2351      6500
+ 2352              	.LASF14:
+ 2353 036f 696E7433 		.ascii	"int32_t\000"
+ 2353      325F7400 
+ 2354              	.LASF5:
+ 2355 0377 73686F72 		.ascii	"short unsigned int\000"
+ 2355      7420756E 
+ 2355      7369676E 
+ 2355      65642069 
+ 2355      6E7400
+ 2356              	.LASF36:
+ 2357 038a 6C75745F 		.ascii	"lut_index\000"
+ 2357      696E6465 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 51
+
+
+ 2357      7800
+ 2358              	.LASF67:
+ 2359 0394 45455052 		.ascii	"EEPROM_Start\000"
+ 2359      4F4D5F53 
+ 2359      74617274 
+ 2359      00
+ 2360              	.LASF60:
+ 2361 03a1 4144435F 		.ascii	"ADC_SigDel_SelectConfiguration\000"
+ 2361      53696744 
+ 2361      656C5F53 
+ 2361      656C6563 
+ 2361      74436F6E 
+ 2362              	.LASF63:
+ 2363 03c0 6973725F 		.ascii	"isr_UART_BT_RX_StartEx\000"
+ 2363      55415254 
+ 2363      5F42545F 
+ 2363      52585F53 
+ 2363      74617274 
+ 2364              	.LASF66:
+ 2365 03d7 63616C69 		.ascii	"calibrate_TIA\000"
+ 2365      62726174 
+ 2365      655F5449 
+ 2365      4100
+ 2366              	.LASF25:
+ 2367 03e5 4C53425F 		.ascii	"LSB_data\000"
+ 2367      64617461 
+ 2367      00
+ 2368              	.LASF64:
+ 2369 03ee 55415254 		.ascii	"UART_BT_Start\000"
+ 2369      5F42545F 
+ 2369      53746172 
+ 2369      7400
+ 2370              	.LASF65:
+ 2371 03fc 5449415F 		.ascii	"TIA_SetResFB\000"
+ 2371      53657452 
+ 2371      65734642 
+ 2371      00
+ 2372              	.LASF80:
+ 2373 0409 6D61696E 		.ascii	"main.c\000"
+ 2373      2E6300
+ 2374              	.LASF8:
+ 2375 0410 6C6F6E67 		.ascii	"long unsigned int\000"
+ 2375      20756E73 
+ 2375      69676E65 
+ 2375      6420696E 
+ 2375      7400
+ 2376              	.LASF55:
+ 2377 0422 68656C70 		.ascii	"helper_HardwareSleep\000"
+ 2377      65725F48 
+ 2377      61726477 
+ 2377      61726553 
+ 2377      6C656570 
+ 2378              	.LASF81:
+ 2379 0437 5C5C2E70 		.ascii	"\\\\.psf\\Home\\Desktop\\LAB_TEBS\\_Progetto\\TEBS_"
+ 2379      73665C48 
+ 2379      6F6D655C 
+ 2379      4465736B 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 52
+
+
+ 2379      746F705C 
+ 2380 0463 47697448 		.ascii	"GitHub\\PSoC_Project\\PSoC_Project.cydsn\000"
+ 2380      75625C50 
+ 2380      536F435F 
+ 2380      50726F6A 
+ 2380      6563745C 
+ 2381              	.LASF6:
+ 2382 048a 5F5F696E 		.ascii	"__int32_t\000"
+ 2382      7433325F 
+ 2382      7400
+ 2383              	.LASF37:
+ 2384 0494 6C75745F 		.ascii	"lut_length\000"
+ 2384      6C656E67 
+ 2384      746800
+ 2385              	.LASF71:
+ 2386 049f 77726974 		.ascii	"writeBT\000"
+ 2386      65425400 
+ 2387              	.LASF17:
+ 2388 04a7 646F7562 		.ascii	"double\000"
+ 2388      6C6500
+ 2389              	.LASF42:
+ 2390 04ae 64617461 		.ascii	"data_to_send\000"
+ 2390      5F746F5F 
+ 2390      73656E64 
+ 2390      00
+ 2391              	.LASF31:
+ 2392 04bb 49544D5F 		.ascii	"ITM_RxBuffer\000"
+ 2392      52784275 
+ 2392      66666572 
+ 2392      00
+ 2393              	.LASF79:
+ 2394 04c8 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 2394      43313120 
+ 2394      352E342E 
+ 2394      31203230 
+ 2394      31363036 
+ 2395 04fb 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m3 -mthumb -g -O"
+ 2395      20726576 
+ 2395      6973696F 
+ 2395      6E203233 
+ 2395      37373135 
+ 2396 052e 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 2396      66756E63 
+ 2396      74696F6E 
+ 2396      2D736563 
+ 2396      74696F6E 
+ 2397              	.LASF58:
+ 2398 0556 43794465 		.ascii	"CyDelay\000"
+ 2398      6C617900 
+ 2399              	.LASF40:
+ 2400 055e 64617461 		.ascii	"data_buffer\000"
+ 2400      5F627566 
+ 2400      66657200 
+ 2401              	.LASF69:
+ 2402 056a 45455052 		.ascii	"EEPROM_WriteByte\000"
+ 2402      4F4D5F57 
+ 2402      72697465 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccoGs3tP.s 			page 53
+
+
+ 2402      42797465 
+ 2402      00
+ 2403              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran

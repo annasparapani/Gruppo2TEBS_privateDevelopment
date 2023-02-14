@@ -1,0 +1,2439 @@
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"parametric_lut.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.LUT_make_line,"ax",%progbits
+  20              		.align	2
+  21              		.global	LUT_make_line
+  22              		.thumb
+  23              		.thumb_func
+  24              		.type	LUT_make_line, %function
+  25              	LUT_make_line:
+  26              	.LFB2:
+  27              		.file 1 "parametric_lut.c"
+   1:parametric_lut.c **** /*******************************************************************************
+   2:parametric_lut.c **** * File Name: lut_protocols.c
+   3:parametric_lut.c **** *
+   4:parametric_lut.c **** * Description:
+   5:parametric_lut.c **** *  This file contains the protocols to create look up tables
+   6:parametric_lut.c **** *
+   7:parametric_lut.c **** **********************************************************************************
+   8:parametric_lut.c ****  * Copyright Kyle Vitautas Lopin, Naresuan University, Phitsanulok Thailand
+   9:parametric_lut.c ****  * Released under Creative Commons Attribution-ShareAlike  3.0 (CC BY-SA 3.0 US)
+  10:parametric_lut.c **** *********************************************************************************/
+  11:parametric_lut.c **** 
+  12:parametric_lut.c **** #include "parametric_lut.h"
+  13:parametric_lut.c **** 
+  14:parametric_lut.c **** /******************************************************************************
+  15:parametric_lut.c **** * Function Name: LUT_MakeTriangleWave
+  16:parametric_lut.c **** *******************************************************************************
+  17:parametric_lut.c **** *
+  18:parametric_lut.c **** * Summary:
+  19:parametric_lut.c **** *  Fill in the look up table (waveform_lut) for the DACs to perform a cyclic voltammetry experiment
+  20:parametric_lut.c **** *  Start the CV protocol at the user defined start value
+  21:parametric_lut.c **** *
+  22:parametric_lut.c **** * Parameters:
+  23:parametric_lut.c **** *  uint16_t start_value: first value to put in the dac
+  24:parametric_lut.c **** *  uint16_t end_value: to peak dac value
+  25:parametric_lut.c **** *
+  26:parametric_lut.c **** * Return:
+  27:parametric_lut.c **** *  uint16_t: how long the look up table is
+  28:parametric_lut.c **** *
+  29:parametric_lut.c **** * Global variables:
+  30:parametric_lut.c **** *  waveform_lut: Array the look up table is stored in
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 2
+
+
+  31:parametric_lut.c **** *
+  32:parametric_lut.c **** *******************************************************************************/
+  33:parametric_lut.c **** 
+  34:parametric_lut.c **** uint16_t LUT_MakeTriangle_Wave(volatile uint8_t * data_buffer) {
+  35:parametric_lut.c ****     uint8_t start_value  = data_buffer[2];
+  36:parametric_lut.c ****     uint8_t end_value    = data_buffer[3];
+  37:parametric_lut.c ****     uint8_t cv_type      = data_buffer[4];
+  38:parametric_lut.c ****     
+  39:parametric_lut.c ****     uint16_t _lut_index = 0;  // start at the beginning of the lut
+  40:parametric_lut.c ****     
+  41:parametric_lut.c ****     if(!cv_type) { //cv_type == 0 perform linear CV
+  42:parametric_lut.c ****          _lut_index = LUT_make_line(start_value, end_value, 0); //retta da start a end salvata nell
+  43:parametric_lut.c ****          _lut_index = LUT_make_line(end_value, start_value, _lut_index-1); //retta da end a start s
+  44:parametric_lut.c ****     
+  45:parametric_lut.c ****     } else{ // cv_type == 1 perform sqw  
+  46:parametric_lut.c ****         uint8_t pulse_inc    = data_buffer[5];
+  47:parametric_lut.c ****         uint8_t pulse_height = data_buffer[6];
+  48:parametric_lut.c ****         _lut_index = LUT_make_swv_line(start_value, end_value, pulse_inc, pulse_height, 0); 
+  49:parametric_lut.c ****         _lut_index = LUT_make_swv_line(end_value, start_value, pulse_inc, pulse_height, _lut_index-
+  50:parametric_lut.c ****     }
+  51:parametric_lut.c ****     waveform_lut[_lut_index] = start_value;  // the DAC is changed before the value is checked in t
+  52:parametric_lut.c ****                                             // 1 over so make it stay at last voltage
+  53:parametric_lut.c ****     _lut_index++;
+  54:parametric_lut.c **** 
+  55:parametric_lut.c ****     return _lut_index;  
+  56:parametric_lut.c **** }
+  57:parametric_lut.c **** 
+  58:parametric_lut.c **** /******************************************************************************
+  59:parametric_lut.c **** * Function Name: LUT_make_line
+  60:parametric_lut.c **** *******************************************************************************
+  61:parametric_lut.c **** *
+  62:parametric_lut.c **** * Summary:
+  63:parametric_lut.c **** *  Make a ramp from start to end in waveform_lut starting at index
+  64:parametric_lut.c **** *  Does not matter if start or end is higher
+  65:parametric_lut.c **** *
+  66:parametric_lut.c **** * Parameters:
+  67:parametric_lut.c **** *  uint16_t start: first value to put in the look up table
+  68:parametric_lut.c **** *  uint16_t end: end value to put in the look up table
+  69:parametric_lut.c **** *  uint16_t index: the place to start putting in numbers in the look up table
+  70:parametric_lut.c **** *
+  71:parametric_lut.c **** * Return:
+  72:parametric_lut.c **** *  uint16_t: first place after the filled in area of the look up table
+  73:parametric_lut.c **** *
+  74:parametric_lut.c **** * Global variables:
+  75:parametric_lut.c **** *  waveform_lut: Array the look up table is stored in
+  76:parametric_lut.c **** *
+  77:parametric_lut.c **** *******************************************************************************/
+  78:parametric_lut.c **** 
+  79:parametric_lut.c **** uint16_t LUT_make_line(uint16_t start, uint16_t end, uint16_t index) {
+  28              		.loc 1 79 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33              	.LVL0:
+  80:parametric_lut.c ****     //printf("start: %i, end: %i\n", start, end);
+  81:parametric_lut.c ****     if (start < end) {
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 3
+
+
+  34              		.loc 1 81 0
+  35 0000 8842     		cmp	r0, r1
+  36 0002 10D2     		bcs	.L2
+  37              	.LBB2:
+  82:parametric_lut.c ****         for (int16_t value = start; value <= end; value++) {
+  38              		.loc 1 82 0
+  39 0004 03B2     		sxth	r3, r0
+  40              	.LVL1:
+  41 0006 0BE0     		b	.L3
+  42              	.LVL2:
+  43              	.L5:
+  83:parametric_lut.c ****             waveform_lut[index] = value;
+  44              		.loc 1 83 0
+  45 0008 9BB2     		uxth	r3, r3
+  46 000a 1048     		ldr	r0, .L8
+  47 000c 20F81230 		strh	r3, [r0, r2, lsl #1]	@ movhi
+  84:parametric_lut.c ****             index ++;
+  48              		.loc 1 84 0
+  49 0010 0132     		adds	r2, r2, #1
+  50              	.LVL3:
+  51 0012 92B2     		uxth	r2, r2
+  52              	.LVL4:
+  85:parametric_lut.c ****             //printf("l: %i, %i\n", index, value);
+  86:parametric_lut.c ****             if (index >= MAX_LUT_SIZE) { //questo sarebbe un errore da gestire, per ora non viene c
+  53              		.loc 1 86 0
+  54 0014 41F28730 		movw	r0, #4999
+  55 0018 8242     		cmp	r2, r0
+  56 001a 14D8     		bhi	.L4
+  82:parametric_lut.c ****             waveform_lut[index] = value;
+  57              		.loc 1 82 0 discriminator 2
+  58 001c 0133     		adds	r3, r3, #1
+  59              	.LVL5:
+  60 001e 1BB2     		sxth	r3, r3
+  61              	.LVL6:
+  62              	.L3:
+  82:parametric_lut.c ****             waveform_lut[index] = value;
+  63              		.loc 1 82 0 is_stmt 0 discriminator 1
+  64 0020 8B42     		cmp	r3, r1
+  65 0022 F1DD     		ble	.L5
+  66 0024 0FE0     		b	.L4
+  67              	.LVL7:
+  68              	.L2:
+  69              	.LBE2:
+  70              	.LBB3:
+  87:parametric_lut.c ****                 return index;
+  88:parametric_lut.c ****             }
+  89:parametric_lut.c ****         }
+  90:parametric_lut.c ****     }
+  91:parametric_lut.c ****     else {
+  92:parametric_lut.c ****         for (int16_t value = start; value >= end; value--) {
+  71              		.loc 1 92 0 is_stmt 1
+  72 0026 03B2     		sxth	r3, r0
+  73              	.LVL8:
+  74 0028 0BE0     		b	.L6
+  75              	.LVL9:
+  76              	.L7:
+  93:parametric_lut.c ****             waveform_lut[index] = value;
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 4
+
+
+  77              		.loc 1 93 0
+  78 002a 9BB2     		uxth	r3, r3
+  79 002c 0748     		ldr	r0, .L8
+  80 002e 20F81230 		strh	r3, [r0, r2, lsl #1]	@ movhi
+  94:parametric_lut.c ****             index ++;
+  81              		.loc 1 94 0
+  82 0032 0132     		adds	r2, r2, #1
+  83              	.LVL10:
+  84 0034 92B2     		uxth	r2, r2
+  85              	.LVL11:
+  95:parametric_lut.c ****             //printf("b: %i, %i\n", index, value);
+  96:parametric_lut.c ****             if (index >= MAX_LUT_SIZE) {
+  86              		.loc 1 96 0
+  87 0036 41F28730 		movw	r0, #4999
+  88 003a 8242     		cmp	r2, r0
+  89 003c 03D8     		bhi	.L4
+  92:parametric_lut.c ****             waveform_lut[index] = value;
+  90              		.loc 1 92 0 discriminator 2
+  91 003e 013B     		subs	r3, r3, #1
+  92              	.LVL12:
+  93 0040 1BB2     		sxth	r3, r3
+  94              	.LVL13:
+  95              	.L6:
+  92:parametric_lut.c ****             waveform_lut[index] = value;
+  96              		.loc 1 92 0 is_stmt 0 discriminator 1
+  97 0042 8B42     		cmp	r3, r1
+  98 0044 F1DA     		bge	.L7
+  99              	.LVL14:
+ 100              	.L4:
+ 101              	.LBE3:
+  97:parametric_lut.c ****                 return index;
+  98:parametric_lut.c ****             }
+  99:parametric_lut.c ****         }
+ 100:parametric_lut.c ****     }
+ 101:parametric_lut.c ****     //printf("m: %i\n", index);
+ 102:parametric_lut.c ****     return index;
+ 103:parametric_lut.c **** }
+ 102              		.loc 1 103 0 is_stmt 1
+ 103 0046 1046     		mov	r0, r2
+ 104 0048 7047     		bx	lr
+ 105              	.L9:
+ 106 004a 00BF     		.align	2
+ 107              	.L8:
+ 108 004c 00000000 		.word	waveform_lut
+ 109              		.cfi_endproc
+ 110              	.LFE2:
+ 111              		.size	LUT_make_line, .-LUT_make_line
+ 112              		.section	.text.LUT_make_swv_line,"ax",%progbits
+ 113              		.align	2
+ 114              		.global	LUT_make_swv_line
+ 115              		.thumb
+ 116              		.thumb_func
+ 117              		.type	LUT_make_swv_line, %function
+ 118              	LUT_make_swv_line:
+ 119              	.LFB3:
+ 104:parametric_lut.c **** 
+ 105:parametric_lut.c **** /******************************************************************************
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 5
+
+
+ 106:parametric_lut.c **** * Function Name: LUT_make_swv_side
+ 107:parametric_lut.c **** *******************************************************************************
+ 108:parametric_lut.c **** *
+ 109:parametric_lut.c **** * Summary:
+ 110:parametric_lut.c **** *  Make a ramp with a square wave super imposed, from start to end in waveform_lut
+ 111:parametric_lut.c **** *  starting at index
+ 112:parametric_lut.c **** *  Does not matter if start or end is higher
+ 113:parametric_lut.c **** *
+ 114:parametric_lut.c **** * Parameters:
+ 115:parametric_lut.c **** *  uint16_t start: first value to put in the look up table
+ 116:parametric_lut.c **** *  uint16_t end: end value to put in the look up table
+ 117:parametric_lut.c **** *  uint16_t pulse_inc: increment between the square pulse steps
+ 118:parametric_lut.c **** *  uint16_t pulse_height: height of each square wave pulse
+ 119:parametric_lut.c **** *  uint16_t index: the place to start putting in numbers in the look up table
+ 120:parametric_lut.c **** *
+ 121:parametric_lut.c **** * Return:
+ 122:parametric_lut.c **** *  uint16: first place after the filled in area of the look up table
+ 123:parametric_lut.c **** *
+ 124:parametric_lut.c **** * Global variables:
+ 125:parametric_lut.c **** *  waveform_lut: Array the look up table is stored in
+ 126:parametric_lut.c **** *
+ 127:parametric_lut.c **** *******************************************************************************/
+ 128:parametric_lut.c **** 
+ 129:parametric_lut.c **** uint16_t LUT_make_swv_line(uint16_t start, uint16_t end, uint16_t pulse_inc, uint16_t pulse_height,
+ 120              		.loc 1 129 0
+ 121              		.cfi_startproc
+ 122              		@ args = 4, pretend = 0, frame = 0
+ 123              		@ frame_needed = 0, uses_anonymous_args = 0
+ 124              	.LVL15:
+ 125 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 126              		.cfi_def_cfa_offset 24
+ 127              		.cfi_offset 4, -24
+ 128              		.cfi_offset 5, -20
+ 129              		.cfi_offset 6, -16
+ 130              		.cfi_offset 7, -12
+ 131              		.cfi_offset 8, -8
+ 132              		.cfi_offset 14, -4
+ 133 0004 BDF81840 		ldrh	r4, [sp, #24]
+ 130:parametric_lut.c ****     
+ 131:parametric_lut.c ****     if (index > MAX_LUT_SIZE) {
+ 134              		.loc 1 131 0
+ 135 0008 41F28836 		movw	r6, #5000
+ 136 000c B442     		cmp	r4, r6
+ 137 000e 3AD8     		bhi	.L11
+ 132:parametric_lut.c ****         return index;
+ 133:parametric_lut.c ****     }
+ 134:parametric_lut.c ****     uint16_t half_pulse = pulse_height / 2;
+ 138              		.loc 1 134 0
+ 139 0010 5D08     		lsrs	r5, r3, #1
+ 140              	.LVL16:
+ 135:parametric_lut.c ****     if (start < end) {
+ 141              		.loc 1 135 0
+ 142 0012 8842     		cmp	r0, r1
+ 143 0014 18D2     		bcs	.L12
+ 144              	.LBB4:
+ 136:parametric_lut.c ****         for (int16_t value = start; value <= end; value+=pulse_inc) {
+ 145              		.loc 1 136 0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 6
+
+
+ 146 0016 00B2     		sxth	r0, r0
+ 147              	.LVL17:
+ 148 0018 13E0     		b	.L13
+ 149              	.LVL18:
+ 150              	.L14:
+ 137:parametric_lut.c ****             waveform_lut[index] = value + half_pulse;
+ 151              		.loc 1 137 0
+ 152 001a 80B2     		uxth	r0, r0
+ 153 001c 2B18     		adds	r3, r5, r0
+ 154 001e 9BB2     		uxth	r3, r3
+ 155 0020 1A4F     		ldr	r7, .L18
+ 156 0022 27F81430 		strh	r3, [r7, r4, lsl #1]	@ movhi
+ 138:parametric_lut.c ****             index ++;
+ 157              		.loc 1 138 0
+ 158 0026 631C     		adds	r3, r4, #1
+ 159 0028 9BB2     		uxth	r3, r3
+ 160              	.LVL19:
+ 139:parametric_lut.c ****             waveform_lut[index] = value - half_pulse;
+ 161              		.loc 1 139 0
+ 162 002a 461B     		subs	r6, r0, r5
+ 163 002c B6B2     		uxth	r6, r6
+ 164 002e 27F81360 		strh	r6, [r7, r3, lsl #1]	@ movhi
+ 140:parametric_lut.c ****             index ++;
+ 165              		.loc 1 140 0
+ 166 0032 0234     		adds	r4, r4, #2
+ 167 0034 A4B2     		uxth	r4, r4
+ 168              	.LVL20:
+ 141:parametric_lut.c ****             if (index > MAX_LUT_SIZE) {
+ 169              		.loc 1 141 0
+ 170 0036 41F28833 		movw	r3, #5000
+ 171 003a 9C42     		cmp	r4, r3
+ 172 003c 23D8     		bhi	.L11
+ 136:parametric_lut.c ****             waveform_lut[index] = value + half_pulse;
+ 173              		.loc 1 136 0 discriminator 2
+ 174 003e 1044     		add	r0, r0, r2
+ 175              	.LVL21:
+ 176 0040 00B2     		sxth	r0, r0
+ 177              	.LVL22:
+ 178              	.L13:
+ 136:parametric_lut.c ****             waveform_lut[index] = value + half_pulse;
+ 179              		.loc 1 136 0 is_stmt 0 discriminator 1
+ 180 0042 8842     		cmp	r0, r1
+ 181 0044 E9DD     		ble	.L14
+ 182 0046 1EE0     		b	.L11
+ 183              	.LVL23:
+ 184              	.L12:
+ 185 0048 9046     		mov	r8, r2
+ 186 004a 0F46     		mov	r7, r1
+ 187              	.LBE4:
+ 188              	.LBB5:
+ 142:parametric_lut.c ****                 break;
+ 143:parametric_lut.c ****             }
+ 144:parametric_lut.c ****         }
+ 145:parametric_lut.c ****     }
+ 146:parametric_lut.c ****     else {
+ 147:parametric_lut.c ****         for (int16_t value = start; value >= end; value-=pulse_inc) {
+ 189              		.loc 1 147 0 is_stmt 1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 7
+
+
+ 190 004c 02B2     		sxth	r2, r0
+ 191              	.LVL24:
+ 192 004e 18E0     		b	.L15
+ 193              	.LVL25:
+ 194              	.L16:
+ 148:parametric_lut.c ****             waveform_lut[index] = value + half_pulse;
+ 195              		.loc 1 148 0
+ 196 0050 96B2     		uxth	r6, r2
+ 197 0052 AB19     		adds	r3, r5, r6
+ 198 0054 9BB2     		uxth	r3, r3
+ 199 0056 0D48     		ldr	r0, .L18
+ 200 0058 20F81430 		strh	r3, [r0, r4, lsl #1]	@ movhi
+ 149:parametric_lut.c ****             index ++;
+ 201              		.loc 1 149 0
+ 202 005c 631C     		adds	r3, r4, #1
+ 203 005e 9BB2     		uxth	r3, r3
+ 204              	.LVL26:
+ 150:parametric_lut.c ****             waveform_lut[index] = value - half_pulse;
+ 205              		.loc 1 150 0
+ 206 0060 711B     		subs	r1, r6, r5
+ 207 0062 89B2     		uxth	r1, r1
+ 208 0064 20F81310 		strh	r1, [r0, r3, lsl #1]	@ movhi
+ 151:parametric_lut.c ****             index ++;
+ 209              		.loc 1 151 0
+ 210 0068 0234     		adds	r4, r4, #2
+ 211 006a A4B2     		uxth	r4, r4
+ 212              	.LVL27:
+ 152:parametric_lut.c ****             printf("b: %i, %i\n", index, value);
+ 213              		.loc 1 152 0
+ 214 006c 2146     		mov	r1, r4
+ 215 006e 0848     		ldr	r0, .L18+4
+ 216 0070 FFF7FEFF 		bl	printf
+ 217              	.LVL28:
+ 153:parametric_lut.c ****             if (index > MAX_LUT_SIZE) {
+ 218              		.loc 1 153 0
+ 219 0074 41F28833 		movw	r3, #5000
+ 220 0078 9C42     		cmp	r4, r3
+ 221 007a 04D8     		bhi	.L11
+ 147:parametric_lut.c ****             waveform_lut[index] = value + half_pulse;
+ 222              		.loc 1 147 0 discriminator 2
+ 223 007c C8EB0602 		rsb	r2, r8, r6
+ 224 0080 12B2     		sxth	r2, r2
+ 225              	.LVL29:
+ 226              	.L15:
+ 147:parametric_lut.c ****             waveform_lut[index] = value + half_pulse;
+ 227              		.loc 1 147 0 is_stmt 0 discriminator 1
+ 228 0082 BA42     		cmp	r2, r7
+ 229 0084 E4DA     		bge	.L16
+ 230              	.LVL30:
+ 231              	.L11:
+ 232              	.LBE5:
+ 154:parametric_lut.c ****                 break;
+ 155:parametric_lut.c ****             }
+ 156:parametric_lut.c ****         }
+ 157:parametric_lut.c ****     }
+ 158:parametric_lut.c ****     return index;
+ 159:parametric_lut.c **** }
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 8
+
+
+ 233              		.loc 1 159 0 is_stmt 1
+ 234 0086 2046     		mov	r0, r4
+ 235 0088 BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 236              	.L19:
+ 237              		.align	2
+ 238              	.L18:
+ 239 008c 00000000 		.word	waveform_lut
+ 240 0090 00000000 		.word	.LC0
+ 241              		.cfi_endproc
+ 242              	.LFE3:
+ 243              		.size	LUT_make_swv_line, .-LUT_make_swv_line
+ 244              		.section	.text.LUT_MakeTriangle_Wave,"ax",%progbits
+ 245              		.align	2
+ 246              		.global	LUT_MakeTriangle_Wave
+ 247              		.thumb
+ 248              		.thumb_func
+ 249              		.type	LUT_MakeTriangle_Wave, %function
+ 250              	LUT_MakeTriangle_Wave:
+ 251              	.LFB1:
+  34:parametric_lut.c ****     uint8_t start_value  = data_buffer[2];
+ 252              		.loc 1 34 0
+ 253              		.cfi_startproc
+ 254              		@ args = 0, pretend = 0, frame = 0
+ 255              		@ frame_needed = 0, uses_anonymous_args = 0
+ 256              	.LVL31:
+ 257 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 258              		.cfi_def_cfa_offset 24
+ 259              		.cfi_offset 4, -24
+ 260              		.cfi_offset 5, -20
+ 261              		.cfi_offset 6, -16
+ 262              		.cfi_offset 7, -12
+ 263              		.cfi_offset 8, -8
+ 264              		.cfi_offset 14, -4
+ 265 0004 82B0     		sub	sp, sp, #8
+ 266              		.cfi_def_cfa_offset 32
+  35:parametric_lut.c ****     uint8_t end_value    = data_buffer[3];
+ 267              		.loc 1 35 0
+ 268 0006 8478     		ldrb	r4, [r0, #2]	@ zero_extendqisi2
+ 269 0008 E4B2     		uxtb	r4, r4
+ 270              	.LVL32:
+  36:parametric_lut.c ****     uint8_t cv_type      = data_buffer[4];
+ 271              		.loc 1 36 0
+ 272 000a C578     		ldrb	r5, [r0, #3]	@ zero_extendqisi2
+ 273 000c EDB2     		uxtb	r5, r5
+ 274              	.LVL33:
+  37:parametric_lut.c ****     
+ 275              		.loc 1 37 0
+ 276 000e 0379     		ldrb	r3, [r0, #4]	@ zero_extendqisi2
+ 277              	.LVL34:
+  41:parametric_lut.c ****          _lut_index = LUT_make_line(start_value, end_value, 0); //retta da start a end salvata nell
+ 278              		.loc 1 41 0
+ 279 0010 13F0FF0F 		tst	r3, #255
+ 280 0014 0DD1     		bne	.L21
+  42:parametric_lut.c ****          _lut_index = LUT_make_line(end_value, start_value, _lut_index-1); //retta da end a start s
+ 281              		.loc 1 42 0
+ 282 0016 A6B2     		uxth	r6, r4
+ 283 0018 ADB2     		uxth	r5, r5
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 9
+
+
+ 284              	.LVL35:
+ 285 001a 0022     		movs	r2, #0
+ 286 001c 2946     		mov	r1, r5
+ 287 001e 3046     		mov	r0, r6
+ 288              	.LVL36:
+ 289 0020 FFF7FEFF 		bl	LUT_make_line
+ 290              	.LVL37:
+  43:parametric_lut.c ****     
+ 291              		.loc 1 43 0
+ 292 0024 421E     		subs	r2, r0, #1
+ 293 0026 92B2     		uxth	r2, r2
+ 294 0028 3146     		mov	r1, r6
+ 295 002a 2846     		mov	r0, r5
+ 296              	.LVL38:
+ 297 002c FFF7FEFF 		bl	LUT_make_line
+ 298              	.LVL39:
+ 299 0030 15E0     		b	.L22
+ 300              	.LVL40:
+ 301              	.L21:
+ 302              	.LBB6:
+  46:parametric_lut.c ****         uint8_t pulse_height = data_buffer[6];
+ 303              		.loc 1 46 0
+ 304 0032 4779     		ldrb	r7, [r0, #5]	@ zero_extendqisi2
+ 305              	.LVL41:
+  47:parametric_lut.c ****         _lut_index = LUT_make_swv_line(start_value, end_value, pulse_inc, pulse_height, 0); 
+ 306              		.loc 1 47 0
+ 307 0034 90F80680 		ldrb	r8, [r0, #6]	@ zero_extendqisi2
+ 308              	.LVL42:
+  48:parametric_lut.c ****         _lut_index = LUT_make_swv_line(end_value, start_value, pulse_inc, pulse_height, _lut_index-
+ 309              		.loc 1 48 0
+ 310 0038 A6B2     		uxth	r6, r4
+ 311 003a ADB2     		uxth	r5, r5
+ 312              	.LVL43:
+ 313 003c 0023     		movs	r3, #0
+ 314              	.LVL44:
+ 315 003e 0093     		str	r3, [sp]
+ 316 0040 4346     		mov	r3, r8
+ 317 0042 3A46     		mov	r2, r7
+ 318 0044 2946     		mov	r1, r5
+ 319 0046 3046     		mov	r0, r6
+ 320              	.LVL45:
+ 321 0048 FFF7FEFF 		bl	LUT_make_swv_line
+ 322              	.LVL46:
+  49:parametric_lut.c ****     }
+ 323              		.loc 1 49 0
+ 324 004c 0138     		subs	r0, r0, #1
+ 325              	.LVL47:
+ 326 004e 80B2     		uxth	r0, r0
+ 327 0050 0090     		str	r0, [sp]
+ 328 0052 4346     		mov	r3, r8
+ 329 0054 3A46     		mov	r2, r7
+ 330 0056 3146     		mov	r1, r6
+ 331 0058 2846     		mov	r0, r5
+ 332 005a FFF7FEFF 		bl	LUT_make_swv_line
+ 333              	.LVL48:
+ 334              	.L22:
+ 335              	.LBE6:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 10
+
+
+  51:parametric_lut.c ****                                             // 1 over so make it stay at last voltage
+ 336              		.loc 1 51 0
+ 337 005e A4B2     		uxth	r4, r4
+ 338              	.LVL49:
+ 339 0060 034B     		ldr	r3, .L24
+ 340 0062 23F81040 		strh	r4, [r3, r0, lsl #1]	@ movhi
+  53:parametric_lut.c **** 
+ 341              		.loc 1 53 0
+ 342 0066 0130     		adds	r0, r0, #1
+ 343              	.LVL50:
+  56:parametric_lut.c **** 
+ 344              		.loc 1 56 0
+ 345 0068 80B2     		uxth	r0, r0
+ 346 006a 02B0     		add	sp, sp, #8
+ 347              		.cfi_def_cfa_offset 24
+ 348              		@ sp needed
+ 349 006c BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 350              	.L25:
+ 351              		.align	2
+ 352              	.L24:
+ 353 0070 00000000 		.word	waveform_lut
+ 354              		.cfi_endproc
+ 355              	.LFE1:
+ 356              		.size	LUT_MakeTriangle_Wave, .-LUT_MakeTriangle_Wave
+ 357              		.section	.text.LUT_MakePulse,"ax",%progbits
+ 358              		.align	2
+ 359              		.global	LUT_MakePulse
+ 360              		.thumb
+ 361              		.thumb_func
+ 362              		.type	LUT_MakePulse, %function
+ 363              	LUT_MakePulse:
+ 364              	.LFB4:
+ 160:parametric_lut.c **** 
+ 161:parametric_lut.c **** /******************************************************************************
+ 162:parametric_lut.c **** * Function Name: LUT_MakePulse
+ 163:parametric_lut.c **** *******************************************************************************
+ 164:parametric_lut.c **** *
+ 165:parametric_lut.c **** * Summary:
+ 166:parametric_lut.c **** *  Make a look up table that stores a square pulse sequence
+ 167:parametric_lut.c **** *  Quick hack for chronoamperomerty
+ 168:parametric_lut.c **** *  TODO: THIS SHOULD BE REPLACED
+ 169:parametric_lut.c **** *
+ 170:parametric_lut.c **** * Parameters:
+ 171:parametric_lut.c **** *  uint16_t base: value to be placed in the DAC to maintain the baseline potential
+ 172:parametric_lut.c **** *  uint16_t pulse: value to put in the DAC for the voltage pulse
+ 173:parametric_lut.c **** *
+ 174:parametric_lut.c **** * Global variables:
+ 175:parametric_lut.c **** *  waveform_lut: Array the look up table is stored in
+ 176:parametric_lut.c **** *
+ 177:parametric_lut.c **** *******************************************************************************/
+ 178:parametric_lut.c **** 
+ 179:parametric_lut.c **** uint16_t LUT_MakePulse(uint16_t base, uint16_t pulse, uint16_t ca_period_ms) {
+ 365              		.loc 1 179 0
+ 366              		.cfi_startproc
+ 367              		@ args = 0, pretend = 0, frame = 0
+ 368              		@ frame_needed = 0, uses_anonymous_args = 0
+ 369              		@ link register save eliminated.
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 11
+
+
+ 370              	.LVL51:
+ 371 0000 10B4     		push	{r4}
+ 372              		.cfi_def_cfa_offset 4
+ 373              		.cfi_offset 4, -4
+ 374              	.LVL52:
+ 180:parametric_lut.c ****     int _lut_index = 0;
+ 181:parametric_lut.c ****     int counter_ca = ca_period_ms/(T_PWM_STD_CA/FREQ_CLOCK_PWM);
+ 375              		.loc 1 181 0
+ 376 0002 104B     		ldr	r3, .L34
+ 377 0004 A3FB0232 		umull	r3, r2, r3, r2
+ 378              	.LVL53:
+ 379 0008 D208     		lsrs	r2, r2, #3
+ 380              	.LVL54:
+ 180:parametric_lut.c ****     int _lut_index = 0;
+ 381              		.loc 1 180 0
+ 382 000a 0023     		movs	r3, #0
+ 182:parametric_lut.c ****     while (_lut_index < 20) { 
+ 383              		.loc 1 182 0
+ 384 000c 03E0     		b	.L27
+ 385              	.LVL55:
+ 386              	.L28:
+ 183:parametric_lut.c ****         waveform_lut[_lut_index] = base;
+ 387              		.loc 1 183 0
+ 388 000e 0E4C     		ldr	r4, .L34+4
+ 389 0010 24F81300 		strh	r0, [r4, r3, lsl #1]	@ movhi
+ 184:parametric_lut.c ****         _lut_index++;
+ 390              		.loc 1 184 0
+ 391 0014 0133     		adds	r3, r3, #1
+ 392              	.LVL56:
+ 393              	.L27:
+ 182:parametric_lut.c ****     while (_lut_index < 20) { 
+ 394              		.loc 1 182 0
+ 395 0016 132B     		cmp	r3, #19
+ 396 0018 F9DD     		ble	.L28
+ 397 001a 03E0     		b	.L29
+ 398              	.L30:
+ 185:parametric_lut.c ****     }
+ 186:parametric_lut.c ****     while (_lut_index < 20+counter_ca) {
+ 187:parametric_lut.c ****         waveform_lut[_lut_index] = pulse;
+ 399              		.loc 1 187 0
+ 400 001c 0A4C     		ldr	r4, .L34+4
+ 401 001e 24F81310 		strh	r1, [r4, r3, lsl #1]	@ movhi
+ 188:parametric_lut.c ****         _lut_index++;
+ 402              		.loc 1 188 0
+ 403 0022 0133     		adds	r3, r3, #1
+ 404              	.LVL57:
+ 405              	.L29:
+ 186:parametric_lut.c ****         waveform_lut[_lut_index] = pulse;
+ 406              		.loc 1 186 0
+ 407 0024 02F11404 		add	r4, r2, #20
+ 408 0028 A342     		cmp	r3, r4
+ 409 002a F7DB     		blt	.L30
+ 410 002c 03E0     		b	.L31
+ 411              	.LVL58:
+ 412              	.L32:
+ 189:parametric_lut.c ****     }
+ 190:parametric_lut.c ****     while (_lut_index < 40+counter_ca) { 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 12
+
+
+ 191:parametric_lut.c ****         waveform_lut[_lut_index] = base;
+ 413              		.loc 1 191 0
+ 414 002e 0649     		ldr	r1, .L34+4
+ 415 0030 21F81300 		strh	r0, [r1, r3, lsl #1]	@ movhi
+ 192:parametric_lut.c ****         _lut_index++;
+ 416              		.loc 1 192 0
+ 417 0034 0133     		adds	r3, r3, #1
+ 418              	.LVL59:
+ 419              	.L31:
+ 190:parametric_lut.c ****         waveform_lut[_lut_index] = base;
+ 420              		.loc 1 190 0
+ 421 0036 02F12801 		add	r1, r2, #40
+ 422 003a 8B42     		cmp	r3, r1
+ 423 003c F7DB     		blt	.L32
+ 193:parametric_lut.c ****     }
+ 194:parametric_lut.c ****     return _lut_index;
+ 195:parametric_lut.c **** }
+ 424              		.loc 1 195 0
+ 425 003e 98B2     		uxth	r0, r3
+ 426              	.LVL60:
+ 427 0040 10BC     		pop	{r4}
+ 428              		.cfi_restore 4
+ 429              		.cfi_def_cfa_offset 0
+ 430 0042 7047     		bx	lr
+ 431              	.L35:
+ 432              		.align	2
+ 433              	.L34:
+ 434 0044 CDCCCCCC 		.word	-858993459
+ 435 0048 00000000 		.word	waveform_lut
+ 436              		.cfi_endproc
+ 437              	.LFE4:
+ 438              		.size	LUT_MakePulse, .-LUT_MakePulse
+ 439              		.comm	finished_procedure_flag,1,1
+ 440              		.comm	data_long,5000,4
+ 441              		.comm	data_to_send,120,4
+ 442              		.comm	temp,20,4
+ 443              		.comm	data_buffer,20,4
+ 444              		.comm	selected_voltage_source,1,1
+ 445              		.comm	tia_calibration_values,21,4
+ 446              		.comm	lut_length,2,2
+ 447              		.comm	lut_index,2,2
+ 448              		.comm	waveform_lut,10010,4
+ 449              		.comm	lut_value,2,2
+ 450              		.comm	return_value,4,4
+ 451              		.comm	dac_ground_value,2,2
+ 452              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 453              		.align	2
+ 454              	.LC0:
+ 455 0000 623A2025 		.ascii	"b: %i, %i\012\000"
+ 455      692C2025 
+ 455      690A00
+ 456              		.bss
+ 457              		.type	input_flag, %object
+ 458              		.size	input_flag, 1
+ 459              	input_flag:
+ 460 0000 00       		.space	1
+ 461              		.type	connection_state, %object
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 13
+
+
+ 462              		.size	connection_state, 1
+ 463              	connection_state:
+ 464 0001 00       		.space	1
+ 465              		.type	buffer_index, %object
+ 466              		.size	buffer_index, 1
+ 467              	buffer_index:
+ 468 0002 00       		.space	1
+ 469              		.text
+ 470              	.Letext0:
+ 471              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 472              		.file 3 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 473              		.file 4 "Generated_Source\\PSoC5/cytypes.h"
+ 474              		.file 5 "globals.h"
+ 475              		.file 6 "parametric_lut.h"
+ 476              		.file 7 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 477              		.section	.debug_info,"",%progbits
+ 478              	.Ldebug_info0:
+ 479 0000 24050000 		.4byte	0x524
+ 480 0004 0400     		.2byte	0x4
+ 481 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 482 000a 04       		.byte	0x4
+ 483 000b 01       		.uleb128 0x1
+ 484 000c EC000000 		.4byte	.LASF55
+ 485 0010 0C       		.byte	0xc
+ 486 0011 5A000000 		.4byte	.LASF56
+ 487 0015 76000000 		.4byte	.LASF57
+ 488 0019 00000000 		.4byte	.Ldebug_ranges0+0
+ 489 001d 00000000 		.4byte	0
+ 490 0021 00000000 		.4byte	.Ldebug_line0
+ 491 0025 02       		.uleb128 0x2
+ 492 0026 04       		.byte	0x4
+ 493 0027 07       		.byte	0x7
+ 494 0028 47020000 		.4byte	.LASF0
+ 495 002c 03       		.uleb128 0x3
+ 496 002d 04       		.byte	0x4
+ 497 002e 05       		.byte	0x5
+ 498 002f 696E7400 		.ascii	"int\000"
+ 499 0033 02       		.uleb128 0x2
+ 500 0034 08       		.byte	0x8
+ 501 0035 05       		.byte	0x5
+ 502 0036 B8020000 		.4byte	.LASF1
+ 503 003a 02       		.uleb128 0x2
+ 504 003b 08       		.byte	0x8
+ 505 003c 04       		.byte	0x4
+ 506 003d 4F030000 		.4byte	.LASF2
+ 507 0041 02       		.uleb128 0x2
+ 508 0042 01       		.byte	0x1
+ 509 0043 06       		.byte	0x6
+ 510 0044 61030000 		.4byte	.LASF3
+ 511 0048 04       		.uleb128 0x4
+ 512 0049 0A000000 		.4byte	.LASF5
+ 513 004d 02       		.byte	0x2
+ 514 004e 1D       		.byte	0x1d
+ 515 004f 53000000 		.4byte	0x53
+ 516 0053 02       		.uleb128 0x2
+ 517 0054 01       		.byte	0x1
+ 518 0055 08       		.byte	0x8
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 14
+
+
+ 519 0056 D7010000 		.4byte	.LASF4
+ 520 005a 04       		.uleb128 0x4
+ 521 005b 14000000 		.4byte	.LASF6
+ 522 005f 02       		.byte	0x2
+ 523 0060 29       		.byte	0x29
+ 524 0061 65000000 		.4byte	0x65
+ 525 0065 02       		.uleb128 0x2
+ 526 0066 02       		.byte	0x2
+ 527 0067 05       		.byte	0x5
+ 528 0068 0E030000 		.4byte	.LASF7
+ 529 006c 04       		.uleb128 0x4
+ 530 006d 6B000000 		.4byte	.LASF8
+ 531 0071 02       		.byte	0x2
+ 532 0072 2B       		.byte	0x2b
+ 533 0073 77000000 		.4byte	0x77
+ 534 0077 02       		.uleb128 0x2
+ 535 0078 02       		.byte	0x2
+ 536 0079 07       		.byte	0x7
+ 537 007a A9010000 		.4byte	.LASF9
+ 538 007e 02       		.uleb128 0x2
+ 539 007f 04       		.byte	0x4
+ 540 0080 05       		.byte	0x5
+ 541 0081 41030000 		.4byte	.LASF10
+ 542 0085 02       		.uleb128 0x2
+ 543 0086 04       		.byte	0x4
+ 544 0087 07       		.byte	0x7
+ 545 0088 92010000 		.4byte	.LASF11
+ 546 008c 02       		.uleb128 0x2
+ 547 008d 08       		.byte	0x8
+ 548 008e 07       		.byte	0x7
+ 549 008f 5A020000 		.4byte	.LASF12
+ 550 0093 02       		.uleb128 0x2
+ 551 0094 04       		.byte	0x4
+ 552 0095 07       		.byte	0x7
+ 553 0096 AF020000 		.4byte	.LASF13
+ 554 009a 02       		.uleb128 0x2
+ 555 009b 01       		.byte	0x1
+ 556 009c 08       		.byte	0x8
+ 557 009d 4A030000 		.4byte	.LASF14
+ 558 00a1 04       		.uleb128 0x4
+ 559 00a2 71020000 		.4byte	.LASF15
+ 560 00a6 03       		.byte	0x3
+ 561 00a7 18       		.byte	0x18
+ 562 00a8 48000000 		.4byte	0x48
+ 563 00ac 04       		.uleb128 0x4
+ 564 00ad 79020000 		.4byte	.LASF16
+ 565 00b1 03       		.byte	0x3
+ 566 00b2 20       		.byte	0x20
+ 567 00b3 5A000000 		.4byte	0x5a
+ 568 00b7 04       		.uleb128 0x4
+ 569 00b8 30030000 		.4byte	.LASF17
+ 570 00bc 03       		.byte	0x3
+ 571 00bd 24       		.byte	0x24
+ 572 00be 6C000000 		.4byte	0x6c
+ 573 00c2 02       		.uleb128 0x2
+ 574 00c3 04       		.byte	0x4
+ 575 00c4 04       		.byte	0x4
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 15
+
+
+ 576 00c5 5B030000 		.4byte	.LASF18
+ 577 00c9 02       		.uleb128 0x2
+ 578 00ca 08       		.byte	0x8
+ 579 00cb 04       		.byte	0x4
+ 580 00cc 05020000 		.4byte	.LASF19
+ 581 00d0 05       		.uleb128 0x5
+ 582 00d1 2E020000 		.4byte	.LASF20
+ 583 00d5 04       		.byte	0x4
+ 584 00d6 8B02     		.2byte	0x28b
+ 585 00d8 85000000 		.4byte	0x85
+ 586 00dc 06       		.uleb128 0x6
+ 587 00dd 7D030000 		.4byte	.LASF24
+ 588 00e1 01       		.byte	0x1
+ 589 00e2 4F       		.byte	0x4f
+ 590 00e3 B7000000 		.4byte	0xb7
+ 591 00e7 00000000 		.4byte	.LFB2
+ 592 00eb 50000000 		.4byte	.LFE2-.LFB2
+ 593 00ef 01       		.uleb128 0x1
+ 594 00f0 9C       		.byte	0x9c
+ 595 00f1 57010000 		.4byte	0x157
+ 596 00f5 07       		.uleb128 0x7
+ 597 00f6 54020000 		.4byte	.LASF21
+ 598 00fa 01       		.byte	0x1
+ 599 00fb 4F       		.byte	0x4f
+ 600 00fc B7000000 		.4byte	0xb7
+ 601 0100 00000000 		.4byte	.LLST0
+ 602 0104 08       		.uleb128 0x8
+ 603 0105 656E6400 		.ascii	"end\000"
+ 604 0109 01       		.byte	0x1
+ 605 010a 4F       		.byte	0x4f
+ 606 010b B7000000 		.4byte	0xb7
+ 607 010f 01       		.uleb128 0x1
+ 608 0110 51       		.byte	0x51
+ 609 0111 07       		.uleb128 0x7
+ 610 0112 DE020000 		.4byte	.LASF22
+ 611 0116 01       		.byte	0x1
+ 612 0117 4F       		.byte	0x4f
+ 613 0118 B7000000 		.4byte	0xb7
+ 614 011c 3A000000 		.4byte	.LLST1
+ 615 0120 09       		.uleb128 0x9
+ 616 0121 04000000 		.4byte	.LBB2
+ 617 0125 22000000 		.4byte	.LBE2-.LBB2
+ 618 0129 3D010000 		.4byte	0x13d
+ 619 012d 0A       		.uleb128 0xa
+ 620 012e 3C000000 		.4byte	.LASF23
+ 621 0132 01       		.byte	0x1
+ 622 0133 52       		.byte	0x52
+ 623 0134 AC000000 		.4byte	0xac
+ 624 0138 63000000 		.4byte	.LLST2
+ 625 013c 00       		.byte	0
+ 626 013d 0B       		.uleb128 0xb
+ 627 013e 26000000 		.4byte	.LBB3
+ 628 0142 20000000 		.4byte	.LBE3-.LBB3
+ 629 0146 0A       		.uleb128 0xa
+ 630 0147 3C000000 		.4byte	.LASF23
+ 631 014b 01       		.byte	0x1
+ 632 014c 5C       		.byte	0x5c
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 16
+
+
+ 633 014d AC000000 		.4byte	0xac
+ 634 0151 8E000000 		.4byte	.LLST3
+ 635 0155 00       		.byte	0
+ 636 0156 00       		.byte	0
+ 637 0157 06       		.uleb128 0x6
+ 638 0158 EB020000 		.4byte	.LASF25
+ 639 015c 01       		.byte	0x1
+ 640 015d 81       		.byte	0x81
+ 641 015e B7000000 		.4byte	0xb7
+ 642 0162 00000000 		.4byte	.LFB3
+ 643 0166 94000000 		.4byte	.LFE3-.LFB3
+ 644 016a 01       		.uleb128 0x1
+ 645 016b 9C       		.byte	0x9c
+ 646 016c 1A020000 		.4byte	0x21a
+ 647 0170 07       		.uleb128 0x7
+ 648 0171 54020000 		.4byte	.LASF21
+ 649 0175 01       		.byte	0x1
+ 650 0176 81       		.byte	0x81
+ 651 0177 B7000000 		.4byte	0xb7
+ 652 017b B9000000 		.4byte	.LLST4
+ 653 017f 0C       		.uleb128 0xc
+ 654 0180 656E6400 		.ascii	"end\000"
+ 655 0184 01       		.byte	0x1
+ 656 0185 81       		.byte	0x81
+ 657 0186 B7000000 		.4byte	0xb7
+ 658 018a F3000000 		.4byte	.LLST5
+ 659 018e 07       		.uleb128 0x7
+ 660 018f 6D030000 		.4byte	.LASF26
+ 661 0193 01       		.byte	0x1
+ 662 0194 81       		.byte	0x81
+ 663 0195 B7000000 		.4byte	0xb7
+ 664 0199 14010000 		.4byte	.LLST6
+ 665 019d 07       		.uleb128 0x7
+ 666 019e BC010000 		.4byte	.LASF27
+ 667 01a2 01       		.byte	0x1
+ 668 01a3 81       		.byte	0x81
+ 669 01a4 B7000000 		.4byte	0xb7
+ 670 01a8 35010000 		.4byte	.LLST7
+ 671 01ac 07       		.uleb128 0x7
+ 672 01ad DE020000 		.4byte	.LASF22
+ 673 01b1 01       		.byte	0x1
+ 674 01b2 81       		.byte	0x81
+ 675 01b3 B7000000 		.4byte	0xb7
+ 676 01b7 6F010000 		.4byte	.LLST8
+ 677 01bb 0A       		.uleb128 0xa
+ 678 01bc 7A010000 		.4byte	.LASF28
+ 679 01c0 01       		.byte	0x1
+ 680 01c1 86       		.byte	0x86
+ 681 01c2 B7000000 		.4byte	0xb7
+ 682 01c6 D1010000 		.4byte	.LLST9
+ 683 01ca 09       		.uleb128 0x9
+ 684 01cb 16000000 		.4byte	.LBB4
+ 685 01cf 36000000 		.4byte	.LBE4-.LBB4
+ 686 01d3 E7010000 		.4byte	0x1e7
+ 687 01d7 0A       		.uleb128 0xa
+ 688 01d8 3C000000 		.4byte	.LASF23
+ 689 01dc 01       		.byte	0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 17
+
+
+ 690 01dd 88       		.byte	0x88
+ 691 01de AC000000 		.4byte	0xac
+ 692 01e2 E4010000 		.4byte	.LLST10
+ 693 01e6 00       		.byte	0
+ 694 01e7 0B       		.uleb128 0xb
+ 695 01e8 4C000000 		.4byte	.LBB5
+ 696 01ec 3A000000 		.4byte	.LBE5-.LBB5
+ 697 01f0 0A       		.uleb128 0xa
+ 698 01f1 3C000000 		.4byte	.LASF23
+ 699 01f5 01       		.byte	0x1
+ 700 01f6 93       		.byte	0x93
+ 701 01f7 AC000000 		.4byte	0xac
+ 702 01fb 02020000 		.4byte	.LLST11
+ 703 01ff 0D       		.uleb128 0xd
+ 704 0200 74000000 		.4byte	.LVL28
+ 705 0204 1C050000 		.4byte	0x51c
+ 706 0208 0E       		.uleb128 0xe
+ 707 0209 01       		.uleb128 0x1
+ 708 020a 50       		.byte	0x50
+ 709 020b 05       		.uleb128 0x5
+ 710 020c 03       		.byte	0x3
+ 711 020d 00000000 		.4byte	.LC0
+ 712 0211 0E       		.uleb128 0xe
+ 713 0212 01       		.uleb128 0x1
+ 714 0213 51       		.byte	0x51
+ 715 0214 02       		.uleb128 0x2
+ 716 0215 74       		.byte	0x74
+ 717 0216 00       		.sleb128 0
+ 718 0217 00       		.byte	0
+ 719 0218 00       		.byte	0
+ 720 0219 00       		.byte	0
+ 721 021a 06       		.uleb128 0x6
+ 722 021b EF010000 		.4byte	.LASF29
+ 723 021f 01       		.byte	0x1
+ 724 0220 22       		.byte	0x22
+ 725 0221 B7000000 		.4byte	0xb7
+ 726 0225 00000000 		.4byte	.LFB1
+ 727 0229 74000000 		.4byte	.LFE1-.LFB1
+ 728 022d 01       		.uleb128 0x1
+ 729 022e 9C       		.byte	0x9c
+ 730 022f 2E030000 		.4byte	0x32e
+ 731 0233 07       		.uleb128 0x7
+ 732 0234 A3020000 		.4byte	.LASF30
+ 733 0238 01       		.byte	0x1
+ 734 0239 22       		.byte	0x22
+ 735 023a 2E030000 		.4byte	0x32e
+ 736 023e 2B020000 		.4byte	.LLST12
+ 737 0242 0A       		.uleb128 0xa
+ 738 0243 E0000000 		.4byte	.LASF31
+ 739 0247 01       		.byte	0x1
+ 740 0248 23       		.byte	0x23
+ 741 0249 A1000000 		.4byte	0xa1
+ 742 024d 65020000 		.4byte	.LLST13
+ 743 0251 0A       		.uleb128 0xa
+ 744 0252 D6000000 		.4byte	.LASF32
+ 745 0256 01       		.byte	0x1
+ 746 0257 24       		.byte	0x24
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 18
+
+
+ 747 0258 A1000000 		.4byte	0xa1
+ 748 025c 78020000 		.4byte	.LLST14
+ 749 0260 0A       		.uleb128 0xa
+ 750 0261 39030000 		.4byte	.LASF33
+ 751 0265 01       		.byte	0x1
+ 752 0266 25       		.byte	0x25
+ 753 0267 A1000000 		.4byte	0xa1
+ 754 026b 96020000 		.4byte	.LLST15
+ 755 026f 0A       		.uleb128 0xa
+ 756 0270 42000000 		.4byte	.LASF34
+ 757 0274 01       		.byte	0x1
+ 758 0275 27       		.byte	0x27
+ 759 0276 B7000000 		.4byte	0xb7
+ 760 027a B4020000 		.4byte	.LLST16
+ 761 027e 09       		.uleb128 0x9
+ 762 027f 32000000 		.4byte	.LBB6
+ 763 0283 2C000000 		.4byte	.LBE6-.LBB6
+ 764 0287 F8020000 		.4byte	0x2f8
+ 765 028b 0A       		.uleb128 0xa
+ 766 028c 6D030000 		.4byte	.LASF26
+ 767 0290 01       		.byte	0x1
+ 768 0291 2E       		.byte	0x2e
+ 769 0292 A1000000 		.4byte	0xa1
+ 770 0296 00030000 		.4byte	.LLST17
+ 771 029a 0A       		.uleb128 0xa
+ 772 029b BC010000 		.4byte	.LASF27
+ 773 029f 01       		.byte	0x1
+ 774 02a0 2F       		.byte	0x2f
+ 775 02a1 A1000000 		.4byte	0xa1
+ 776 02a5 13030000 		.4byte	.LLST18
+ 777 02a9 0F       		.uleb128 0xf
+ 778 02aa 4C000000 		.4byte	.LVL46
+ 779 02ae 57010000 		.4byte	0x157
+ 780 02b2 D5020000 		.4byte	0x2d5
+ 781 02b6 0E       		.uleb128 0xe
+ 782 02b7 01       		.uleb128 0x1
+ 783 02b8 50       		.byte	0x50
+ 784 02b9 02       		.uleb128 0x2
+ 785 02ba 76       		.byte	0x76
+ 786 02bb 00       		.sleb128 0
+ 787 02bc 0E       		.uleb128 0xe
+ 788 02bd 01       		.uleb128 0x1
+ 789 02be 51       		.byte	0x51
+ 790 02bf 02       		.uleb128 0x2
+ 791 02c0 75       		.byte	0x75
+ 792 02c1 00       		.sleb128 0
+ 793 02c2 0E       		.uleb128 0xe
+ 794 02c3 01       		.uleb128 0x1
+ 795 02c4 52       		.byte	0x52
+ 796 02c5 02       		.uleb128 0x2
+ 797 02c6 77       		.byte	0x77
+ 798 02c7 00       		.sleb128 0
+ 799 02c8 0E       		.uleb128 0xe
+ 800 02c9 01       		.uleb128 0x1
+ 801 02ca 53       		.byte	0x53
+ 802 02cb 02       		.uleb128 0x2
+ 803 02cc 78       		.byte	0x78
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 19
+
+
+ 804 02cd 00       		.sleb128 0
+ 805 02ce 0E       		.uleb128 0xe
+ 806 02cf 02       		.uleb128 0x2
+ 807 02d0 7D       		.byte	0x7d
+ 808 02d1 00       		.sleb128 0
+ 809 02d2 01       		.uleb128 0x1
+ 810 02d3 30       		.byte	0x30
+ 811 02d4 00       		.byte	0
+ 812 02d5 0D       		.uleb128 0xd
+ 813 02d6 5E000000 		.4byte	.LVL48
+ 814 02da 57010000 		.4byte	0x157
+ 815 02de 0E       		.uleb128 0xe
+ 816 02df 01       		.uleb128 0x1
+ 817 02e0 50       		.byte	0x50
+ 818 02e1 02       		.uleb128 0x2
+ 819 02e2 75       		.byte	0x75
+ 820 02e3 00       		.sleb128 0
+ 821 02e4 0E       		.uleb128 0xe
+ 822 02e5 01       		.uleb128 0x1
+ 823 02e6 51       		.byte	0x51
+ 824 02e7 02       		.uleb128 0x2
+ 825 02e8 76       		.byte	0x76
+ 826 02e9 00       		.sleb128 0
+ 827 02ea 0E       		.uleb128 0xe
+ 828 02eb 01       		.uleb128 0x1
+ 829 02ec 52       		.byte	0x52
+ 830 02ed 02       		.uleb128 0x2
+ 831 02ee 77       		.byte	0x77
+ 832 02ef 00       		.sleb128 0
+ 833 02f0 0E       		.uleb128 0xe
+ 834 02f1 01       		.uleb128 0x1
+ 835 02f2 53       		.byte	0x53
+ 836 02f3 02       		.uleb128 0x2
+ 837 02f4 78       		.byte	0x78
+ 838 02f5 00       		.sleb128 0
+ 839 02f6 00       		.byte	0
+ 840 02f7 00       		.byte	0
+ 841 02f8 0F       		.uleb128 0xf
+ 842 02f9 24000000 		.4byte	.LVL37
+ 843 02fd DC000000 		.4byte	0xdc
+ 844 0301 17030000 		.4byte	0x317
+ 845 0305 0E       		.uleb128 0xe
+ 846 0306 01       		.uleb128 0x1
+ 847 0307 50       		.byte	0x50
+ 848 0308 02       		.uleb128 0x2
+ 849 0309 76       		.byte	0x76
+ 850 030a 00       		.sleb128 0
+ 851 030b 0E       		.uleb128 0xe
+ 852 030c 01       		.uleb128 0x1
+ 853 030d 51       		.byte	0x51
+ 854 030e 02       		.uleb128 0x2
+ 855 030f 75       		.byte	0x75
+ 856 0310 00       		.sleb128 0
+ 857 0311 0E       		.uleb128 0xe
+ 858 0312 01       		.uleb128 0x1
+ 859 0313 52       		.byte	0x52
+ 860 0314 01       		.uleb128 0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 20
+
+
+ 861 0315 30       		.byte	0x30
+ 862 0316 00       		.byte	0
+ 863 0317 0D       		.uleb128 0xd
+ 864 0318 30000000 		.4byte	.LVL39
+ 865 031c DC000000 		.4byte	0xdc
+ 866 0320 0E       		.uleb128 0xe
+ 867 0321 01       		.uleb128 0x1
+ 868 0322 50       		.byte	0x50
+ 869 0323 02       		.uleb128 0x2
+ 870 0324 75       		.byte	0x75
+ 871 0325 00       		.sleb128 0
+ 872 0326 0E       		.uleb128 0xe
+ 873 0327 01       		.uleb128 0x1
+ 874 0328 51       		.byte	0x51
+ 875 0329 02       		.uleb128 0x2
+ 876 032a 76       		.byte	0x76
+ 877 032b 00       		.sleb128 0
+ 878 032c 00       		.byte	0
+ 879 032d 00       		.byte	0
+ 880 032e 10       		.uleb128 0x10
+ 881 032f 04       		.byte	0x4
+ 882 0330 34030000 		.4byte	0x334
+ 883 0334 11       		.uleb128 0x11
+ 884 0335 A1000000 		.4byte	0xa1
+ 885 0339 06       		.uleb128 0x6
+ 886 033a C9010000 		.4byte	.LASF35
+ 887 033e 01       		.byte	0x1
+ 888 033f B3       		.byte	0xb3
+ 889 0340 B7000000 		.4byte	0xb7
+ 890 0344 00000000 		.4byte	.LFB4
+ 891 0348 4C000000 		.4byte	.LFE4-.LFB4
+ 892 034c 01       		.uleb128 0x1
+ 893 034d 9C       		.byte	0x9c
+ 894 034e 9C030000 		.4byte	0x39c
+ 895 0352 07       		.uleb128 0x7
+ 896 0353 42020000 		.4byte	.LASF36
+ 897 0357 01       		.byte	0x1
+ 898 0358 B3       		.byte	0xb3
+ 899 0359 B7000000 		.4byte	0xb7
+ 900 035d 26030000 		.4byte	.LLST19
+ 901 0361 07       		.uleb128 0x7
+ 902 0362 77030000 		.4byte	.LASF37
+ 903 0366 01       		.byte	0x1
+ 904 0367 B3       		.byte	0xb3
+ 905 0368 B7000000 		.4byte	0xb7
+ 906 036c 47030000 		.4byte	.LLST20
+ 907 0370 07       		.uleb128 0x7
+ 908 0371 4D000000 		.4byte	.LASF38
+ 909 0375 01       		.byte	0x1
+ 910 0376 B3       		.byte	0xb3
+ 911 0377 B7000000 		.4byte	0xb7
+ 912 037b 68030000 		.4byte	.LLST21
+ 913 037f 0A       		.uleb128 0xa
+ 914 0380 42000000 		.4byte	.LASF34
+ 915 0384 01       		.byte	0x1
+ 916 0385 B4       		.byte	0xb4
+ 917 0386 2C000000 		.4byte	0x2c
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 21
+
+
+ 918 038a 89030000 		.4byte	.LLST22
+ 919 038e 12       		.uleb128 0x12
+ 920 038f 23020000 		.4byte	.LASF39
+ 921 0393 01       		.byte	0x1
+ 922 0394 B5       		.byte	0xb5
+ 923 0395 2C000000 		.4byte	0x2c
+ 924 0399 01       		.uleb128 0x1
+ 925 039a 52       		.byte	0x52
+ 926 039b 00       		.byte	0
+ 927 039c 12       		.uleb128 0x12
+ 928 039d D1020000 		.4byte	.LASF40
+ 929 03a1 05       		.byte	0x5
+ 930 03a2 B1       		.byte	0xb1
+ 931 03a3 34030000 		.4byte	0x334
+ 932 03a7 05       		.uleb128 0x5
+ 933 03a8 03       		.byte	0x3
+ 934 03a9 02000000 		.4byte	buffer_index
+ 935 03ad 12       		.uleb128 0x12
+ 936 03ae 1E000000 		.4byte	.LASF41
+ 937 03b2 05       		.byte	0x5
+ 938 03b3 B2       		.byte	0xb2
+ 939 03b4 34030000 		.4byte	0x334
+ 940 03b8 05       		.uleb128 0x5
+ 941 03b9 03       		.byte	0x3
+ 942 03ba 01000000 		.4byte	connection_state
+ 943 03be 12       		.uleb128 0x12
+ 944 03bf 37020000 		.4byte	.LASF42
+ 945 03c3 05       		.byte	0x5
+ 946 03c4 B3       		.byte	0xb3
+ 947 03c5 34030000 		.4byte	0x334
+ 948 03c9 05       		.uleb128 0x5
+ 949 03ca 03       		.byte	0x3
+ 950 03cb 00000000 		.4byte	input_flag
+ 951 03cf 13       		.uleb128 0x13
+ 952 03d0 FD020000 		.4byte	.LASF43
+ 953 03d4 06       		.byte	0x6
+ 954 03d5 2A       		.byte	0x2a
+ 955 03d6 B7000000 		.4byte	0xb7
+ 956 03da 05       		.uleb128 0x5
+ 957 03db 03       		.byte	0x3
+ 958 03dc 00000000 		.4byte	dac_ground_value
+ 959 03e0 13       		.uleb128 0x13
+ 960 03e1 C9000000 		.4byte	.LASF44
+ 961 03e5 05       		.byte	0x5
+ 962 03e6 9C       		.byte	0x9c
+ 963 03e7 D0000000 		.4byte	0xd0
+ 964 03eb 05       		.uleb128 0x5
+ 965 03ec 03       		.byte	0x3
+ 966 03ed 00000000 		.4byte	return_value
+ 967 03f1 13       		.uleb128 0x13
+ 968 03f2 00000000 		.4byte	.LASF45
+ 969 03f6 06       		.byte	0x6
+ 970 03f7 28       		.byte	0x28
+ 971 03f8 B7000000 		.4byte	0xb7
+ 972 03fc 05       		.uleb128 0x5
+ 973 03fd 03       		.byte	0x3
+ 974 03fe 00000000 		.4byte	lut_value
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 22
+
+
+ 975 0402 14       		.uleb128 0x14
+ 976 0403 13040000 		.4byte	0x413
+ 977 0407 13040000 		.4byte	0x413
+ 978 040b 15       		.uleb128 0x15
+ 979 040c 93000000 		.4byte	0x93
+ 980 0410 8C13     		.2byte	0x138c
+ 981 0412 00       		.byte	0
+ 982 0413 11       		.uleb128 0x11
+ 983 0414 B7000000 		.4byte	0xb7
+ 984 0418 13       		.uleb128 0x13
+ 985 0419 2F000000 		.4byte	.LASF46
+ 986 041d 06       		.byte	0x6
+ 987 041e 29       		.byte	0x29
+ 988 041f 29040000 		.4byte	0x429
+ 989 0423 05       		.uleb128 0x5
+ 990 0424 03       		.byte	0x3
+ 991 0425 00000000 		.4byte	waveform_lut
+ 992 0429 11       		.uleb128 0x11
+ 993 042a 02040000 		.4byte	0x402
+ 994 042e 13       		.uleb128 0x13
+ 995 042f 99020000 		.4byte	.LASF47
+ 996 0433 05       		.byte	0x5
+ 997 0434 A6       		.byte	0xa6
+ 998 0435 B7000000 		.4byte	0xb7
+ 999 0439 05       		.uleb128 0x5
+ 1000 043a 03       		.byte	0x3
+ 1001 043b 00000000 		.4byte	lut_index
+ 1002 043f 13       		.uleb128 0x13
+ 1003 0440 C6020000 		.4byte	.LASF48
+ 1004 0444 06       		.byte	0x6
+ 1005 0445 2B       		.byte	0x2b
+ 1006 0446 B7000000 		.4byte	0xb7
+ 1007 044a 05       		.uleb128 0x5
+ 1008 044b 03       		.byte	0x3
+ 1009 044c 00000000 		.4byte	lut_length
+ 1010 0450 14       		.uleb128 0x14
+ 1011 0451 A1000000 		.4byte	0xa1
+ 1012 0455 60040000 		.4byte	0x460
+ 1013 0459 16       		.uleb128 0x16
+ 1014 045a 93000000 		.4byte	0x93
+ 1015 045e 14       		.byte	0x14
+ 1016 045f 00       		.byte	0
+ 1017 0460 13       		.uleb128 0x13
+ 1018 0461 0C020000 		.4byte	.LASF49
+ 1019 0465 05       		.byte	0x5
+ 1020 0466 A9       		.byte	0xa9
+ 1021 0467 50040000 		.4byte	0x450
+ 1022 046b 05       		.uleb128 0x5
+ 1023 046c 03       		.byte	0x3
+ 1024 046d 00000000 		.4byte	tia_calibration_values
+ 1025 0471 13       		.uleb128 0x13
+ 1026 0472 18030000 		.4byte	.LASF50
+ 1027 0476 05       		.byte	0x5
+ 1028 0477 AC       		.byte	0xac
+ 1029 0478 A1000000 		.4byte	0xa1
+ 1030 047c 05       		.uleb128 0x5
+ 1031 047d 03       		.byte	0x3
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 23
+
+
+ 1032 047e 00000000 		.4byte	selected_voltage_source
+ 1033 0482 14       		.uleb128 0x14
+ 1034 0483 34030000 		.4byte	0x334
+ 1035 0487 92040000 		.4byte	0x492
+ 1036 048b 16       		.uleb128 0x16
+ 1037 048c 93000000 		.4byte	0x93
+ 1038 0490 13       		.byte	0x13
+ 1039 0491 00       		.byte	0
+ 1040 0492 13       		.uleb128 0x13
+ 1041 0493 A3020000 		.4byte	.LASF30
+ 1042 0497 05       		.byte	0x5
+ 1043 0498 B5       		.byte	0xb5
+ 1044 0499 A3040000 		.4byte	0x4a3
+ 1045 049d 05       		.uleb128 0x5
+ 1046 049e 03       		.byte	0x3
+ 1047 049f 00000000 		.4byte	data_buffer
+ 1048 04a3 11       		.uleb128 0x11
+ 1049 04a4 82040000 		.4byte	0x482
+ 1050 04a8 13       		.uleb128 0x13
+ 1051 04a9 A4010000 		.4byte	.LASF51
+ 1052 04ad 05       		.byte	0x5
+ 1053 04ae B6       		.byte	0xb6
+ 1054 04af B9040000 		.4byte	0x4b9
+ 1055 04b3 05       		.uleb128 0x5
+ 1056 04b4 03       		.byte	0x3
+ 1057 04b5 00000000 		.4byte	temp
+ 1058 04b9 11       		.uleb128 0x11
+ 1059 04ba 82040000 		.4byte	0x482
+ 1060 04be 14       		.uleb128 0x14
+ 1061 04bf 34030000 		.4byte	0x334
+ 1062 04c3 CE040000 		.4byte	0x4ce
+ 1063 04c7 16       		.uleb128 0x16
+ 1064 04c8 93000000 		.4byte	0x93
+ 1065 04cc 77       		.byte	0x77
+ 1066 04cd 00       		.byte	0
+ 1067 04ce 13       		.uleb128 0x13
+ 1068 04cf 85010000 		.4byte	.LASF52
+ 1069 04d3 05       		.byte	0x5
+ 1070 04d4 B8       		.byte	0xb8
+ 1071 04d5 DF040000 		.4byte	0x4df
+ 1072 04d9 05       		.uleb128 0x5
+ 1073 04da 03       		.byte	0x3
+ 1074 04db 00000000 		.4byte	data_to_send
+ 1075 04df 11       		.uleb128 0x11
+ 1076 04e0 BE040000 		.4byte	0x4be
+ 1077 04e4 14       		.uleb128 0x14
+ 1078 04e5 34030000 		.4byte	0x334
+ 1079 04e9 F5040000 		.4byte	0x4f5
+ 1080 04ed 15       		.uleb128 0x15
+ 1081 04ee 93000000 		.4byte	0x93
+ 1082 04f2 8713     		.2byte	0x1387
+ 1083 04f4 00       		.byte	0
+ 1084 04f5 13       		.uleb128 0x13
+ 1085 04f6 E5010000 		.4byte	.LASF53
+ 1086 04fa 05       		.byte	0x5
+ 1087 04fb B9       		.byte	0xb9
+ 1088 04fc 06050000 		.4byte	0x506
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 24
+
+
+ 1089 0500 05       		.uleb128 0x5
+ 1090 0501 03       		.byte	0x3
+ 1091 0502 00000000 		.4byte	data_long
+ 1092 0506 11       		.uleb128 0x11
+ 1093 0507 E4040000 		.4byte	0x4e4
+ 1094 050b 13       		.uleb128 0x13
+ 1095 050c 81020000 		.4byte	.LASF54
+ 1096 0510 05       		.byte	0x5
+ 1097 0511 BC       		.byte	0xbc
+ 1098 0512 A1000000 		.4byte	0xa1
+ 1099 0516 05       		.uleb128 0x5
+ 1100 0517 03       		.byte	0x3
+ 1101 0518 00000000 		.4byte	finished_procedure_flag
+ 1102 051c 17       		.uleb128 0x17
+ 1103 051d E4020000 		.4byte	.LASF58
+ 1104 0521 E4020000 		.4byte	.LASF58
+ 1105 0525 07       		.byte	0x7
+ 1106 0526 BB       		.byte	0xbb
+ 1107 0527 00       		.byte	0
+ 1108              		.section	.debug_abbrev,"",%progbits
+ 1109              	.Ldebug_abbrev0:
+ 1110 0000 01       		.uleb128 0x1
+ 1111 0001 11       		.uleb128 0x11
+ 1112 0002 01       		.byte	0x1
+ 1113 0003 25       		.uleb128 0x25
+ 1114 0004 0E       		.uleb128 0xe
+ 1115 0005 13       		.uleb128 0x13
+ 1116 0006 0B       		.uleb128 0xb
+ 1117 0007 03       		.uleb128 0x3
+ 1118 0008 0E       		.uleb128 0xe
+ 1119 0009 1B       		.uleb128 0x1b
+ 1120 000a 0E       		.uleb128 0xe
+ 1121 000b 55       		.uleb128 0x55
+ 1122 000c 17       		.uleb128 0x17
+ 1123 000d 11       		.uleb128 0x11
+ 1124 000e 01       		.uleb128 0x1
+ 1125 000f 10       		.uleb128 0x10
+ 1126 0010 17       		.uleb128 0x17
+ 1127 0011 00       		.byte	0
+ 1128 0012 00       		.byte	0
+ 1129 0013 02       		.uleb128 0x2
+ 1130 0014 24       		.uleb128 0x24
+ 1131 0015 00       		.byte	0
+ 1132 0016 0B       		.uleb128 0xb
+ 1133 0017 0B       		.uleb128 0xb
+ 1134 0018 3E       		.uleb128 0x3e
+ 1135 0019 0B       		.uleb128 0xb
+ 1136 001a 03       		.uleb128 0x3
+ 1137 001b 0E       		.uleb128 0xe
+ 1138 001c 00       		.byte	0
+ 1139 001d 00       		.byte	0
+ 1140 001e 03       		.uleb128 0x3
+ 1141 001f 24       		.uleb128 0x24
+ 1142 0020 00       		.byte	0
+ 1143 0021 0B       		.uleb128 0xb
+ 1144 0022 0B       		.uleb128 0xb
+ 1145 0023 3E       		.uleb128 0x3e
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 25
+
+
+ 1146 0024 0B       		.uleb128 0xb
+ 1147 0025 03       		.uleb128 0x3
+ 1148 0026 08       		.uleb128 0x8
+ 1149 0027 00       		.byte	0
+ 1150 0028 00       		.byte	0
+ 1151 0029 04       		.uleb128 0x4
+ 1152 002a 16       		.uleb128 0x16
+ 1153 002b 00       		.byte	0
+ 1154 002c 03       		.uleb128 0x3
+ 1155 002d 0E       		.uleb128 0xe
+ 1156 002e 3A       		.uleb128 0x3a
+ 1157 002f 0B       		.uleb128 0xb
+ 1158 0030 3B       		.uleb128 0x3b
+ 1159 0031 0B       		.uleb128 0xb
+ 1160 0032 49       		.uleb128 0x49
+ 1161 0033 13       		.uleb128 0x13
+ 1162 0034 00       		.byte	0
+ 1163 0035 00       		.byte	0
+ 1164 0036 05       		.uleb128 0x5
+ 1165 0037 16       		.uleb128 0x16
+ 1166 0038 00       		.byte	0
+ 1167 0039 03       		.uleb128 0x3
+ 1168 003a 0E       		.uleb128 0xe
+ 1169 003b 3A       		.uleb128 0x3a
+ 1170 003c 0B       		.uleb128 0xb
+ 1171 003d 3B       		.uleb128 0x3b
+ 1172 003e 05       		.uleb128 0x5
+ 1173 003f 49       		.uleb128 0x49
+ 1174 0040 13       		.uleb128 0x13
+ 1175 0041 00       		.byte	0
+ 1176 0042 00       		.byte	0
+ 1177 0043 06       		.uleb128 0x6
+ 1178 0044 2E       		.uleb128 0x2e
+ 1179 0045 01       		.byte	0x1
+ 1180 0046 3F       		.uleb128 0x3f
+ 1181 0047 19       		.uleb128 0x19
+ 1182 0048 03       		.uleb128 0x3
+ 1183 0049 0E       		.uleb128 0xe
+ 1184 004a 3A       		.uleb128 0x3a
+ 1185 004b 0B       		.uleb128 0xb
+ 1186 004c 3B       		.uleb128 0x3b
+ 1187 004d 0B       		.uleb128 0xb
+ 1188 004e 27       		.uleb128 0x27
+ 1189 004f 19       		.uleb128 0x19
+ 1190 0050 49       		.uleb128 0x49
+ 1191 0051 13       		.uleb128 0x13
+ 1192 0052 11       		.uleb128 0x11
+ 1193 0053 01       		.uleb128 0x1
+ 1194 0054 12       		.uleb128 0x12
+ 1195 0055 06       		.uleb128 0x6
+ 1196 0056 40       		.uleb128 0x40
+ 1197 0057 18       		.uleb128 0x18
+ 1198 0058 9742     		.uleb128 0x2117
+ 1199 005a 19       		.uleb128 0x19
+ 1200 005b 01       		.uleb128 0x1
+ 1201 005c 13       		.uleb128 0x13
+ 1202 005d 00       		.byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 26
+
+
+ 1203 005e 00       		.byte	0
+ 1204 005f 07       		.uleb128 0x7
+ 1205 0060 05       		.uleb128 0x5
+ 1206 0061 00       		.byte	0
+ 1207 0062 03       		.uleb128 0x3
+ 1208 0063 0E       		.uleb128 0xe
+ 1209 0064 3A       		.uleb128 0x3a
+ 1210 0065 0B       		.uleb128 0xb
+ 1211 0066 3B       		.uleb128 0x3b
+ 1212 0067 0B       		.uleb128 0xb
+ 1213 0068 49       		.uleb128 0x49
+ 1214 0069 13       		.uleb128 0x13
+ 1215 006a 02       		.uleb128 0x2
+ 1216 006b 17       		.uleb128 0x17
+ 1217 006c 00       		.byte	0
+ 1218 006d 00       		.byte	0
+ 1219 006e 08       		.uleb128 0x8
+ 1220 006f 05       		.uleb128 0x5
+ 1221 0070 00       		.byte	0
+ 1222 0071 03       		.uleb128 0x3
+ 1223 0072 08       		.uleb128 0x8
+ 1224 0073 3A       		.uleb128 0x3a
+ 1225 0074 0B       		.uleb128 0xb
+ 1226 0075 3B       		.uleb128 0x3b
+ 1227 0076 0B       		.uleb128 0xb
+ 1228 0077 49       		.uleb128 0x49
+ 1229 0078 13       		.uleb128 0x13
+ 1230 0079 02       		.uleb128 0x2
+ 1231 007a 18       		.uleb128 0x18
+ 1232 007b 00       		.byte	0
+ 1233 007c 00       		.byte	0
+ 1234 007d 09       		.uleb128 0x9
+ 1235 007e 0B       		.uleb128 0xb
+ 1236 007f 01       		.byte	0x1
+ 1237 0080 11       		.uleb128 0x11
+ 1238 0081 01       		.uleb128 0x1
+ 1239 0082 12       		.uleb128 0x12
+ 1240 0083 06       		.uleb128 0x6
+ 1241 0084 01       		.uleb128 0x1
+ 1242 0085 13       		.uleb128 0x13
+ 1243 0086 00       		.byte	0
+ 1244 0087 00       		.byte	0
+ 1245 0088 0A       		.uleb128 0xa
+ 1246 0089 34       		.uleb128 0x34
+ 1247 008a 00       		.byte	0
+ 1248 008b 03       		.uleb128 0x3
+ 1249 008c 0E       		.uleb128 0xe
+ 1250 008d 3A       		.uleb128 0x3a
+ 1251 008e 0B       		.uleb128 0xb
+ 1252 008f 3B       		.uleb128 0x3b
+ 1253 0090 0B       		.uleb128 0xb
+ 1254 0091 49       		.uleb128 0x49
+ 1255 0092 13       		.uleb128 0x13
+ 1256 0093 02       		.uleb128 0x2
+ 1257 0094 17       		.uleb128 0x17
+ 1258 0095 00       		.byte	0
+ 1259 0096 00       		.byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 27
+
+
+ 1260 0097 0B       		.uleb128 0xb
+ 1261 0098 0B       		.uleb128 0xb
+ 1262 0099 01       		.byte	0x1
+ 1263 009a 11       		.uleb128 0x11
+ 1264 009b 01       		.uleb128 0x1
+ 1265 009c 12       		.uleb128 0x12
+ 1266 009d 06       		.uleb128 0x6
+ 1267 009e 00       		.byte	0
+ 1268 009f 00       		.byte	0
+ 1269 00a0 0C       		.uleb128 0xc
+ 1270 00a1 05       		.uleb128 0x5
+ 1271 00a2 00       		.byte	0
+ 1272 00a3 03       		.uleb128 0x3
+ 1273 00a4 08       		.uleb128 0x8
+ 1274 00a5 3A       		.uleb128 0x3a
+ 1275 00a6 0B       		.uleb128 0xb
+ 1276 00a7 3B       		.uleb128 0x3b
+ 1277 00a8 0B       		.uleb128 0xb
+ 1278 00a9 49       		.uleb128 0x49
+ 1279 00aa 13       		.uleb128 0x13
+ 1280 00ab 02       		.uleb128 0x2
+ 1281 00ac 17       		.uleb128 0x17
+ 1282 00ad 00       		.byte	0
+ 1283 00ae 00       		.byte	0
+ 1284 00af 0D       		.uleb128 0xd
+ 1285 00b0 898201   		.uleb128 0x4109
+ 1286 00b3 01       		.byte	0x1
+ 1287 00b4 11       		.uleb128 0x11
+ 1288 00b5 01       		.uleb128 0x1
+ 1289 00b6 31       		.uleb128 0x31
+ 1290 00b7 13       		.uleb128 0x13
+ 1291 00b8 00       		.byte	0
+ 1292 00b9 00       		.byte	0
+ 1293 00ba 0E       		.uleb128 0xe
+ 1294 00bb 8A8201   		.uleb128 0x410a
+ 1295 00be 00       		.byte	0
+ 1296 00bf 02       		.uleb128 0x2
+ 1297 00c0 18       		.uleb128 0x18
+ 1298 00c1 9142     		.uleb128 0x2111
+ 1299 00c3 18       		.uleb128 0x18
+ 1300 00c4 00       		.byte	0
+ 1301 00c5 00       		.byte	0
+ 1302 00c6 0F       		.uleb128 0xf
+ 1303 00c7 898201   		.uleb128 0x4109
+ 1304 00ca 01       		.byte	0x1
+ 1305 00cb 11       		.uleb128 0x11
+ 1306 00cc 01       		.uleb128 0x1
+ 1307 00cd 31       		.uleb128 0x31
+ 1308 00ce 13       		.uleb128 0x13
+ 1309 00cf 01       		.uleb128 0x1
+ 1310 00d0 13       		.uleb128 0x13
+ 1311 00d1 00       		.byte	0
+ 1312 00d2 00       		.byte	0
+ 1313 00d3 10       		.uleb128 0x10
+ 1314 00d4 0F       		.uleb128 0xf
+ 1315 00d5 00       		.byte	0
+ 1316 00d6 0B       		.uleb128 0xb
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 28
+
+
+ 1317 00d7 0B       		.uleb128 0xb
+ 1318 00d8 49       		.uleb128 0x49
+ 1319 00d9 13       		.uleb128 0x13
+ 1320 00da 00       		.byte	0
+ 1321 00db 00       		.byte	0
+ 1322 00dc 11       		.uleb128 0x11
+ 1323 00dd 35       		.uleb128 0x35
+ 1324 00de 00       		.byte	0
+ 1325 00df 49       		.uleb128 0x49
+ 1326 00e0 13       		.uleb128 0x13
+ 1327 00e1 00       		.byte	0
+ 1328 00e2 00       		.byte	0
+ 1329 00e3 12       		.uleb128 0x12
+ 1330 00e4 34       		.uleb128 0x34
+ 1331 00e5 00       		.byte	0
+ 1332 00e6 03       		.uleb128 0x3
+ 1333 00e7 0E       		.uleb128 0xe
+ 1334 00e8 3A       		.uleb128 0x3a
+ 1335 00e9 0B       		.uleb128 0xb
+ 1336 00ea 3B       		.uleb128 0x3b
+ 1337 00eb 0B       		.uleb128 0xb
+ 1338 00ec 49       		.uleb128 0x49
+ 1339 00ed 13       		.uleb128 0x13
+ 1340 00ee 02       		.uleb128 0x2
+ 1341 00ef 18       		.uleb128 0x18
+ 1342 00f0 00       		.byte	0
+ 1343 00f1 00       		.byte	0
+ 1344 00f2 13       		.uleb128 0x13
+ 1345 00f3 34       		.uleb128 0x34
+ 1346 00f4 00       		.byte	0
+ 1347 00f5 03       		.uleb128 0x3
+ 1348 00f6 0E       		.uleb128 0xe
+ 1349 00f7 3A       		.uleb128 0x3a
+ 1350 00f8 0B       		.uleb128 0xb
+ 1351 00f9 3B       		.uleb128 0x3b
+ 1352 00fa 0B       		.uleb128 0xb
+ 1353 00fb 49       		.uleb128 0x49
+ 1354 00fc 13       		.uleb128 0x13
+ 1355 00fd 3F       		.uleb128 0x3f
+ 1356 00fe 19       		.uleb128 0x19
+ 1357 00ff 02       		.uleb128 0x2
+ 1358 0100 18       		.uleb128 0x18
+ 1359 0101 00       		.byte	0
+ 1360 0102 00       		.byte	0
+ 1361 0103 14       		.uleb128 0x14
+ 1362 0104 01       		.uleb128 0x1
+ 1363 0105 01       		.byte	0x1
+ 1364 0106 49       		.uleb128 0x49
+ 1365 0107 13       		.uleb128 0x13
+ 1366 0108 01       		.uleb128 0x1
+ 1367 0109 13       		.uleb128 0x13
+ 1368 010a 00       		.byte	0
+ 1369 010b 00       		.byte	0
+ 1370 010c 15       		.uleb128 0x15
+ 1371 010d 21       		.uleb128 0x21
+ 1372 010e 00       		.byte	0
+ 1373 010f 49       		.uleb128 0x49
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 29
+
+
+ 1374 0110 13       		.uleb128 0x13
+ 1375 0111 2F       		.uleb128 0x2f
+ 1376 0112 05       		.uleb128 0x5
+ 1377 0113 00       		.byte	0
+ 1378 0114 00       		.byte	0
+ 1379 0115 16       		.uleb128 0x16
+ 1380 0116 21       		.uleb128 0x21
+ 1381 0117 00       		.byte	0
+ 1382 0118 49       		.uleb128 0x49
+ 1383 0119 13       		.uleb128 0x13
+ 1384 011a 2F       		.uleb128 0x2f
+ 1385 011b 0B       		.uleb128 0xb
+ 1386 011c 00       		.byte	0
+ 1387 011d 00       		.byte	0
+ 1388 011e 17       		.uleb128 0x17
+ 1389 011f 2E       		.uleb128 0x2e
+ 1390 0120 00       		.byte	0
+ 1391 0121 3F       		.uleb128 0x3f
+ 1392 0122 19       		.uleb128 0x19
+ 1393 0123 3C       		.uleb128 0x3c
+ 1394 0124 19       		.uleb128 0x19
+ 1395 0125 6E       		.uleb128 0x6e
+ 1396 0126 0E       		.uleb128 0xe
+ 1397 0127 03       		.uleb128 0x3
+ 1398 0128 0E       		.uleb128 0xe
+ 1399 0129 3A       		.uleb128 0x3a
+ 1400 012a 0B       		.uleb128 0xb
+ 1401 012b 3B       		.uleb128 0x3b
+ 1402 012c 0B       		.uleb128 0xb
+ 1403 012d 00       		.byte	0
+ 1404 012e 00       		.byte	0
+ 1405 012f 00       		.byte	0
+ 1406              		.section	.debug_loc,"",%progbits
+ 1407              	.Ldebug_loc0:
+ 1408              	.LLST0:
+ 1409 0000 00000000 		.4byte	.LVL0
+ 1410 0004 08000000 		.4byte	.LVL2
+ 1411 0008 0100     		.2byte	0x1
+ 1412 000a 50       		.byte	0x50
+ 1413 000b 08000000 		.4byte	.LVL2
+ 1414 000f 26000000 		.4byte	.LVL7
+ 1415 0013 0400     		.2byte	0x4
+ 1416 0015 F3       		.byte	0xf3
+ 1417 0016 01       		.uleb128 0x1
+ 1418 0017 50       		.byte	0x50
+ 1419 0018 9F       		.byte	0x9f
+ 1420 0019 26000000 		.4byte	.LVL7
+ 1421 001d 2A000000 		.4byte	.LVL9
+ 1422 0021 0100     		.2byte	0x1
+ 1423 0023 50       		.byte	0x50
+ 1424 0024 2A000000 		.4byte	.LVL9
+ 1425 0028 50000000 		.4byte	.LFE2
+ 1426 002c 0400     		.2byte	0x4
+ 1427 002e F3       		.byte	0xf3
+ 1428 002f 01       		.uleb128 0x1
+ 1429 0030 50       		.byte	0x50
+ 1430 0031 9F       		.byte	0x9f
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 30
+
+
+ 1431 0032 00000000 		.4byte	0
+ 1432 0036 00000000 		.4byte	0
+ 1433              	.LLST1:
+ 1434 003a 00000000 		.4byte	.LVL0
+ 1435 003e 12000000 		.4byte	.LVL3
+ 1436 0042 0100     		.2byte	0x1
+ 1437 0044 52       		.byte	0x52
+ 1438 0045 14000000 		.4byte	.LVL4
+ 1439 0049 34000000 		.4byte	.LVL10
+ 1440 004d 0100     		.2byte	0x1
+ 1441 004f 52       		.byte	0x52
+ 1442 0050 36000000 		.4byte	.LVL11
+ 1443 0054 50000000 		.4byte	.LFE2
+ 1444 0058 0100     		.2byte	0x1
+ 1445 005a 52       		.byte	0x52
+ 1446 005b 00000000 		.4byte	0
+ 1447 005f 00000000 		.4byte	0
+ 1448              	.LLST2:
+ 1449 0063 06000000 		.4byte	.LVL1
+ 1450 0067 1E000000 		.4byte	.LVL5
+ 1451 006b 0100     		.2byte	0x1
+ 1452 006d 53       		.byte	0x53
+ 1453 006e 1E000000 		.4byte	.LVL5
+ 1454 0072 20000000 		.4byte	.LVL6
+ 1455 0076 0300     		.2byte	0x3
+ 1456 0078 73       		.byte	0x73
+ 1457 0079 7F       		.sleb128 -1
+ 1458 007a 9F       		.byte	0x9f
+ 1459 007b 20000000 		.4byte	.LVL6
+ 1460 007f 26000000 		.4byte	.LVL7
+ 1461 0083 0100     		.2byte	0x1
+ 1462 0085 53       		.byte	0x53
+ 1463 0086 00000000 		.4byte	0
+ 1464 008a 00000000 		.4byte	0
+ 1465              	.LLST3:
+ 1466 008e 28000000 		.4byte	.LVL8
+ 1467 0092 40000000 		.4byte	.LVL12
+ 1468 0096 0100     		.2byte	0x1
+ 1469 0098 53       		.byte	0x53
+ 1470 0099 40000000 		.4byte	.LVL12
+ 1471 009d 42000000 		.4byte	.LVL13
+ 1472 00a1 0300     		.2byte	0x3
+ 1473 00a3 73       		.byte	0x73
+ 1474 00a4 01       		.sleb128 1
+ 1475 00a5 9F       		.byte	0x9f
+ 1476 00a6 42000000 		.4byte	.LVL13
+ 1477 00aa 46000000 		.4byte	.LVL14
+ 1478 00ae 0100     		.2byte	0x1
+ 1479 00b0 53       		.byte	0x53
+ 1480 00b1 00000000 		.4byte	0
+ 1481 00b5 00000000 		.4byte	0
+ 1482              	.LLST4:
+ 1483 00b9 00000000 		.4byte	.LVL15
+ 1484 00bd 1A000000 		.4byte	.LVL18
+ 1485 00c1 0100     		.2byte	0x1
+ 1486 00c3 50       		.byte	0x50
+ 1487 00c4 1A000000 		.4byte	.LVL18
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 31
+
+
+ 1488 00c8 48000000 		.4byte	.LVL23
+ 1489 00cc 0400     		.2byte	0x4
+ 1490 00ce F3       		.byte	0xf3
+ 1491 00cf 01       		.uleb128 0x1
+ 1492 00d0 50       		.byte	0x50
+ 1493 00d1 9F       		.byte	0x9f
+ 1494 00d2 48000000 		.4byte	.LVL23
+ 1495 00d6 50000000 		.4byte	.LVL25
+ 1496 00da 0100     		.2byte	0x1
+ 1497 00dc 50       		.byte	0x50
+ 1498 00dd 50000000 		.4byte	.LVL25
+ 1499 00e1 94000000 		.4byte	.LFE3
+ 1500 00e5 0400     		.2byte	0x4
+ 1501 00e7 F3       		.byte	0xf3
+ 1502 00e8 01       		.uleb128 0x1
+ 1503 00e9 50       		.byte	0x50
+ 1504 00ea 9F       		.byte	0x9f
+ 1505 00eb 00000000 		.4byte	0
+ 1506 00ef 00000000 		.4byte	0
+ 1507              	.LLST5:
+ 1508 00f3 00000000 		.4byte	.LVL15
+ 1509 00f7 50000000 		.4byte	.LVL25
+ 1510 00fb 0100     		.2byte	0x1
+ 1511 00fd 51       		.byte	0x51
+ 1512 00fe 50000000 		.4byte	.LVL25
+ 1513 0102 94000000 		.4byte	.LFE3
+ 1514 0106 0400     		.2byte	0x4
+ 1515 0108 F3       		.byte	0xf3
+ 1516 0109 01       		.uleb128 0x1
+ 1517 010a 51       		.byte	0x51
+ 1518 010b 9F       		.byte	0x9f
+ 1519 010c 00000000 		.4byte	0
+ 1520 0110 00000000 		.4byte	0
+ 1521              	.LLST6:
+ 1522 0114 00000000 		.4byte	.LVL15
+ 1523 0118 4E000000 		.4byte	.LVL24
+ 1524 011c 0100     		.2byte	0x1
+ 1525 011e 52       		.byte	0x52
+ 1526 011f 4E000000 		.4byte	.LVL24
+ 1527 0123 94000000 		.4byte	.LFE3
+ 1528 0127 0400     		.2byte	0x4
+ 1529 0129 F3       		.byte	0xf3
+ 1530 012a 01       		.uleb128 0x1
+ 1531 012b 52       		.byte	0x52
+ 1532 012c 9F       		.byte	0x9f
+ 1533 012d 00000000 		.4byte	0
+ 1534 0131 00000000 		.4byte	0
+ 1535              	.LLST7:
+ 1536 0135 00000000 		.4byte	.LVL15
+ 1537 0139 1A000000 		.4byte	.LVL18
+ 1538 013d 0100     		.2byte	0x1
+ 1539 013f 53       		.byte	0x53
+ 1540 0140 1A000000 		.4byte	.LVL18
+ 1541 0144 48000000 		.4byte	.LVL23
+ 1542 0148 0400     		.2byte	0x4
+ 1543 014a F3       		.byte	0xf3
+ 1544 014b 01       		.uleb128 0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 32
+
+
+ 1545 014c 53       		.byte	0x53
+ 1546 014d 9F       		.byte	0x9f
+ 1547 014e 48000000 		.4byte	.LVL23
+ 1548 0152 50000000 		.4byte	.LVL25
+ 1549 0156 0100     		.2byte	0x1
+ 1550 0158 53       		.byte	0x53
+ 1551 0159 50000000 		.4byte	.LVL25
+ 1552 015d 94000000 		.4byte	.LFE3
+ 1553 0161 0400     		.2byte	0x4
+ 1554 0163 F3       		.byte	0xf3
+ 1555 0164 01       		.uleb128 0x1
+ 1556 0165 53       		.byte	0x53
+ 1557 0166 9F       		.byte	0x9f
+ 1558 0167 00000000 		.4byte	0
+ 1559 016b 00000000 		.4byte	0
+ 1560              	.LLST8:
+ 1561 016f 00000000 		.4byte	.LVL15
+ 1562 0173 1A000000 		.4byte	.LVL18
+ 1563 0177 0200     		.2byte	0x2
+ 1564 0179 91       		.byte	0x91
+ 1565 017a 00       		.sleb128 0
+ 1566 017b 1A000000 		.4byte	.LVL18
+ 1567 017f 2A000000 		.4byte	.LVL19
+ 1568 0183 0100     		.2byte	0x1
+ 1569 0185 54       		.byte	0x54
+ 1570 0186 2A000000 		.4byte	.LVL19
+ 1571 018a 36000000 		.4byte	.LVL20
+ 1572 018e 0100     		.2byte	0x1
+ 1573 0190 53       		.byte	0x53
+ 1574 0191 36000000 		.4byte	.LVL20
+ 1575 0195 48000000 		.4byte	.LVL23
+ 1576 0199 0100     		.2byte	0x1
+ 1577 019b 54       		.byte	0x54
+ 1578 019c 48000000 		.4byte	.LVL23
+ 1579 01a0 50000000 		.4byte	.LVL25
+ 1580 01a4 0200     		.2byte	0x2
+ 1581 01a6 91       		.byte	0x91
+ 1582 01a7 00       		.sleb128 0
+ 1583 01a8 50000000 		.4byte	.LVL25
+ 1584 01ac 60000000 		.4byte	.LVL26
+ 1585 01b0 0100     		.2byte	0x1
+ 1586 01b2 54       		.byte	0x54
+ 1587 01b3 60000000 		.4byte	.LVL26
+ 1588 01b7 6C000000 		.4byte	.LVL27
+ 1589 01bb 0100     		.2byte	0x1
+ 1590 01bd 53       		.byte	0x53
+ 1591 01be 6C000000 		.4byte	.LVL27
+ 1592 01c2 86000000 		.4byte	.LVL30
+ 1593 01c6 0100     		.2byte	0x1
+ 1594 01c8 54       		.byte	0x54
+ 1595 01c9 00000000 		.4byte	0
+ 1596 01cd 00000000 		.4byte	0
+ 1597              	.LLST9:
+ 1598 01d1 12000000 		.4byte	.LVL16
+ 1599 01d5 86000000 		.4byte	.LVL30
+ 1600 01d9 0100     		.2byte	0x1
+ 1601 01db 55       		.byte	0x55
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 33
+
+
+ 1602 01dc 00000000 		.4byte	0
+ 1603 01e0 00000000 		.4byte	0
+ 1604              	.LLST10:
+ 1605 01e4 18000000 		.4byte	.LVL17
+ 1606 01e8 40000000 		.4byte	.LVL21
+ 1607 01ec 0100     		.2byte	0x1
+ 1608 01ee 50       		.byte	0x50
+ 1609 01ef 42000000 		.4byte	.LVL22
+ 1610 01f3 48000000 		.4byte	.LVL23
+ 1611 01f7 0100     		.2byte	0x1
+ 1612 01f9 50       		.byte	0x50
+ 1613 01fa 00000000 		.4byte	0
+ 1614 01fe 00000000 		.4byte	0
+ 1615              	.LLST11:
+ 1616 0202 4E000000 		.4byte	.LVL24
+ 1617 0206 73000000 		.4byte	.LVL28-1
+ 1618 020a 0100     		.2byte	0x1
+ 1619 020c 52       		.byte	0x52
+ 1620 020d 73000000 		.4byte	.LVL28-1
+ 1621 0211 82000000 		.4byte	.LVL29
+ 1622 0215 0100     		.2byte	0x1
+ 1623 0217 56       		.byte	0x56
+ 1624 0218 82000000 		.4byte	.LVL29
+ 1625 021c 86000000 		.4byte	.LVL30
+ 1626 0220 0100     		.2byte	0x1
+ 1627 0222 52       		.byte	0x52
+ 1628 0223 00000000 		.4byte	0
+ 1629 0227 00000000 		.4byte	0
+ 1630              	.LLST12:
+ 1631 022b 00000000 		.4byte	.LVL31
+ 1632 022f 20000000 		.4byte	.LVL36
+ 1633 0233 0100     		.2byte	0x1
+ 1634 0235 50       		.byte	0x50
+ 1635 0236 20000000 		.4byte	.LVL36
+ 1636 023a 32000000 		.4byte	.LVL40
+ 1637 023e 0400     		.2byte	0x4
+ 1638 0240 F3       		.byte	0xf3
+ 1639 0241 01       		.uleb128 0x1
+ 1640 0242 50       		.byte	0x50
+ 1641 0243 9F       		.byte	0x9f
+ 1642 0244 32000000 		.4byte	.LVL40
+ 1643 0248 48000000 		.4byte	.LVL45
+ 1644 024c 0100     		.2byte	0x1
+ 1645 024e 50       		.byte	0x50
+ 1646 024f 48000000 		.4byte	.LVL45
+ 1647 0253 74000000 		.4byte	.LFE1
+ 1648 0257 0400     		.2byte	0x4
+ 1649 0259 F3       		.byte	0xf3
+ 1650 025a 01       		.uleb128 0x1
+ 1651 025b 50       		.byte	0x50
+ 1652 025c 9F       		.byte	0x9f
+ 1653 025d 00000000 		.4byte	0
+ 1654 0261 00000000 		.4byte	0
+ 1655              	.LLST13:
+ 1656 0265 0A000000 		.4byte	.LVL32
+ 1657 0269 60000000 		.4byte	.LVL49
+ 1658 026d 0100     		.2byte	0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 34
+
+
+ 1659 026f 54       		.byte	0x54
+ 1660 0270 00000000 		.4byte	0
+ 1661 0274 00000000 		.4byte	0
+ 1662              	.LLST14:
+ 1663 0278 0E000000 		.4byte	.LVL33
+ 1664 027c 1A000000 		.4byte	.LVL35
+ 1665 0280 0100     		.2byte	0x1
+ 1666 0282 55       		.byte	0x55
+ 1667 0283 32000000 		.4byte	.LVL40
+ 1668 0287 3C000000 		.4byte	.LVL43
+ 1669 028b 0100     		.2byte	0x1
+ 1670 028d 55       		.byte	0x55
+ 1671 028e 00000000 		.4byte	0
+ 1672 0292 00000000 		.4byte	0
+ 1673              	.LLST15:
+ 1674 0296 10000000 		.4byte	.LVL34
+ 1675 029a 23000000 		.4byte	.LVL37-1
+ 1676 029e 0100     		.2byte	0x1
+ 1677 02a0 53       		.byte	0x53
+ 1678 02a1 32000000 		.4byte	.LVL40
+ 1679 02a5 3E000000 		.4byte	.LVL44
+ 1680 02a9 0100     		.2byte	0x1
+ 1681 02ab 53       		.byte	0x53
+ 1682 02ac 00000000 		.4byte	0
+ 1683 02b0 00000000 		.4byte	0
+ 1684              	.LLST16:
+ 1685 02b4 10000000 		.4byte	.LVL34
+ 1686 02b8 24000000 		.4byte	.LVL37
+ 1687 02bc 0200     		.2byte	0x2
+ 1688 02be 30       		.byte	0x30
+ 1689 02bf 9F       		.byte	0x9f
+ 1690 02c0 24000000 		.4byte	.LVL37
+ 1691 02c4 2C000000 		.4byte	.LVL38
+ 1692 02c8 0100     		.2byte	0x1
+ 1693 02ca 50       		.byte	0x50
+ 1694 02cb 30000000 		.4byte	.LVL39
+ 1695 02cf 32000000 		.4byte	.LVL40
+ 1696 02d3 0100     		.2byte	0x1
+ 1697 02d5 50       		.byte	0x50
+ 1698 02d6 32000000 		.4byte	.LVL40
+ 1699 02da 4C000000 		.4byte	.LVL46
+ 1700 02de 0200     		.2byte	0x2
+ 1701 02e0 30       		.byte	0x30
+ 1702 02e1 9F       		.byte	0x9f
+ 1703 02e2 4C000000 		.4byte	.LVL46
+ 1704 02e6 4E000000 		.4byte	.LVL47
+ 1705 02ea 0100     		.2byte	0x1
+ 1706 02ec 50       		.byte	0x50
+ 1707 02ed 5E000000 		.4byte	.LVL48
+ 1708 02f1 74000000 		.4byte	.LFE1
+ 1709 02f5 0100     		.2byte	0x1
+ 1710 02f7 50       		.byte	0x50
+ 1711 02f8 00000000 		.4byte	0
+ 1712 02fc 00000000 		.4byte	0
+ 1713              	.LLST17:
+ 1714 0300 34000000 		.4byte	.LVL41
+ 1715 0304 5E000000 		.4byte	.LVL48
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 35
+
+
+ 1716 0308 0100     		.2byte	0x1
+ 1717 030a 57       		.byte	0x57
+ 1718 030b 00000000 		.4byte	0
+ 1719 030f 00000000 		.4byte	0
+ 1720              	.LLST18:
+ 1721 0313 38000000 		.4byte	.LVL42
+ 1722 0317 5E000000 		.4byte	.LVL48
+ 1723 031b 0100     		.2byte	0x1
+ 1724 031d 58       		.byte	0x58
+ 1725 031e 00000000 		.4byte	0
+ 1726 0322 00000000 		.4byte	0
+ 1727              	.LLST19:
+ 1728 0326 00000000 		.4byte	.LVL51
+ 1729 032a 40000000 		.4byte	.LVL60
+ 1730 032e 0100     		.2byte	0x1
+ 1731 0330 50       		.byte	0x50
+ 1732 0331 40000000 		.4byte	.LVL60
+ 1733 0335 4C000000 		.4byte	.LFE4
+ 1734 0339 0400     		.2byte	0x4
+ 1735 033b F3       		.byte	0xf3
+ 1736 033c 01       		.uleb128 0x1
+ 1737 033d 50       		.byte	0x50
+ 1738 033e 9F       		.byte	0x9f
+ 1739 033f 00000000 		.4byte	0
+ 1740 0343 00000000 		.4byte	0
+ 1741              	.LLST20:
+ 1742 0347 00000000 		.4byte	.LVL51
+ 1743 034b 2E000000 		.4byte	.LVL58
+ 1744 034f 0100     		.2byte	0x1
+ 1745 0351 51       		.byte	0x51
+ 1746 0352 2E000000 		.4byte	.LVL58
+ 1747 0356 4C000000 		.4byte	.LFE4
+ 1748 035a 0400     		.2byte	0x4
+ 1749 035c F3       		.byte	0xf3
+ 1750 035d 01       		.uleb128 0x1
+ 1751 035e 51       		.byte	0x51
+ 1752 035f 9F       		.byte	0x9f
+ 1753 0360 00000000 		.4byte	0
+ 1754 0364 00000000 		.4byte	0
+ 1755              	.LLST21:
+ 1756 0368 00000000 		.4byte	.LVL51
+ 1757 036c 08000000 		.4byte	.LVL53
+ 1758 0370 0100     		.2byte	0x1
+ 1759 0372 52       		.byte	0x52
+ 1760 0373 08000000 		.4byte	.LVL53
+ 1761 0377 4C000000 		.4byte	.LFE4
+ 1762 037b 0400     		.2byte	0x4
+ 1763 037d F3       		.byte	0xf3
+ 1764 037e 01       		.uleb128 0x1
+ 1765 037f 52       		.byte	0x52
+ 1766 0380 9F       		.byte	0x9f
+ 1767 0381 00000000 		.4byte	0
+ 1768 0385 00000000 		.4byte	0
+ 1769              	.LLST22:
+ 1770 0389 02000000 		.4byte	.LVL52
+ 1771 038d 0E000000 		.4byte	.LVL55
+ 1772 0391 0200     		.2byte	0x2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 36
+
+
+ 1773 0393 30       		.byte	0x30
+ 1774 0394 9F       		.byte	0x9f
+ 1775 0395 0E000000 		.4byte	.LVL55
+ 1776 0399 4C000000 		.4byte	.LFE4
+ 1777 039d 0100     		.2byte	0x1
+ 1778 039f 53       		.byte	0x53
+ 1779 03a0 00000000 		.4byte	0
+ 1780 03a4 00000000 		.4byte	0
+ 1781              		.section	.debug_aranges,"",%progbits
+ 1782 0000 34000000 		.4byte	0x34
+ 1783 0004 0200     		.2byte	0x2
+ 1784 0006 00000000 		.4byte	.Ldebug_info0
+ 1785 000a 04       		.byte	0x4
+ 1786 000b 00       		.byte	0
+ 1787 000c 0000     		.2byte	0
+ 1788 000e 0000     		.2byte	0
+ 1789 0010 00000000 		.4byte	.LFB2
+ 1790 0014 50000000 		.4byte	.LFE2-.LFB2
+ 1791 0018 00000000 		.4byte	.LFB3
+ 1792 001c 94000000 		.4byte	.LFE3-.LFB3
+ 1793 0020 00000000 		.4byte	.LFB1
+ 1794 0024 74000000 		.4byte	.LFE1-.LFB1
+ 1795 0028 00000000 		.4byte	.LFB4
+ 1796 002c 4C000000 		.4byte	.LFE4-.LFB4
+ 1797 0030 00000000 		.4byte	0
+ 1798 0034 00000000 		.4byte	0
+ 1799              		.section	.debug_ranges,"",%progbits
+ 1800              	.Ldebug_ranges0:
+ 1801 0000 00000000 		.4byte	.LFB2
+ 1802 0004 50000000 		.4byte	.LFE2
+ 1803 0008 00000000 		.4byte	.LFB3
+ 1804 000c 94000000 		.4byte	.LFE3
+ 1805 0010 00000000 		.4byte	.LFB1
+ 1806 0014 74000000 		.4byte	.LFE1
+ 1807 0018 00000000 		.4byte	.LFB4
+ 1808 001c 4C000000 		.4byte	.LFE4
+ 1809 0020 00000000 		.4byte	0
+ 1810 0024 00000000 		.4byte	0
+ 1811              		.section	.debug_line,"",%progbits
+ 1812              	.Ldebug_line0:
+ 1813 0000 90020000 		.section	.debug_str,"MS",%progbits,1
+ 1813      0200DC01 
+ 1813      00000201 
+ 1813      FB0E0D00 
+ 1813      01010101 
+ 1814              	.LASF45:
+ 1815 0000 6C75745F 		.ascii	"lut_value\000"
+ 1815      76616C75 
+ 1815      6500
+ 1816              	.LASF5:
+ 1817 000a 5F5F7569 		.ascii	"__uint8_t\000"
+ 1817      6E74385F 
+ 1817      7400
+ 1818              	.LASF6:
+ 1819 0014 5F5F696E 		.ascii	"__int16_t\000"
+ 1819      7431365F 
+ 1819      7400
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 37
+
+
+ 1820              	.LASF41:
+ 1821 001e 636F6E6E 		.ascii	"connection_state\000"
+ 1821      65637469 
+ 1821      6F6E5F73 
+ 1821      74617465 
+ 1821      00
+ 1822              	.LASF46:
+ 1823 002f 77617665 		.ascii	"waveform_lut\000"
+ 1823      666F726D 
+ 1823      5F6C7574 
+ 1823      00
+ 1824              	.LASF23:
+ 1825 003c 76616C75 		.ascii	"value\000"
+ 1825      6500
+ 1826              	.LASF34:
+ 1827 0042 5F6C7574 		.ascii	"_lut_index\000"
+ 1827      5F696E64 
+ 1827      657800
+ 1828              	.LASF38:
+ 1829 004d 63615F70 		.ascii	"ca_period_ms\000"
+ 1829      6572696F 
+ 1829      645F6D73 
+ 1829      00
+ 1830              	.LASF56:
+ 1831 005a 70617261 		.ascii	"parametric_lut.c\000"
+ 1831      6D657472 
+ 1831      69635F6C 
+ 1831      75742E63 
+ 1831      00
+ 1832              	.LASF8:
+ 1833 006b 5F5F7569 		.ascii	"__uint16_t\000"
+ 1833      6E743136 
+ 1833      5F7400
+ 1834              	.LASF57:
+ 1835 0076 5C5C2E70 		.ascii	"\\\\.psf\\Home\\Desktop\\LAB_TEBS\\_Progetto\\TEBS_"
+ 1835      73665C48 
+ 1835      6F6D655C 
+ 1835      4465736B 
+ 1835      746F705C 
+ 1836 00a2 47697448 		.ascii	"GitHub\\PSoC_Project\\PSoC_Project.cydsn\000"
+ 1836      75625C50 
+ 1836      536F435F 
+ 1836      50726F6A 
+ 1836      6563745C 
+ 1837              	.LASF44:
+ 1838 00c9 72657475 		.ascii	"return_value\000"
+ 1838      726E5F76 
+ 1838      616C7565 
+ 1838      00
+ 1839              	.LASF32:
+ 1840 00d6 656E645F 		.ascii	"end_value\000"
+ 1840      76616C75 
+ 1840      6500
+ 1841              	.LASF31:
+ 1842 00e0 73746172 		.ascii	"start_value\000"
+ 1842      745F7661 
+ 1842      6C756500 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 38
+
+
+ 1843              	.LASF55:
+ 1844 00ec 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 1844      43313120 
+ 1844      352E342E 
+ 1844      31203230 
+ 1844      31363036 
+ 1845 011f 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m3 -mthumb -g -O"
+ 1845      20726576 
+ 1845      6973696F 
+ 1845      6E203233 
+ 1845      37373135 
+ 1846 0152 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 1846      66756E63 
+ 1846      74696F6E 
+ 1846      2D736563 
+ 1846      74696F6E 
+ 1847              	.LASF28:
+ 1848 017a 68616C66 		.ascii	"half_pulse\000"
+ 1848      5F70756C 
+ 1848      736500
+ 1849              	.LASF52:
+ 1850 0185 64617461 		.ascii	"data_to_send\000"
+ 1850      5F746F5F 
+ 1850      73656E64 
+ 1850      00
+ 1851              	.LASF11:
+ 1852 0192 6C6F6E67 		.ascii	"long unsigned int\000"
+ 1852      20756E73 
+ 1852      69676E65 
+ 1852      6420696E 
+ 1852      7400
+ 1853              	.LASF51:
+ 1854 01a4 74656D70 		.ascii	"temp\000"
+ 1854      00
+ 1855              	.LASF9:
+ 1856 01a9 73686F72 		.ascii	"short unsigned int\000"
+ 1856      7420756E 
+ 1856      7369676E 
+ 1856      65642069 
+ 1856      6E7400
+ 1857              	.LASF27:
+ 1858 01bc 70756C73 		.ascii	"pulse_height\000"
+ 1858      655F6865 
+ 1858      69676874 
+ 1858      00
+ 1859              	.LASF35:
+ 1860 01c9 4C55545F 		.ascii	"LUT_MakePulse\000"
+ 1860      4D616B65 
+ 1860      50756C73 
+ 1860      6500
+ 1861              	.LASF4:
+ 1862 01d7 756E7369 		.ascii	"unsigned char\000"
+ 1862      676E6564 
+ 1862      20636861 
+ 1862      7200
+ 1863              	.LASF53:
+ 1864 01e5 64617461 		.ascii	"data_long\000"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 39
+
+
+ 1864      5F6C6F6E 
+ 1864      6700
+ 1865              	.LASF29:
+ 1866 01ef 4C55545F 		.ascii	"LUT_MakeTriangle_Wave\000"
+ 1866      4D616B65 
+ 1866      54726961 
+ 1866      6E676C65 
+ 1866      5F576176 
+ 1867              	.LASF19:
+ 1868 0205 646F7562 		.ascii	"double\000"
+ 1868      6C6500
+ 1869              	.LASF49:
+ 1870 020c 7469615F 		.ascii	"tia_calibration_values\000"
+ 1870      63616C69 
+ 1870      62726174 
+ 1870      696F6E5F 
+ 1870      76616C75 
+ 1871              	.LASF39:
+ 1872 0223 636F756E 		.ascii	"counter_ca\000"
+ 1872      7465725F 
+ 1872      636100
+ 1873              	.LASF20:
+ 1874 022e 63797374 		.ascii	"cystatus\000"
+ 1874      61747573 
+ 1874      00
+ 1875              	.LASF42:
+ 1876 0237 696E7075 		.ascii	"input_flag\000"
+ 1876      745F666C 
+ 1876      616700
+ 1877              	.LASF36:
+ 1878 0242 62617365 		.ascii	"base\000"
+ 1878      00
+ 1879              	.LASF0:
+ 1880 0247 756E7369 		.ascii	"unsigned int\000"
+ 1880      676E6564 
+ 1880      20696E74 
+ 1880      00
+ 1881              	.LASF21:
+ 1882 0254 73746172 		.ascii	"start\000"
+ 1882      7400
+ 1883              	.LASF12:
+ 1884 025a 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 1884      206C6F6E 
+ 1884      6720756E 
+ 1884      7369676E 
+ 1884      65642069 
+ 1885              	.LASF15:
+ 1886 0271 75696E74 		.ascii	"uint8_t\000"
+ 1886      385F7400 
+ 1887              	.LASF16:
+ 1888 0279 696E7431 		.ascii	"int16_t\000"
+ 1888      365F7400 
+ 1889              	.LASF54:
+ 1890 0281 66696E69 		.ascii	"finished_procedure_flag\000"
+ 1890      73686564 
+ 1890      5F70726F 
+ 1890      63656475 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 40
+
+
+ 1890      72655F66 
+ 1891              	.LASF47:
+ 1892 0299 6C75745F 		.ascii	"lut_index\000"
+ 1892      696E6465 
+ 1892      7800
+ 1893              	.LASF30:
+ 1894 02a3 64617461 		.ascii	"data_buffer\000"
+ 1894      5F627566 
+ 1894      66657200 
+ 1895              	.LASF13:
+ 1896 02af 73697A65 		.ascii	"sizetype\000"
+ 1896      74797065 
+ 1896      00
+ 1897              	.LASF1:
+ 1898 02b8 6C6F6E67 		.ascii	"long long int\000"
+ 1898      206C6F6E 
+ 1898      6720696E 
+ 1898      7400
+ 1899              	.LASF48:
+ 1900 02c6 6C75745F 		.ascii	"lut_length\000"
+ 1900      6C656E67 
+ 1900      746800
+ 1901              	.LASF40:
+ 1902 02d1 62756666 		.ascii	"buffer_index\000"
+ 1902      65725F69 
+ 1902      6E646578 
+ 1902      00
+ 1903              	.LASF22:
+ 1904 02de 696E6465 		.ascii	"index\000"
+ 1904      7800
+ 1905              	.LASF58:
+ 1906 02e4 7072696E 		.ascii	"printf\000"
+ 1906      746600
+ 1907              	.LASF25:
+ 1908 02eb 4C55545F 		.ascii	"LUT_make_swv_line\000"
+ 1908      6D616B65 
+ 1908      5F737776 
+ 1908      5F6C696E 
+ 1908      6500
+ 1909              	.LASF43:
+ 1910 02fd 6461635F 		.ascii	"dac_ground_value\000"
+ 1910      67726F75 
+ 1910      6E645F76 
+ 1910      616C7565 
+ 1910      00
+ 1911              	.LASF7:
+ 1912 030e 73686F72 		.ascii	"short int\000"
+ 1912      7420696E 
+ 1912      7400
+ 1913              	.LASF50:
+ 1914 0318 73656C65 		.ascii	"selected_voltage_source\000"
+ 1914      63746564 
+ 1914      5F766F6C 
+ 1914      74616765 
+ 1914      5F736F75 
+ 1915              	.LASF17:
+ 1916 0330 75696E74 		.ascii	"uint16_t\000"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\ccEhRN8j.s 			page 41
+
+
+ 1916      31365F74 
+ 1916      00
+ 1917              	.LASF33:
+ 1918 0339 63765F74 		.ascii	"cv_type\000"
+ 1918      79706500 
+ 1919              	.LASF10:
+ 1920 0341 6C6F6E67 		.ascii	"long int\000"
+ 1920      20696E74 
+ 1920      00
+ 1921              	.LASF14:
+ 1922 034a 63686172 		.ascii	"char\000"
+ 1922      00
+ 1923              	.LASF2:
+ 1924 034f 6C6F6E67 		.ascii	"long double\000"
+ 1924      20646F75 
+ 1924      626C6500 
+ 1925              	.LASF18:
+ 1926 035b 666C6F61 		.ascii	"float\000"
+ 1926      7400
+ 1927              	.LASF3:
+ 1928 0361 7369676E 		.ascii	"signed char\000"
+ 1928      65642063 
+ 1928      68617200 
+ 1929              	.LASF26:
+ 1930 036d 70756C73 		.ascii	"pulse_inc\000"
+ 1930      655F696E 
+ 1930      6300
+ 1931              	.LASF37:
+ 1932 0377 70756C73 		.ascii	"pulse\000"
+ 1932      6500
+ 1933              	.LASF24:
+ 1934 037d 4C55545F 		.ascii	"LUT_make_line\000"
+ 1934      6D616B65 
+ 1934      5F6C696E 
+ 1934      6500
+ 1935              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran

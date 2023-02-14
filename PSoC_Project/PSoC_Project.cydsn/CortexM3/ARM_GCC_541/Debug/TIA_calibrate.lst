@@ -1,0 +1,2512 @@
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"TIA_calibrate.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.Calibrate_Hardware_Wakeup,"ax",%progbits
+  20              		.align	2
+  21              		.thumb
+  22              		.thumb_func
+  23              		.type	Calibrate_Hardware_Wakeup, %function
+  24              	Calibrate_Hardware_Wakeup:
+  25              	.LFB66:
+  26              		.file 1 "TIA_calibrate.c"
+   1:TIA_calibrate.c **** /*******************************************************************************
+   2:TIA_calibrate.c **** * File Name: calibrate.c
+   3:TIA_calibrate.c **** *
+   4:TIA_calibrate.c **** * Description:
+   5:TIA_calibrate.c **** *  Protocols to calibrate the current measuring circuitry i.e. TIA / delta sigma ADC with an IDAC
+   6:TIA_calibrate.c **** *
+   7:TIA_calibrate.c **** **********************************************************************************
+   8:TIA_calibrate.c ****  * Copyright Kyle Vitautas Lopin, Naresuan University, Phitsanulok Thailand
+   9:TIA_calibrate.c ****  * Released under Creative Commons Attribution-ShareAlike  3.0 (CC BY-SA 3.0 US)
+  10:TIA_calibrate.c **** *********************************************************************************/
+  11:TIA_calibrate.c **** #include <project.h>
+  12:TIA_calibrate.c **** #include "math.h"
+  13:TIA_calibrate.c **** #include <stdio.h>
+  14:TIA_calibrate.c **** #include "stdlib.h"
+  15:TIA_calibrate.c **** 
+  16:TIA_calibrate.c **** #include "TIA_calibrate.h"
+  17:TIA_calibrate.c **** #include "BT_protocols.h"
+  18:TIA_calibrate.c **** 
+  19:TIA_calibrate.c **** //extern char LCD_str[];  // for debug
+  20:TIA_calibrate.c **** const uint16_t calibrate_TIA_resistor_list[]= {20, 30, 40, 80, 120, 250, 500, 1000};
+  21:TIA_calibrate.c **** uint16_t static ADC_value;
+  22:TIA_calibrate.c **** 
+  23:TIA_calibrate.c **** int16_t valore;
+  24:TIA_calibrate.c **** int16_t valore_s;
+  25:TIA_calibrate.c **** 
+  26:TIA_calibrate.c **** /***************************************
+  27:TIA_calibrate.c **** * Forward function references
+  28:TIA_calibrate.c **** ***************************************/
+  29:TIA_calibrate.c **** static void Calibrate_Hardware_Wakeup(void);
+  30:TIA_calibrate.c **** static void calibrate_step(uint16_t IDAC_value, uint8 IDAC_index);
+  31:TIA_calibrate.c **** static void Calibrate_Hardware_Sleep(void);
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 2
+
+
+  32:TIA_calibrate.c **** 
+  33:TIA_calibrate.c **** /******************************************************************************
+  34:TIA_calibrate.c **** * Function Name: calibrate_TIA
+  35:TIA_calibrate.c **** *******************************************************************************
+  36:TIA_calibrate.c **** *
+  37:TIA_calibrate.c **** * Summary:
+  38:TIA_calibrate.c **** *  Calibrate the TIA circuit each time the current gain settings are changed
+  39:TIA_calibrate.c **** *
+  40:TIA_calibrate.c **** * Global variables:
+  41:TIA_calibrate.c **** *  uint8 TIA_resistor_value_index: index of which TIA resistor to use, Supplied by UART input
+  42:TIA_calibrate.c **** *  uint8 ADC_buffer_index: which ADC buffer is used, gain = 2**ADC_buffer_index
+  43:TIA_calibrate.c **** *
+  44:TIA_calibrate.c **** * Return:
+  45:TIA_calibrate.c **** *  array of 20 bytes is loaded into the USB IN ENDPOINT (into the computer)
+  46:TIA_calibrate.c **** *
+  47:TIA_calibrate.c **** *******************************************************************************/
+  48:TIA_calibrate.c **** 
+  49:TIA_calibrate.c **** void calibrate_TIA(uint8 TIA_resistor_value_index /*uint8 ADC_buffer_index -> this maybe remove*/) 
+  50:TIA_calibrate.c ****     // The IDAC only 
+  51:TIA_calibrate.c ****     IDAC_calibrate_Start();
+  52:TIA_calibrate.c ****     IDAC_calibrate_SetValue(0);
+  53:TIA_calibrate.c ****     // start the hardware required
+  54:TIA_calibrate.c ****     Calibrate_Hardware_Wakeup();
+  55:TIA_calibrate.c ****     CyDelay(100);
+  56:TIA_calibrate.c ****     // decide what currents to use based on TIA resistor and ADC buffer settings
+  57:TIA_calibrate.c ****     uint16_t resistor_value = calibrate_TIA_resistor_list[TIA_resistor_value_index];
+  58:TIA_calibrate.c ****     //uint var = 2;
+  59:TIA_calibrate.c ****     uint16_t IDAC_setting = 0;
+  60:TIA_calibrate.c ****     
+  61:TIA_calibrate.c ****     /* ADC_buffer_index management */
+  62:TIA_calibrate.c **** //  uint8 ADC_buffer_value = pow(var, ADC_buffer_index); ** we are not giving the ADC_buffer_index 
+  63:TIA_calibrate.c ****     uint8_t ADC_buffer_value =  2*1; // ADC_buffer_index = 1 
+  64:TIA_calibrate.c ****     
+  65:TIA_calibrate.c ****     // set input current to zero and read ADC
+  66:TIA_calibrate.c ****     ADC_SigDel_StartConvert();
+  67:TIA_calibrate.c ****     calibrate_step(IDAC_setting, 2);
+  68:TIA_calibrate.c ****     // calculate the IDAC value needed to get a 1 Volt in the ADC
+  69:TIA_calibrate.c ****     // the 8000 is because the IDAC has a 1/8 uA per bit and 8000=1000mV/(1/8 uA per bit)
+  70:TIA_calibrate.c ****     float32 transfer = 8000./(ADC_buffer_value*resistor_value);
+  71:TIA_calibrate.c ****     int transfer_int = (int) transfer;
+  72:TIA_calibrate.c ****     if (transfer_int > 250) {  // the TIA needs too much current, reduce needs by half.  Is needed 
+  73:TIA_calibrate.c ****         transfer_int /= 2;
+  74:TIA_calibrate.c ****     }
+  75:TIA_calibrate.c ****     //    LCD_Position(0,0);
+  76:TIA_calibrate.c **** //    sprintf(LCD_str, "in:%d |%d| ", resistor_value, ADC_buffer_value);
+  77:TIA_calibrate.c **** //    LCD_PrintString(LCD_str);
+  78:TIA_calibrate.c ****     // is not DRY but not sure how to fix
+  79:TIA_calibrate.c ****     IDAC_calibrate_SetPolarity(IDAC_calibrate_SINK);
+  80:TIA_calibrate.c ****     calibrate_step(transfer_int, 0);
+  81:TIA_calibrate.c ****     calibrate_step(transfer_int/2, 1);
+  82:TIA_calibrate.c ****     IDAC_calibrate_SetPolarity(IDAC_calibrate_SOURCE);
+  83:TIA_calibrate.c ****     calibrate_step(transfer_int/2, 3);
+  84:TIA_calibrate.c ****     calibrate_step(transfer_int, 4);
+  85:TIA_calibrate.c ****     IDAC_calibrate_SetValue(0);
+  86:TIA_calibrate.c ****     Calibrate_Hardware_Sleep();
+  87:TIA_calibrate.c ****     
+  88:TIA_calibrate.c ****     
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 3
+
+
+  89:TIA_calibrate.c ****     /* regressione lineare per calcolare R (V = R*I + q)
+  90:TIA_calibrate.c ****     float sum_x = 0, sum_x2 = 0, sum_xy = 0, sum_y = 0, R, q;
+  91:TIA_calibrate.c ****     for(int i=0; i<Number_calibration_points; i++){
+  92:TIA_calibrate.c ****         sum_x = sum_x + calibrate_array[i];
+  93:TIA_calibrate.c ****         sum_x2 = sum_x2 + calibrate_array[i]*calibrate_array[i];
+  94:TIA_calibrate.c ****         sum_y = calibrate_array[i+Number_calibration_points];
+  95:TIA_calibrate.c ****         sum_xy = sum_xy + calibrate_array[i]*calibrate_array[i+Number_calibration_points]; 
+  96:TIA_calibrate.c ****     }
+  97:TIA_calibrate.c ****     
+  98:TIA_calibrate.c ****     q = (Number_calibration_points*sum_xy - sum_x*sum_y)/(Number_calibration_points*sum_x2 - (sum_x
+  99:TIA_calibrate.c ****     R = (sum_y - q*sum_x)/Number_calibration_points;
+ 100:TIA_calibrate.c ****     */
+ 101:TIA_calibrate.c ****     // dobbiamo mandarla alla GUI
+ 102:TIA_calibrate.c ****     if(connection_state){ //TIA_calibrate -- BT already connected
+ 103:TIA_calibrate.c ****         for(int i=0; i<Number_calibration_points*2; i++){
+ 104:TIA_calibrate.c ****             uint8_t LSB_data = calibrate_array[i] & 0xFF;
+ 105:TIA_calibrate.c ****             uint8_t MSB_data = calibrate_array[i] >> 8;
+ 106:TIA_calibrate.c ****             data_to_send[2*i+1] = MSB_data;
+ 107:TIA_calibrate.c ****             data_to_send[2*i+2] = LSB_data;
+ 108:TIA_calibrate.c ****         }
+ 109:TIA_calibrate.c ****         data_to_send[0] = TIA_SET; // header 
+ 110:TIA_calibrate.c ****         writeBT((Number_calibration_points*4)+1); 
+ 111:TIA_calibrate.c ****     } else { //TIA_initialize -- BT not connected
+ 112:TIA_calibrate.c ****         for(int i=0; i<Number_calibration_points*2; i++){
+ 113:TIA_calibrate.c ****             uint8_t LSB_data = calibrate_array[i] & 0xFF;
+ 114:TIA_calibrate.c ****             uint8_t MSB_data = calibrate_array[i] >> 8;
+ 115:TIA_calibrate.c ****             tia_calibration_values[2*i+1] = MSB_data;
+ 116:TIA_calibrate.c ****             tia_calibration_values[2*i+2] = LSB_data;
+ 117:TIA_calibrate.c ****         }
+ 118:TIA_calibrate.c ****         tia_calibration_values[0] = TIA_SET;
+ 119:TIA_calibrate.c ****     }
+ 120:TIA_calibrate.c ****     
+ 121:TIA_calibrate.c ****     // se necessario salvare localmente, salvare in EEPROM 
+ 122:TIA_calibrate.c ****   
+ 123:TIA_calibrate.c **** }
+ 124:TIA_calibrate.c **** 
+ 125:TIA_calibrate.c **** /******************************************************************************
+ 126:TIA_calibrate.c **** * Function Name: calibrate_step
+ 127:TIA_calibrate.c **** *******************************************************************************
+ 128:TIA_calibrate.c **** *
+ 129:TIA_calibrate.c **** * Summary:
+ 130:TIA_calibrate.c **** *  Gets a single calibration data point by setting the calibration IDAC and reading
+ 131:TIA_calibrate.c **** *  the ADC count and saving them in the calibration_array
+ 132:TIA_calibrate.c **** *
+ 133:TIA_calibrate.c **** * Parameters:
+ 134:TIA_calibrate.c **** *  uint16_t IDAC_value: value to set the calibration  IDAC to before measuring with the ADC
+ 135:TIA_calibrate.c **** *  uint8 IDAC_index: index of where in calibration_array to save the IDAC and ADC data
+ 136:TIA_calibrate.c **** *
+ 137:TIA_calibrate.c **** * Global variables:
+ 138:TIA_calibrate.c **** *  calibration_array: array of saved IDAC and ADC values
+ 139:TIA_calibrate.c **** *
+ 140:TIA_calibrate.c **** *******************************************************************************/
+ 141:TIA_calibrate.c **** 
+ 142:TIA_calibrate.c **** static void calibrate_step(uint16_t IDAC_value, uint8 IDAC_index) {
+ 143:TIA_calibrate.c ****     IDAC_calibrate_SetValue(IDAC_value);
+ 144:TIA_calibrate.c ****     CyDelay(100);  // allow the ADC to settle
+ 145:TIA_calibrate.c ****     ADC_value = ADC_SigDel_GetResult16(); //la funzione restituisce un int16, noi lo salviamo in un
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 4
+
+
+ 146:TIA_calibrate.c ****     valore = ADC_SigDel_GetResult16();
+ 147:TIA_calibrate.c ****     valore_s = valore & 0x0FFF;
+ 148:TIA_calibrate.c ****     //calibrate_array.data[IDAC_index] = IDAC_value;
+ 149:TIA_calibrate.c ****     //calibrate_array.data[IDAC_index+5] = ADC_value;  // 5 because of the way the array is set up
+ 150:TIA_calibrate.c ****    
+ 151:TIA_calibrate.c ****     calibrate_array[IDAC_index] = IDAC_value;
+ 152:TIA_calibrate.c ****     calibrate_array[IDAC_index + Number_calibration_points] = ADC_value;
+ 153:TIA_calibrate.c ****     // visto che usiamo la UART salviamo i dati in un array, salviamo le correnti da posiz. 0 a 4 e
+ 154:TIA_calibrate.c **** }
+ 155:TIA_calibrate.c **** 
+ 156:TIA_calibrate.c **** /******************************************************************************
+ 157:TIA_calibrate.c **** * Function Name: Calibrate_Hardware_Wakeup
+ 158:TIA_calibrate.c **** *******************************************************************************
+ 159:TIA_calibrate.c **** *
+ 160:TIA_calibrate.c **** * Summary:
+ 161:TIA_calibrate.c **** *  Wakeup all the hardware needed for the calibration routine and set the AMux to 
+ 162:TIA_calibrate.c **** *  the correct channel
+ 163:TIA_calibrate.c **** *
+ 164:TIA_calibrate.c **** *******************************************************************************/
+ 165:TIA_calibrate.c **** 
+ 166:TIA_calibrate.c **** static void Calibrate_Hardware_Wakeup(void) {
+  27              		.loc 1 166 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 08B5     		push	{r3, lr}
+  32              		.cfi_def_cfa_offset 8
+  33              		.cfi_offset 3, -8
+  34              		.cfi_offset 14, -4
+ 167:TIA_calibrate.c ****     AMux_TIA_input_Select(AMux_TIA_calibrat_ch);
+  35              		.loc 1 167 0
+  36 0002 0020     		movs	r0, #0
+  37 0004 FFF7FEFF 		bl	AMux_TIA_input_Select
+  38              	.LVL0:
+ 168:TIA_calibrate.c ****     TIA_Wakeup();
+  39              		.loc 1 168 0
+  40 0008 FFF7FEFF 		bl	TIA_Wakeup
+  41              	.LVL1:
+ 169:TIA_calibrate.c ****     VDAC_TIA_Wakeup();
+  42              		.loc 1 169 0
+  43 000c FFF7FEFF 		bl	VDAC_TIA_Wakeup
+  44              	.LVL2:
+ 170:TIA_calibrate.c ****     ADC_SigDel_Wakeup();
+  45              		.loc 1 170 0
+  46 0010 FFF7FEFF 		bl	ADC_SigDel_Wakeup
+  47              	.LVL3:
+  48 0014 08BD     		pop	{r3, pc}
+  49              		.cfi_endproc
+  50              	.LFE66:
+  51              		.size	Calibrate_Hardware_Wakeup, .-Calibrate_Hardware_Wakeup
+  52 0016 00BF     		.section	.text.calibrate_step,"ax",%progbits
+  53              		.align	2
+  54              		.thumb
+  55              		.thumb_func
+  56              		.type	calibrate_step, %function
+  57              	calibrate_step:
+  58              	.LFB65:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 5
+
+
+ 142:TIA_calibrate.c ****     IDAC_calibrate_SetValue(IDAC_value);
+  59              		.loc 1 142 0
+  60              		.cfi_startproc
+  61              		@ args = 0, pretend = 0, frame = 0
+  62              		@ frame_needed = 0, uses_anonymous_args = 0
+  63              	.LVL4:
+  64 0000 70B5     		push	{r4, r5, r6, lr}
+  65              		.cfi_def_cfa_offset 16
+  66              		.cfi_offset 4, -16
+  67              		.cfi_offset 5, -12
+  68              		.cfi_offset 6, -8
+  69              		.cfi_offset 14, -4
+  70 0002 0646     		mov	r6, r0
+  71 0004 0C46     		mov	r4, r1
+ 143:TIA_calibrate.c ****     CyDelay(100);  // allow the ADC to settle
+  72              		.loc 1 143 0
+  73 0006 C0B2     		uxtb	r0, r0
+  74              	.LVL5:
+  75 0008 FFF7FEFF 		bl	IDAC_calibrate_SetValue
+  76              	.LVL6:
+ 144:TIA_calibrate.c ****     ADC_value = ADC_SigDel_GetResult16(); //la funzione restituisce un int16, noi lo salviamo in un
+  77              		.loc 1 144 0
+  78 000c 6420     		movs	r0, #100
+  79 000e FFF7FEFF 		bl	CyDelay
+  80              	.LVL7:
+ 145:TIA_calibrate.c ****     valore = ADC_SigDel_GetResult16();
+  81              		.loc 1 145 0
+  82 0012 FFF7FEFF 		bl	ADC_SigDel_GetResult16
+  83              	.LVL8:
+  84 0016 094D     		ldr	r5, .L5
+  85 0018 2880     		strh	r0, [r5]	@ movhi
+ 146:TIA_calibrate.c ****     valore_s = valore & 0x0FFF;
+  86              		.loc 1 146 0
+  87 001a FFF7FEFF 		bl	ADC_SigDel_GetResult16
+  88              	.LVL9:
+  89 001e 084B     		ldr	r3, .L5+4
+  90 0020 1880     		strh	r0, [r3]	@ movhi
+ 147:TIA_calibrate.c ****     //calibrate_array.data[IDAC_index] = IDAC_value;
+  91              		.loc 1 147 0
+  92 0022 C0F30B00 		ubfx	r0, r0, #0, #12
+  93 0026 074B     		ldr	r3, .L5+8
+  94 0028 1880     		strh	r0, [r3]	@ movhi
+ 151:TIA_calibrate.c ****     calibrate_array[IDAC_index + Number_calibration_points] = ADC_value;
+  95              		.loc 1 151 0
+  96 002a 074B     		ldr	r3, .L5+12
+  97 002c 23F81460 		strh	r6, [r3, r4, lsl #1]	@ movhi
+ 152:TIA_calibrate.c ****     // visto che usiamo la UART salviamo i dati in un array, salviamo le correnti da posiz. 0 a 4 e
+  98              		.loc 1 152 0
+  99 0030 0534     		adds	r4, r4, #5
+ 100 0032 2A88     		ldrh	r2, [r5]
+ 101 0034 23F81420 		strh	r2, [r3, r4, lsl #1]	@ movhi
+ 102 0038 70BD     		pop	{r4, r5, r6, pc}
+ 103              	.L6:
+ 104 003a 00BF     		.align	2
+ 105              	.L5:
+ 106 003c 00000000 		.word	.LANCHOR0
+ 107 0040 00000000 		.word	valore
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 6
+
+
+ 108 0044 00000000 		.word	valore_s
+ 109 0048 00000000 		.word	calibrate_array
+ 110              		.cfi_endproc
+ 111              	.LFE65:
+ 112              		.size	calibrate_step, .-calibrate_step
+ 113              		.section	.text.Calibrate_Hardware_Sleep,"ax",%progbits
+ 114              		.align	2
+ 115              		.thumb
+ 116              		.thumb_func
+ 117              		.type	Calibrate_Hardware_Sleep, %function
+ 118              	Calibrate_Hardware_Sleep:
+ 119              	.LFB67:
+ 171:TIA_calibrate.c **** }
+ 172:TIA_calibrate.c **** 
+ 173:TIA_calibrate.c **** /******************************************************************************
+ 174:TIA_calibrate.c **** * Function Name: Calibrate_Hardware_Sleep
+ 175:TIA_calibrate.c **** *******************************************************************************
+ 176:TIA_calibrate.c **** *
+ 177:TIA_calibrate.c **** * Summary:
+ 178:TIA_calibrate.c **** *  Put to sleep all the hardware needed for the calibration routine, stop  
+ 179:TIA_calibrate.c **** *  the IDAC, and set the AMux to the correct channel
+ 180:TIA_calibrate.c **** *
+ 181:TIA_calibrate.c **** *******************************************************************************/
+ 182:TIA_calibrate.c **** 
+ 183:TIA_calibrate.c **** static void Calibrate_Hardware_Sleep(void) {
+ 120              		.loc 1 183 0
+ 121              		.cfi_startproc
+ 122              		@ args = 0, pretend = 0, frame = 0
+ 123              		@ frame_needed = 0, uses_anonymous_args = 0
+ 124 0000 08B5     		push	{r3, lr}
+ 125              		.cfi_def_cfa_offset 8
+ 126              		.cfi_offset 3, -8
+ 127              		.cfi_offset 14, -4
+ 184:TIA_calibrate.c ****     AMux_TIA_input_Select(AMux_TIA_measure_ch);
+ 128              		.loc 1 184 0
+ 129 0002 0120     		movs	r0, #1
+ 130 0004 FFF7FEFF 		bl	AMux_TIA_input_Select
+ 131              	.LVL10:
+ 185:TIA_calibrate.c ****     TIA_Sleep();
+ 132              		.loc 1 185 0
+ 133 0008 FFF7FEFF 		bl	TIA_Sleep
+ 134              	.LVL11:
+ 186:TIA_calibrate.c ****     VDAC_TIA_Sleep();
+ 135              		.loc 1 186 0
+ 136 000c FFF7FEFF 		bl	VDAC_TIA_Sleep
+ 137              	.LVL12:
+ 187:TIA_calibrate.c ****     ADC_SigDel_Sleep();
+ 138              		.loc 1 187 0
+ 139 0010 FFF7FEFF 		bl	ADC_SigDel_Sleep
+ 140              	.LVL13:
+ 188:TIA_calibrate.c ****     IDAC_calibrate_Stop();
+ 141              		.loc 1 188 0
+ 142 0014 FFF7FEFF 		bl	IDAC_calibrate_Stop
+ 143              	.LVL14:
+ 144 0018 08BD     		pop	{r3, pc}
+ 145              		.cfi_endproc
+ 146              	.LFE67:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 7
+
+
+ 147              		.size	Calibrate_Hardware_Sleep, .-Calibrate_Hardware_Sleep
+ 148              		.global	__aeabi_i2d
+ 149              		.global	__aeabi_ddiv
+ 150              		.global	__aeabi_d2f
+ 151              		.global	__aeabi_f2iz
+ 152 001a 00BF     		.section	.text.calibrate_TIA,"ax",%progbits
+ 153              		.align	2
+ 154              		.global	calibrate_TIA
+ 155              		.thumb
+ 156              		.thumb_func
+ 157              		.type	calibrate_TIA, %function
+ 158              	calibrate_TIA:
+ 159              	.LFB64:
+  49:TIA_calibrate.c ****     // The IDAC only 
+ 160              		.loc 1 49 0
+ 161              		.cfi_startproc
+ 162              		@ args = 0, pretend = 0, frame = 0
+ 163              		@ frame_needed = 0, uses_anonymous_args = 0
+ 164              	.LVL15:
+ 165 0000 38B5     		push	{r3, r4, r5, lr}
+ 166              		.cfi_def_cfa_offset 16
+ 167              		.cfi_offset 3, -16
+ 168              		.cfi_offset 4, -12
+ 169              		.cfi_offset 5, -8
+ 170              		.cfi_offset 14, -4
+ 171 0002 0446     		mov	r4, r0
+  51:TIA_calibrate.c ****     IDAC_calibrate_SetValue(0);
+ 172              		.loc 1 51 0
+ 173 0004 FFF7FEFF 		bl	IDAC_calibrate_Start
+ 174              	.LVL16:
+  52:TIA_calibrate.c ****     // start the hardware required
+ 175              		.loc 1 52 0
+ 176 0008 0020     		movs	r0, #0
+ 177 000a FFF7FEFF 		bl	IDAC_calibrate_SetValue
+ 178              	.LVL17:
+  54:TIA_calibrate.c ****     CyDelay(100);
+ 179              		.loc 1 54 0
+ 180 000e FFF7FEFF 		bl	Calibrate_Hardware_Wakeup
+ 181              	.LVL18:
+  55:TIA_calibrate.c ****     // decide what currents to use based on TIA resistor and ADC buffer settings
+ 182              		.loc 1 55 0
+ 183 0012 6420     		movs	r0, #100
+ 184 0014 FFF7FEFF 		bl	CyDelay
+ 185              	.LVL19:
+  57:TIA_calibrate.c ****     //uint var = 2;
+ 186              		.loc 1 57 0
+ 187 0018 354B     		ldr	r3, .L18
+ 188 001a 33F81440 		ldrh	r4, [r3, r4, lsl #1]
+ 189              	.LVL20:
+  66:TIA_calibrate.c ****     calibrate_step(IDAC_setting, 2);
+ 190              		.loc 1 66 0
+ 191 001e FFF7FEFF 		bl	ADC_SigDel_StartConvert
+ 192              	.LVL21:
+  67:TIA_calibrate.c ****     // calculate the IDAC value needed to get a 1 Volt in the ADC
+ 193              		.loc 1 67 0
+ 194 0022 0221     		movs	r1, #2
+ 195 0024 0020     		movs	r0, #0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 8
+
+
+ 196 0026 FFF7FEFF 		bl	calibrate_step
+ 197              	.LVL22:
+  70:TIA_calibrate.c ****     int transfer_int = (int) transfer;
+ 198              		.loc 1 70 0
+ 199 002a 6000     		lsls	r0, r4, #1
+ 200 002c FFF7FEFF 		bl	__aeabi_i2d
+ 201              	.LVL23:
+ 202 0030 0246     		mov	r2, r0
+ 203 0032 0B46     		mov	r3, r1
+ 204 0034 0020     		movs	r0, #0
+ 205 0036 2F49     		ldr	r1, .L18+4
+ 206 0038 FFF7FEFF 		bl	__aeabi_ddiv
+ 207              	.LVL24:
+ 208 003c FFF7FEFF 		bl	__aeabi_d2f
+ 209              	.LVL25:
+  71:TIA_calibrate.c ****     if (transfer_int > 250) {  // the TIA needs too much current, reduce needs by half.  Is needed 
+ 210              		.loc 1 71 0
+ 211 0040 FFF7FEFF 		bl	__aeabi_f2iz
+ 212              	.LVL26:
+ 213 0044 0446     		mov	r4, r0
+ 214              	.LVL27:
+  72:TIA_calibrate.c ****         transfer_int /= 2;
+ 215              		.loc 1 72 0
+ 216 0046 FA28     		cmp	r0, #250
+ 217 0048 02DD     		ble	.L10
+  73:TIA_calibrate.c ****     }
+ 218              		.loc 1 73 0
+ 219 004a 00EBD074 		add	r4, r0, r0, lsr #31
+ 220 004e 6410     		asrs	r4, r4, #1
+ 221              	.LVL28:
+ 222              	.L10:
+  79:TIA_calibrate.c ****     calibrate_step(transfer_int, 0);
+ 223              		.loc 1 79 0
+ 224 0050 0420     		movs	r0, #4
+ 225 0052 FFF7FEFF 		bl	IDAC_calibrate_SetPolarity
+ 226              	.LVL29:
+  80:TIA_calibrate.c ****     calibrate_step(transfer_int/2, 1);
+ 227              		.loc 1 80 0
+ 228 0056 A5B2     		uxth	r5, r4
+ 229 0058 0021     		movs	r1, #0
+ 230 005a 2846     		mov	r0, r5
+ 231 005c FFF7FEFF 		bl	calibrate_step
+ 232              	.LVL30:
+  81:TIA_calibrate.c ****     IDAC_calibrate_SetPolarity(IDAC_calibrate_SOURCE);
+ 233              		.loc 1 81 0
+ 234 0060 04EBD474 		add	r4, r4, r4, lsr #31
+ 235              	.LVL31:
+ 236 0064 C4F34F04 		ubfx	r4, r4, #1, #16
+ 237 0068 0121     		movs	r1, #1
+ 238 006a 2046     		mov	r0, r4
+ 239 006c FFF7FEFF 		bl	calibrate_step
+ 240              	.LVL32:
+  82:TIA_calibrate.c ****     calibrate_step(transfer_int/2, 3);
+ 241              		.loc 1 82 0
+ 242 0070 0020     		movs	r0, #0
+ 243 0072 FFF7FEFF 		bl	IDAC_calibrate_SetPolarity
+ 244              	.LVL33:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 9
+
+
+  83:TIA_calibrate.c ****     calibrate_step(transfer_int, 4);
+ 245              		.loc 1 83 0
+ 246 0076 0321     		movs	r1, #3
+ 247 0078 2046     		mov	r0, r4
+ 248 007a FFF7FEFF 		bl	calibrate_step
+ 249              	.LVL34:
+  84:TIA_calibrate.c ****     IDAC_calibrate_SetValue(0);
+ 250              		.loc 1 84 0
+ 251 007e 0421     		movs	r1, #4
+ 252 0080 2846     		mov	r0, r5
+ 253 0082 FFF7FEFF 		bl	calibrate_step
+ 254              	.LVL35:
+  85:TIA_calibrate.c ****     Calibrate_Hardware_Sleep();
+ 255              		.loc 1 85 0
+ 256 0086 0020     		movs	r0, #0
+ 257 0088 FFF7FEFF 		bl	IDAC_calibrate_SetValue
+ 258              	.LVL36:
+  86:TIA_calibrate.c ****     
+ 259              		.loc 1 86 0
+ 260 008c FFF7FEFF 		bl	Calibrate_Hardware_Sleep
+ 261              	.LVL37:
+ 102:TIA_calibrate.c ****         for(int i=0; i<Number_calibration_points*2; i++){
+ 262              		.loc 1 102 0
+ 263 0090 194B     		ldr	r3, .L18+8
+ 264 0092 9B78     		ldrb	r3, [r3, #2]	@ zero_extendqisi2
+ 265 0094 13F0FF0F 		tst	r3, #255
+ 266 0098 0ED1     		bne	.L16
+ 267 009a 0023     		movs	r3, #0
+ 268 009c 21E0     		b	.L12
+ 269              	.LVL38:
+ 270              	.L13:
+ 271              	.LBB2:
+ 272              	.LBB3:
+ 104:TIA_calibrate.c ****             uint8_t MSB_data = calibrate_array[i] >> 8;
+ 273              		.loc 1 104 0 discriminator 3
+ 274 009e 174A     		ldr	r2, .L18+12
+ 275 00a0 32F81320 		ldrh	r2, [r2, r3, lsl #1]
+ 276 00a4 D4B2     		uxtb	r4, r2
+ 277              	.LVL39:
+ 105:TIA_calibrate.c ****             data_to_send[2*i+1] = MSB_data;
+ 278              		.loc 1 105 0 discriminator 3
+ 279 00a6 120A     		lsrs	r2, r2, #8
+ 280              	.LVL40:
+ 106:TIA_calibrate.c ****             data_to_send[2*i+2] = LSB_data;
+ 281              		.loc 1 106 0 discriminator 3
+ 282 00a8 5900     		lsls	r1, r3, #1
+ 283 00aa 0131     		adds	r1, r1, #1
+ 284 00ac 1448     		ldr	r0, .L18+16
+ 285 00ae 4254     		strb	r2, [r0, r1]
+ 107:TIA_calibrate.c ****         }
+ 286              		.loc 1 107 0 discriminator 3
+ 287 00b0 0133     		adds	r3, r3, #1
+ 288              	.LVL41:
+ 289 00b2 00F81340 		strb	r4, [r0, r3, lsl #1]
+ 290              	.LVL42:
+ 291 00b6 00E0     		b	.L11
+ 292              	.LVL43:
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 10
+
+
+ 293              	.L16:
+ 294              	.LBE3:
+ 295              	.LBE2:
+ 296 00b8 0023     		movs	r3, #0
+ 297              	.L11:
+ 298              	.LVL44:
+ 299              	.LBB4:
+ 103:TIA_calibrate.c ****             uint8_t LSB_data = calibrate_array[i] & 0xFF;
+ 300              		.loc 1 103 0 discriminator 1
+ 301 00ba 092B     		cmp	r3, #9
+ 302 00bc EFDD     		ble	.L13
+ 303              	.LBE4:
+ 109:TIA_calibrate.c ****         writeBT((Number_calibration_points*4)+1); 
+ 304              		.loc 1 109 0
+ 305 00be 4122     		movs	r2, #65
+ 306 00c0 0F4B     		ldr	r3, .L18+16
+ 307              	.LVL45:
+ 308 00c2 1A70     		strb	r2, [r3]
+ 110:TIA_calibrate.c ****     } else { //TIA_initialize -- BT not connected
+ 309              		.loc 1 110 0
+ 310 00c4 1520     		movs	r0, #21
+ 311 00c6 FFF7FEFF 		bl	writeBT
+ 312              	.LVL46:
+ 313 00ca 38BD     		pop	{r3, r4, r5, pc}
+ 314              	.LVL47:
+ 315              	.L15:
+ 316              	.LBB5:
+ 317              	.LBB6:
+ 113:TIA_calibrate.c ****             uint8_t MSB_data = calibrate_array[i] >> 8;
+ 318              		.loc 1 113 0 discriminator 3
+ 319 00cc 0B4A     		ldr	r2, .L18+12
+ 320 00ce 32F81300 		ldrh	r0, [r2, r3, lsl #1]
+ 321              	.LVL48:
+ 114:TIA_calibrate.c ****             tia_calibration_values[2*i+1] = MSB_data;
+ 322              		.loc 1 114 0 discriminator 3
+ 323 00d2 040A     		lsrs	r4, r0, #8
+ 324              	.LVL49:
+ 115:TIA_calibrate.c ****             tia_calibration_values[2*i+2] = LSB_data;
+ 325              		.loc 1 115 0 discriminator 3
+ 326 00d4 5A00     		lsls	r2, r3, #1
+ 327 00d6 0132     		adds	r2, r2, #1
+ 328 00d8 0A49     		ldr	r1, .L18+20
+ 329 00da 8C54     		strb	r4, [r1, r2]
+ 116:TIA_calibrate.c ****         }
+ 330              		.loc 1 116 0 discriminator 3
+ 331 00dc 0133     		adds	r3, r3, #1
+ 332              	.LVL50:
+ 333 00de 01F81300 		strb	r0, [r1, r3, lsl #1]
+ 334              	.LVL51:
+ 335              	.L12:
+ 336              	.LBE6:
+ 112:TIA_calibrate.c ****             uint8_t LSB_data = calibrate_array[i] & 0xFF;
+ 337              		.loc 1 112 0 discriminator 1
+ 338 00e2 092B     		cmp	r3, #9
+ 339 00e4 F2DD     		ble	.L15
+ 340              	.LBE5:
+ 118:TIA_calibrate.c ****     }
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 11
+
+
+ 341              		.loc 1 118 0
+ 342 00e6 4122     		movs	r2, #65
+ 343 00e8 064B     		ldr	r3, .L18+20
+ 344              	.LVL52:
+ 345 00ea 1A70     		strb	r2, [r3]
+ 346 00ec 38BD     		pop	{r3, r4, r5, pc}
+ 347              	.L19:
+ 348 00ee 00BF     		.align	2
+ 349              	.L18:
+ 350 00f0 00000000 		.word	.LANCHOR1
+ 351 00f4 0040BF40 		.word	1086275584
+ 352 00f8 00000000 		.word	.LANCHOR0
+ 353 00fc 00000000 		.word	calibrate_array
+ 354 0100 00000000 		.word	data_to_send
+ 355 0104 00000000 		.word	tia_calibration_values
+ 356              		.cfi_endproc
+ 357              	.LFE64:
+ 358              		.size	calibrate_TIA, .-calibrate_TIA
+ 359              		.comm	valore_s,2,2
+ 360              		.comm	valore,2,2
+ 361              		.global	calibrate_TIA_resistor_list
+ 362              		.comm	TIA_resistor_value_index,1,1
+ 363              		.comm	calibrate_array,20,4
+ 364              		.comm	finished_procedure_flag,1,1
+ 365              		.comm	data_long,5000,4
+ 366              		.comm	data_to_send,120,4
+ 367              		.comm	temp,20,4
+ 368              		.comm	data_buffer,20,4
+ 369              		.comm	selected_voltage_source,1,1
+ 370              		.comm	tia_calibration_values,21,4
+ 371              		.comm	lut_length,2,2
+ 372              		.comm	lut_index,2,2
+ 373              		.comm	waveform_lut,10010,4
+ 374              		.comm	lut_value,2,2
+ 375              		.comm	return_value,4,4
+ 376              		.comm	dac_ground_value,2,2
+ 377              		.section	.rodata
+ 378              		.align	2
+ 379              		.set	.LANCHOR1,. + 0
+ 380              		.type	calibrate_TIA_resistor_list, %object
+ 381              		.size	calibrate_TIA_resistor_list, 16
+ 382              	calibrate_TIA_resistor_list:
+ 383 0000 1400     		.short	20
+ 384 0002 1E00     		.short	30
+ 385 0004 2800     		.short	40
+ 386 0006 5000     		.short	80
+ 387 0008 7800     		.short	120
+ 388 000a FA00     		.short	250
+ 389 000c F401     		.short	500
+ 390 000e E803     		.short	1000
+ 391              		.bss
+ 392              		.align	1
+ 393              		.set	.LANCHOR0,. + 0
+ 394              		.type	ADC_value, %object
+ 395              		.size	ADC_value, 2
+ 396              	ADC_value:
+ 397 0000 0000     		.space	2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 12
+
+
+ 398              		.type	connection_state, %object
+ 399              		.size	connection_state, 1
+ 400              	connection_state:
+ 401 0002 00       		.space	1
+ 402              		.type	input_flag, %object
+ 403              		.size	input_flag, 1
+ 404              	input_flag:
+ 405 0003 00       		.space	1
+ 406              		.type	buffer_index, %object
+ 407              		.size	buffer_index, 1
+ 408              	buffer_index:
+ 409 0004 00       		.space	1
+ 410              		.text
+ 411              	.Letext0:
+ 412              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 413              		.file 3 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 414              		.file 4 "Generated_Source\\PSoC5/cytypes.h"
+ 415              		.file 5 "globals.h"
+ 416              		.file 6 "Generated_Source\\PSoC5/core_cm3.h"
+ 417              		.file 7 "BT_protocols.h"
+ 418              		.file 8 "TIA_calibrate.h"
+ 419              		.file 9 "Generated_Source\\PSoC5/AMux_TIA_input.h"
+ 420              		.file 10 "Generated_Source\\PSoC5/TIA.h"
+ 421              		.file 11 "Generated_Source\\PSoC5/VDAC_TIA.h"
+ 422              		.file 12 "Generated_Source\\PSoC5/ADC_SigDel.h"
+ 423              		.file 13 "Generated_Source\\PSoC5/IDAC_calibrate.h"
+ 424              		.file 14 "Generated_Source\\PSoC5/CyLib.h"
+ 425              		.section	.debug_info,"",%progbits
+ 426              	.Ldebug_info0:
+ 427 0000 CD060000 		.4byte	0x6cd
+ 428 0004 0400     		.2byte	0x4
+ 429 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 430 000a 04       		.byte	0x4
+ 431 000b 01       		.uleb128 0x1
+ 432 000c 5A040000 		.4byte	.LASF75
+ 433 0010 0C       		.byte	0xc
+ 434 0011 FD040000 		.4byte	.LASF76
+ 435 0015 B1010000 		.4byte	.LASF77
+ 436 0019 18000000 		.4byte	.Ldebug_ranges0+0x18
+ 437 001d 00000000 		.4byte	0
+ 438 0021 00000000 		.4byte	.Ldebug_line0
+ 439 0025 02       		.uleb128 0x2
+ 440 0026 01       		.byte	0x1
+ 441 0027 06       		.byte	0x6
+ 442 0028 9C020000 		.4byte	.LASF0
+ 443 002c 03       		.uleb128 0x3
+ 444 002d 2A020000 		.4byte	.LASF2
+ 445 0031 02       		.byte	0x2
+ 446 0032 1D       		.byte	0x1d
+ 447 0033 37000000 		.4byte	0x37
+ 448 0037 02       		.uleb128 0x2
+ 449 0038 01       		.byte	0x1
+ 450 0039 08       		.byte	0x8
+ 451 003a 87020000 		.4byte	.LASF1
+ 452 003e 03       		.uleb128 0x3
+ 453 003f 00000000 		.4byte	.LASF3
+ 454 0043 02       		.byte	0x2
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 13
+
+
+ 455 0044 29       		.byte	0x29
+ 456 0045 49000000 		.4byte	0x49
+ 457 0049 02       		.uleb128 0x2
+ 458 004a 02       		.byte	0x2
+ 459 004b 05       		.byte	0x5
+ 460 004c 6E000000 		.4byte	.LASF4
+ 461 0050 03       		.uleb128 0x3
+ 462 0051 E4000000 		.4byte	.LASF5
+ 463 0055 02       		.byte	0x2
+ 464 0056 2B       		.byte	0x2b
+ 465 0057 5B000000 		.4byte	0x5b
+ 466 005b 02       		.uleb128 0x2
+ 467 005c 02       		.byte	0x2
+ 468 005d 07       		.byte	0x7
+ 469 005e 40030000 		.4byte	.LASF6
+ 470 0062 03       		.uleb128 0x3
+ 471 0063 0D040000 		.4byte	.LASF7
+ 472 0067 02       		.byte	0x2
+ 473 0068 3F       		.byte	0x3f
+ 474 0069 6D000000 		.4byte	0x6d
+ 475 006d 02       		.uleb128 0x2
+ 476 006e 04       		.byte	0x4
+ 477 006f 05       		.byte	0x5
+ 478 0070 A8010000 		.4byte	.LASF8
+ 479 0074 02       		.uleb128 0x2
+ 480 0075 04       		.byte	0x4
+ 481 0076 07       		.byte	0x7
+ 482 0077 F4030000 		.4byte	.LASF9
+ 483 007b 02       		.uleb128 0x2
+ 484 007c 08       		.byte	0x8
+ 485 007d 05       		.byte	0x5
+ 486 007e 5F010000 		.4byte	.LASF10
+ 487 0082 02       		.uleb128 0x2
+ 488 0083 08       		.byte	0x8
+ 489 0084 07       		.byte	0x7
+ 490 0085 A8020000 		.4byte	.LASF11
+ 491 0089 04       		.uleb128 0x4
+ 492 008a 04       		.byte	0x4
+ 493 008b 05       		.byte	0x5
+ 494 008c 696E7400 		.ascii	"int\000"
+ 495 0090 02       		.uleb128 0x2
+ 496 0091 04       		.byte	0x4
+ 497 0092 07       		.byte	0x7
+ 498 0093 CC020000 		.4byte	.LASF12
+ 499 0097 03       		.uleb128 0x3
+ 500 0098 2D040000 		.4byte	.LASF13
+ 501 009c 03       		.byte	0x3
+ 502 009d 18       		.byte	0x18
+ 503 009e 2C000000 		.4byte	0x2c
+ 504 00a2 03       		.uleb128 0x3
+ 505 00a3 7E030000 		.4byte	.LASF14
+ 506 00a7 03       		.byte	0x3
+ 507 00a8 20       		.byte	0x20
+ 508 00a9 3E000000 		.4byte	0x3e
+ 509 00ad 03       		.uleb128 0x3
+ 510 00ae D9020000 		.4byte	.LASF15
+ 511 00b2 03       		.byte	0x3
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 14
+
+
+ 512 00b3 24       		.byte	0x24
+ 513 00b4 50000000 		.4byte	0x50
+ 514 00b8 03       		.uleb128 0x3
+ 515 00b9 76030000 		.4byte	.LASF16
+ 516 00bd 03       		.byte	0x3
+ 517 00be 2C       		.byte	0x2c
+ 518 00bf 62000000 		.4byte	0x62
+ 519 00c3 05       		.uleb128 0x5
+ 520 00c4 04010000 		.4byte	.LASF17
+ 521 00c8 04       		.byte	0x4
+ 522 00c9 E901     		.2byte	0x1e9
+ 523 00cb 37000000 		.4byte	0x37
+ 524 00cf 05       		.uleb128 0x5
+ 525 00d0 40000000 		.4byte	.LASF18
+ 526 00d4 04       		.byte	0x4
+ 527 00d5 EF01     		.2byte	0x1ef
+ 528 00d7 DB000000 		.4byte	0xdb
+ 529 00db 02       		.uleb128 0x2
+ 530 00dc 04       		.byte	0x4
+ 531 00dd 04       		.byte	0x4
+ 532 00de 3D010000 		.4byte	.LASF19
+ 533 00e2 02       		.uleb128 0x2
+ 534 00e3 08       		.byte	0x8
+ 535 00e4 04       		.byte	0x4
+ 536 00e5 06040000 		.4byte	.LASF20
+ 537 00e9 02       		.uleb128 0x2
+ 538 00ea 01       		.byte	0x1
+ 539 00eb 08       		.byte	0x8
+ 540 00ec 5E030000 		.4byte	.LASF21
+ 541 00f0 05       		.uleb128 0x5
+ 542 00f1 63030000 		.4byte	.LASF22
+ 543 00f5 04       		.byte	0x4
+ 544 00f6 8B02     		.2byte	0x28b
+ 545 00f8 74000000 		.4byte	0x74
+ 546 00fc 02       		.uleb128 0x2
+ 547 00fd 08       		.byte	0x8
+ 548 00fe 04       		.byte	0x4
+ 549 00ff 5F020000 		.4byte	.LASF23
+ 550 0103 02       		.uleb128 0x2
+ 551 0104 04       		.byte	0x4
+ 552 0105 07       		.byte	0x7
+ 553 0106 91000000 		.4byte	.LASF24
+ 554 010a 06       		.uleb128 0x6
+ 555 010b 97000000 		.4byte	0x97
+ 556 010f 06       		.uleb128 0x6
+ 557 0110 AD000000 		.4byte	0xad
+ 558 0114 07       		.uleb128 0x7
+ 559 0115 6D010000 		.4byte	.LASF25
+ 560 0119 01       		.byte	0x1
+ 561 011a A6       		.byte	0xa6
+ 562 011b 00000000 		.4byte	.LFB66
+ 563 011f 16000000 		.4byte	.LFE66-.LFB66
+ 564 0123 01       		.uleb128 0x1
+ 565 0124 9C       		.byte	0x9c
+ 566 0125 58010000 		.4byte	0x158
+ 567 0129 08       		.uleb128 0x8
+ 568 012a 08000000 		.4byte	.LVL0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 15
+
+
+ 569 012e 2B060000 		.4byte	0x62b
+ 570 0132 3C010000 		.4byte	0x13c
+ 571 0136 09       		.uleb128 0x9
+ 572 0137 01       		.uleb128 0x1
+ 573 0138 50       		.byte	0x50
+ 574 0139 01       		.uleb128 0x1
+ 575 013a 30       		.byte	0x30
+ 576 013b 00       		.byte	0
+ 577 013c 0A       		.uleb128 0xa
+ 578 013d 0C000000 		.4byte	.LVL1
+ 579 0141 36060000 		.4byte	0x636
+ 580 0145 0A       		.uleb128 0xa
+ 581 0146 10000000 		.4byte	.LVL2
+ 582 014a 41060000 		.4byte	0x641
+ 583 014e 0A       		.uleb128 0xa
+ 584 014f 14000000 		.4byte	.LVL3
+ 585 0153 4C060000 		.4byte	0x64c
+ 586 0157 00       		.byte	0
+ 587 0158 07       		.uleb128 0x7
+ 588 0159 E5030000 		.4byte	.LASF26
+ 589 015d 01       		.byte	0x1
+ 590 015e 8E       		.byte	0x8e
+ 591 015f 00000000 		.4byte	.LFB65
+ 592 0163 4C000000 		.4byte	.LFE65-.LFB65
+ 593 0167 01       		.uleb128 0x1
+ 594 0168 9C       		.byte	0x9c
+ 595 0169 C7010000 		.4byte	0x1c7
+ 596 016d 0B       		.uleb128 0xb
+ 597 016e A7030000 		.4byte	.LASF27
+ 598 0172 01       		.byte	0x1
+ 599 0173 8E       		.byte	0x8e
+ 600 0174 AD000000 		.4byte	0xad
+ 601 0178 00000000 		.4byte	.LLST0
+ 602 017c 0B       		.uleb128 0xb
+ 603 017d F9000000 		.4byte	.LASF28
+ 604 0181 01       		.byte	0x1
+ 605 0182 8E       		.byte	0x8e
+ 606 0183 C3000000 		.4byte	0xc3
+ 607 0187 21000000 		.4byte	.LLST1
+ 608 018b 08       		.uleb128 0x8
+ 609 018c 0C000000 		.4byte	.LVL6
+ 610 0190 57060000 		.4byte	0x657
+ 611 0194 A0010000 		.4byte	0x1a0
+ 612 0198 09       		.uleb128 0x9
+ 613 0199 01       		.uleb128 0x1
+ 614 019a 50       		.byte	0x50
+ 615 019b 03       		.uleb128 0x3
+ 616 019c F3       		.byte	0xf3
+ 617 019d 01       		.uleb128 0x1
+ 618 019e 50       		.byte	0x50
+ 619 019f 00       		.byte	0
+ 620 01a0 08       		.uleb128 0x8
+ 621 01a1 12000000 		.4byte	.LVL7
+ 622 01a5 62060000 		.4byte	0x662
+ 623 01a9 B4010000 		.4byte	0x1b4
+ 624 01ad 09       		.uleb128 0x9
+ 625 01ae 01       		.uleb128 0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 16
+
+
+ 626 01af 50       		.byte	0x50
+ 627 01b0 02       		.uleb128 0x2
+ 628 01b1 08       		.byte	0x8
+ 629 01b2 64       		.byte	0x64
+ 630 01b3 00       		.byte	0
+ 631 01b4 0A       		.uleb128 0xa
+ 632 01b5 16000000 		.4byte	.LVL8
+ 633 01b9 6D060000 		.4byte	0x66d
+ 634 01bd 0A       		.uleb128 0xa
+ 635 01be 1E000000 		.4byte	.LVL9
+ 636 01c2 6D060000 		.4byte	0x66d
+ 637 01c6 00       		.byte	0
+ 638 01c7 07       		.uleb128 0x7
+ 639 01c8 48000000 		.4byte	.LASF29
+ 640 01cc 01       		.byte	0x1
+ 641 01cd B7       		.byte	0xb7
+ 642 01ce 00000000 		.4byte	.LFB67
+ 643 01d2 1A000000 		.4byte	.LFE67-.LFB67
+ 644 01d6 01       		.uleb128 0x1
+ 645 01d7 9C       		.byte	0x9c
+ 646 01d8 14020000 		.4byte	0x214
+ 647 01dc 08       		.uleb128 0x8
+ 648 01dd 08000000 		.4byte	.LVL10
+ 649 01e1 2B060000 		.4byte	0x62b
+ 650 01e5 EF010000 		.4byte	0x1ef
+ 651 01e9 09       		.uleb128 0x9
+ 652 01ea 01       		.uleb128 0x1
+ 653 01eb 50       		.byte	0x50
+ 654 01ec 01       		.uleb128 0x1
+ 655 01ed 31       		.byte	0x31
+ 656 01ee 00       		.byte	0
+ 657 01ef 0A       		.uleb128 0xa
+ 658 01f0 0C000000 		.4byte	.LVL11
+ 659 01f4 78060000 		.4byte	0x678
+ 660 01f8 0A       		.uleb128 0xa
+ 661 01f9 10000000 		.4byte	.LVL12
+ 662 01fd 83060000 		.4byte	0x683
+ 663 0201 0A       		.uleb128 0xa
+ 664 0202 14000000 		.4byte	.LVL13
+ 665 0206 8E060000 		.4byte	0x68e
+ 666 020a 0A       		.uleb128 0xa
+ 667 020b 18000000 		.4byte	.LVL14
+ 668 020f 99060000 		.4byte	0x699
+ 669 0213 00       		.byte	0
+ 670 0214 0C       		.uleb128 0xc
+ 671 0215 B2030000 		.4byte	.LASF78
+ 672 0219 01       		.byte	0x1
+ 673 021a 31       		.byte	0x31
+ 674 021b 00000000 		.4byte	.LFB64
+ 675 021f 08010000 		.4byte	.LFE64-.LFB64
+ 676 0223 01       		.uleb128 0x1
+ 677 0224 9C       		.byte	0x9c
+ 678 0225 0F040000 		.4byte	0x40f
+ 679 0229 0B       		.uleb128 0xb
+ 680 022a 78000000 		.4byte	.LASF30
+ 681 022e 01       		.byte	0x1
+ 682 022f 31       		.byte	0x31
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 17
+
+
+ 683 0230 C3000000 		.4byte	0xc3
+ 684 0234 42000000 		.4byte	.LLST2
+ 685 0238 0D       		.uleb128 0xd
+ 686 0239 1F010000 		.4byte	.LASF31
+ 687 023d 01       		.byte	0x1
+ 688 023e 39       		.byte	0x39
+ 689 023f AD000000 		.4byte	0xad
+ 690 0243 63000000 		.4byte	.LLST3
+ 691 0247 0E       		.uleb128 0xe
+ 692 0248 F0040000 		.4byte	.LASF32
+ 693 024c 01       		.byte	0x1
+ 694 024d 3B       		.byte	0x3b
+ 695 024e AD000000 		.4byte	0xad
+ 696 0252 00       		.byte	0
+ 697 0253 0E       		.uleb128 0xe
+ 698 0254 9A000000 		.4byte	.LASF33
+ 699 0258 01       		.byte	0x1
+ 700 0259 3F       		.byte	0x3f
+ 701 025a 97000000 		.4byte	0x97
+ 702 025e 02       		.byte	0x2
+ 703 025f 0D       		.uleb128 0xd
+ 704 0260 C0030000 		.4byte	.LASF34
+ 705 0264 01       		.byte	0x1
+ 706 0265 46       		.byte	0x46
+ 707 0266 CF000000 		.4byte	0xcf
+ 708 026a 76000000 		.4byte	.LLST4
+ 709 026e 0D       		.uleb128 0xd
+ 710 026f 61000000 		.4byte	.LASF35
+ 711 0273 01       		.byte	0x1
+ 712 0274 47       		.byte	0x47
+ 713 0275 89000000 		.4byte	0x89
+ 714 0279 89000000 		.4byte	.LLST5
+ 715 027d 0F       		.uleb128 0xf
+ 716 027e 00000000 		.4byte	.Ldebug_ranges0+0
+ 717 0282 BC020000 		.4byte	0x2bc
+ 718 0286 10       		.uleb128 0x10
+ 719 0287 6900     		.ascii	"i\000"
+ 720 0289 01       		.byte	0x1
+ 721 028a 67       		.byte	0x67
+ 722 028b 89000000 		.4byte	0x89
+ 723 028f A7000000 		.4byte	.LLST6
+ 724 0293 11       		.uleb128 0x11
+ 725 0294 9E000000 		.4byte	.LBB3
+ 726 0298 1A000000 		.4byte	.LBE3-.LBB3
+ 727 029c 0D       		.uleb128 0xd
+ 728 029d D2030000 		.4byte	.LASF36
+ 729 02a1 01       		.byte	0x1
+ 730 02a2 68       		.byte	0x68
+ 731 02a3 97000000 		.4byte	0x97
+ 732 02a7 DD000000 		.4byte	.LLST7
+ 733 02ab 0D       		.uleb128 0xd
+ 734 02ac 03020000 		.4byte	.LASF37
+ 735 02b0 01       		.byte	0x1
+ 736 02b1 69       		.byte	0x69
+ 737 02b2 97000000 		.4byte	0x97
+ 738 02b6 F0000000 		.4byte	.LLST8
+ 739 02ba 00       		.byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 18
+
+
+ 740 02bb 00       		.byte	0
+ 741 02bc 12       		.uleb128 0x12
+ 742 02bd CC000000 		.4byte	.LBB5
+ 743 02c1 1A000000 		.4byte	.LBE5-.LBB5
+ 744 02c5 FF020000 		.4byte	0x2ff
+ 745 02c9 10       		.uleb128 0x10
+ 746 02ca 6900     		.ascii	"i\000"
+ 747 02cc 01       		.byte	0x1
+ 748 02cd 70       		.byte	0x70
+ 749 02ce 89000000 		.4byte	0x89
+ 750 02d2 03010000 		.4byte	.LLST9
+ 751 02d6 11       		.uleb128 0x11
+ 752 02d7 CC000000 		.4byte	.LBB6
+ 753 02db 16000000 		.4byte	.LBE6-.LBB6
+ 754 02df 0D       		.uleb128 0xd
+ 755 02e0 D2030000 		.4byte	.LASF36
+ 756 02e4 01       		.byte	0x1
+ 757 02e5 71       		.byte	0x71
+ 758 02e6 97000000 		.4byte	0x97
+ 759 02ea 2E010000 		.4byte	.LLST10
+ 760 02ee 0D       		.uleb128 0xd
+ 761 02ef 03020000 		.4byte	.LASF37
+ 762 02f3 01       		.byte	0x1
+ 763 02f4 72       		.byte	0x72
+ 764 02f5 97000000 		.4byte	0x97
+ 765 02f9 41010000 		.4byte	.LLST11
+ 766 02fd 00       		.byte	0
+ 767 02fe 00       		.byte	0
+ 768 02ff 0A       		.uleb128 0xa
+ 769 0300 08000000 		.4byte	.LVL16
+ 770 0304 A4060000 		.4byte	0x6a4
+ 771 0308 08       		.uleb128 0x8
+ 772 0309 0E000000 		.4byte	.LVL17
+ 773 030d 57060000 		.4byte	0x657
+ 774 0311 1B030000 		.4byte	0x31b
+ 775 0315 09       		.uleb128 0x9
+ 776 0316 01       		.uleb128 0x1
+ 777 0317 50       		.byte	0x50
+ 778 0318 01       		.uleb128 0x1
+ 779 0319 30       		.byte	0x30
+ 780 031a 00       		.byte	0
+ 781 031b 0A       		.uleb128 0xa
+ 782 031c 12000000 		.4byte	.LVL18
+ 783 0320 14010000 		.4byte	0x114
+ 784 0324 08       		.uleb128 0x8
+ 785 0325 18000000 		.4byte	.LVL19
+ 786 0329 62060000 		.4byte	0x662
+ 787 032d 38030000 		.4byte	0x338
+ 788 0331 09       		.uleb128 0x9
+ 789 0332 01       		.uleb128 0x1
+ 790 0333 50       		.byte	0x50
+ 791 0334 02       		.uleb128 0x2
+ 792 0335 08       		.byte	0x8
+ 793 0336 64       		.byte	0x64
+ 794 0337 00       		.byte	0
+ 795 0338 0A       		.uleb128 0xa
+ 796 0339 22000000 		.4byte	.LVL21
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 19
+
+
+ 797 033d AF060000 		.4byte	0x6af
+ 798 0341 08       		.uleb128 0x8
+ 799 0342 2A000000 		.4byte	.LVL22
+ 800 0346 58010000 		.4byte	0x158
+ 801 034a 59030000 		.4byte	0x359
+ 802 034e 09       		.uleb128 0x9
+ 803 034f 01       		.uleb128 0x1
+ 804 0350 50       		.byte	0x50
+ 805 0351 01       		.uleb128 0x1
+ 806 0352 30       		.byte	0x30
+ 807 0353 09       		.uleb128 0x9
+ 808 0354 01       		.uleb128 0x1
+ 809 0355 51       		.byte	0x51
+ 810 0356 01       		.uleb128 0x1
+ 811 0357 32       		.byte	0x32
+ 812 0358 00       		.byte	0
+ 813 0359 08       		.uleb128 0x8
+ 814 035a 56000000 		.4byte	.LVL29
+ 815 035e BA060000 		.4byte	0x6ba
+ 816 0362 6C030000 		.4byte	0x36c
+ 817 0366 09       		.uleb128 0x9
+ 818 0367 01       		.uleb128 0x1
+ 819 0368 50       		.byte	0x50
+ 820 0369 01       		.uleb128 0x1
+ 821 036a 34       		.byte	0x34
+ 822 036b 00       		.byte	0
+ 823 036c 08       		.uleb128 0x8
+ 824 036d 60000000 		.4byte	.LVL30
+ 825 0371 58010000 		.4byte	0x158
+ 826 0375 85030000 		.4byte	0x385
+ 827 0379 09       		.uleb128 0x9
+ 828 037a 01       		.uleb128 0x1
+ 829 037b 50       		.byte	0x50
+ 830 037c 02       		.uleb128 0x2
+ 831 037d 75       		.byte	0x75
+ 832 037e 00       		.sleb128 0
+ 833 037f 09       		.uleb128 0x9
+ 834 0380 01       		.uleb128 0x1
+ 835 0381 51       		.byte	0x51
+ 836 0382 01       		.uleb128 0x1
+ 837 0383 30       		.byte	0x30
+ 838 0384 00       		.byte	0
+ 839 0385 08       		.uleb128 0x8
+ 840 0386 70000000 		.4byte	.LVL32
+ 841 038a 58010000 		.4byte	0x158
+ 842 038e 9E030000 		.4byte	0x39e
+ 843 0392 09       		.uleb128 0x9
+ 844 0393 01       		.uleb128 0x1
+ 845 0394 50       		.byte	0x50
+ 846 0395 02       		.uleb128 0x2
+ 847 0396 74       		.byte	0x74
+ 848 0397 00       		.sleb128 0
+ 849 0398 09       		.uleb128 0x9
+ 850 0399 01       		.uleb128 0x1
+ 851 039a 51       		.byte	0x51
+ 852 039b 01       		.uleb128 0x1
+ 853 039c 31       		.byte	0x31
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 20
+
+
+ 854 039d 00       		.byte	0
+ 855 039e 08       		.uleb128 0x8
+ 856 039f 76000000 		.4byte	.LVL33
+ 857 03a3 BA060000 		.4byte	0x6ba
+ 858 03a7 B1030000 		.4byte	0x3b1
+ 859 03ab 09       		.uleb128 0x9
+ 860 03ac 01       		.uleb128 0x1
+ 861 03ad 50       		.byte	0x50
+ 862 03ae 01       		.uleb128 0x1
+ 863 03af 30       		.byte	0x30
+ 864 03b0 00       		.byte	0
+ 865 03b1 08       		.uleb128 0x8
+ 866 03b2 7E000000 		.4byte	.LVL34
+ 867 03b6 58010000 		.4byte	0x158
+ 868 03ba CA030000 		.4byte	0x3ca
+ 869 03be 09       		.uleb128 0x9
+ 870 03bf 01       		.uleb128 0x1
+ 871 03c0 50       		.byte	0x50
+ 872 03c1 02       		.uleb128 0x2
+ 873 03c2 74       		.byte	0x74
+ 874 03c3 00       		.sleb128 0
+ 875 03c4 09       		.uleb128 0x9
+ 876 03c5 01       		.uleb128 0x1
+ 877 03c6 51       		.byte	0x51
+ 878 03c7 01       		.uleb128 0x1
+ 879 03c8 33       		.byte	0x33
+ 880 03c9 00       		.byte	0
+ 881 03ca 08       		.uleb128 0x8
+ 882 03cb 86000000 		.4byte	.LVL35
+ 883 03cf 58010000 		.4byte	0x158
+ 884 03d3 E3030000 		.4byte	0x3e3
+ 885 03d7 09       		.uleb128 0x9
+ 886 03d8 01       		.uleb128 0x1
+ 887 03d9 50       		.byte	0x50
+ 888 03da 02       		.uleb128 0x2
+ 889 03db 75       		.byte	0x75
+ 890 03dc 00       		.sleb128 0
+ 891 03dd 09       		.uleb128 0x9
+ 892 03de 01       		.uleb128 0x1
+ 893 03df 51       		.byte	0x51
+ 894 03e0 01       		.uleb128 0x1
+ 895 03e1 34       		.byte	0x34
+ 896 03e2 00       		.byte	0
+ 897 03e3 08       		.uleb128 0x8
+ 898 03e4 8C000000 		.4byte	.LVL36
+ 899 03e8 57060000 		.4byte	0x657
+ 900 03ec F6030000 		.4byte	0x3f6
+ 901 03f0 09       		.uleb128 0x9
+ 902 03f1 01       		.uleb128 0x1
+ 903 03f2 50       		.byte	0x50
+ 904 03f3 01       		.uleb128 0x1
+ 905 03f4 30       		.byte	0x30
+ 906 03f5 00       		.byte	0
+ 907 03f6 0A       		.uleb128 0xa
+ 908 03f7 90000000 		.4byte	.LVL37
+ 909 03fb C7010000 		.4byte	0x1c7
+ 910 03ff 13       		.uleb128 0x13
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 21
+
+
+ 911 0400 CA000000 		.4byte	.LVL46
+ 912 0404 C5060000 		.4byte	0x6c5
+ 913 0408 09       		.uleb128 0x9
+ 914 0409 01       		.uleb128 0x1
+ 915 040a 50       		.byte	0x50
+ 916 040b 01       		.uleb128 0x1
+ 917 040c 45       		.byte	0x45
+ 918 040d 00       		.byte	0
+ 919 040e 00       		.byte	0
+ 920 040f 14       		.uleb128 0x14
+ 921 0410 F6020000 		.4byte	.LASF38
+ 922 0414 05       		.byte	0x5
+ 923 0415 B1       		.byte	0xb1
+ 924 0416 0A010000 		.4byte	0x10a
+ 925 041a 05       		.uleb128 0x5
+ 926 041b 03       		.byte	0x3
+ 927 041c 04000000 		.4byte	buffer_index
+ 928 0420 14       		.uleb128 0x14
+ 929 0421 2F000000 		.4byte	.LASF39
+ 930 0425 05       		.byte	0x5
+ 931 0426 B2       		.byte	0xb2
+ 932 0427 0A010000 		.4byte	0x10a
+ 933 042b 05       		.uleb128 0x5
+ 934 042c 03       		.byte	0x3
+ 935 042d 02000000 		.4byte	connection_state
+ 936 0431 14       		.uleb128 0x14
+ 937 0432 34020000 		.4byte	.LASF40
+ 938 0436 05       		.byte	0x5
+ 939 0437 B3       		.byte	0xb3
+ 940 0438 0A010000 		.4byte	0x10a
+ 941 043c 05       		.uleb128 0x5
+ 942 043d 03       		.byte	0x3
+ 943 043e 03000000 		.4byte	input_flag
+ 944 0442 14       		.uleb128 0x14
+ 945 0443 EF000000 		.4byte	.LASF41
+ 946 0447 01       		.byte	0x1
+ 947 0448 15       		.byte	0x15
+ 948 0449 AD000000 		.4byte	0xad
+ 949 044d 05       		.uleb128 0x5
+ 950 044e 03       		.byte	0x3
+ 951 044f 00000000 		.4byte	ADC_value
+ 952 0453 15       		.uleb128 0x15
+ 953 0454 4D040000 		.4byte	.LASF42
+ 954 0458 06       		.byte	0x6
+ 955 0459 1207     		.2byte	0x712
+ 956 045b 5F040000 		.4byte	0x45f
+ 957 045f 06       		.uleb128 0x6
+ 958 0460 B8000000 		.4byte	0xb8
+ 959 0464 16       		.uleb128 0x16
+ 960 0465 AB000000 		.4byte	.LASF43
+ 961 0469 05       		.byte	0x5
+ 962 046a 9A       		.byte	0x9a
+ 963 046b AD000000 		.4byte	0xad
+ 964 046f 05       		.uleb128 0x5
+ 965 0470 03       		.byte	0x3
+ 966 0471 00000000 		.4byte	dac_ground_value
+ 967 0475 16       		.uleb128 0x16
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 22
+
+
+ 968 0476 03030000 		.4byte	.LASF44
+ 969 047a 05       		.byte	0x5
+ 970 047b 9C       		.byte	0x9c
+ 971 047c F0000000 		.4byte	0xf0
+ 972 0480 05       		.uleb128 0x5
+ 973 0481 03       		.byte	0x3
+ 974 0482 00000000 		.4byte	return_value
+ 975 0486 16       		.uleb128 0x16
+ 976 0487 6C030000 		.4byte	.LASF45
+ 977 048b 05       		.byte	0x5
+ 978 048c A1       		.byte	0xa1
+ 979 048d AD000000 		.4byte	0xad
+ 980 0491 05       		.uleb128 0x5
+ 981 0492 03       		.byte	0x3
+ 982 0493 00000000 		.4byte	lut_value
+ 983 0497 17       		.uleb128 0x17
+ 984 0498 0F010000 		.4byte	0x10f
+ 985 049c A8040000 		.4byte	0x4a8
+ 986 04a0 18       		.uleb128 0x18
+ 987 04a1 03010000 		.4byte	0x103
+ 988 04a5 8C13     		.2byte	0x138c
+ 989 04a7 00       		.byte	0
+ 990 04a8 16       		.uleb128 0x16
+ 991 04a9 BF020000 		.4byte	.LASF46
+ 992 04ad 07       		.byte	0x7
+ 993 04ae 2A       		.byte	0x2a
+ 994 04af B9040000 		.4byte	0x4b9
+ 995 04b3 05       		.uleb128 0x5
+ 996 04b4 03       		.byte	0x3
+ 997 04b5 00000000 		.4byte	waveform_lut
+ 998 04b9 06       		.uleb128 0x6
+ 999 04ba 97040000 		.4byte	0x497
+ 1000 04be 16       		.uleb128 0x16
+ 1001 04bf 86030000 		.4byte	.LASF47
+ 1002 04c3 05       		.byte	0x5
+ 1003 04c4 A6       		.byte	0xa6
+ 1004 04c5 AD000000 		.4byte	0xad
+ 1005 04c9 05       		.uleb128 0x5
+ 1006 04ca 03       		.byte	0x3
+ 1007 04cb 00000000 		.4byte	lut_index
+ 1008 04cf 16       		.uleb128 0x16
+ 1009 04d0 35040000 		.4byte	.LASF48
+ 1010 04d4 05       		.byte	0x5
+ 1011 04d5 A7       		.byte	0xa7
+ 1012 04d6 AD000000 		.4byte	0xad
+ 1013 04da 05       		.uleb128 0x5
+ 1014 04db 03       		.byte	0x3
+ 1015 04dc 00000000 		.4byte	lut_length
+ 1016 04e0 17       		.uleb128 0x17
+ 1017 04e1 97000000 		.4byte	0x97
+ 1018 04e5 F0040000 		.4byte	0x4f0
+ 1019 04e9 19       		.uleb128 0x19
+ 1020 04ea 03010000 		.4byte	0x103
+ 1021 04ee 14       		.byte	0x14
+ 1022 04ef 00       		.byte	0
+ 1023 04f0 16       		.uleb128 0x16
+ 1024 04f1 43010000 		.4byte	.LASF49
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 23
+
+
+ 1025 04f5 05       		.byte	0x5
+ 1026 04f6 A9       		.byte	0xa9
+ 1027 04f7 E0040000 		.4byte	0x4e0
+ 1028 04fb 05       		.uleb128 0x5
+ 1029 04fc 03       		.byte	0x3
+ 1030 04fd 00000000 		.4byte	tia_calibration_values
+ 1031 0501 16       		.uleb128 0x16
+ 1032 0502 10030000 		.4byte	.LASF50
+ 1033 0506 05       		.byte	0x5
+ 1034 0507 AC       		.byte	0xac
+ 1035 0508 97000000 		.4byte	0x97
+ 1036 050c 05       		.uleb128 0x5
+ 1037 050d 03       		.byte	0x3
+ 1038 050e 00000000 		.4byte	selected_voltage_source
+ 1039 0512 17       		.uleb128 0x17
+ 1040 0513 0A010000 		.4byte	0x10a
+ 1041 0517 22050000 		.4byte	0x522
+ 1042 051b 19       		.uleb128 0x19
+ 1043 051c 03010000 		.4byte	0x103
+ 1044 0520 13       		.byte	0x13
+ 1045 0521 00       		.byte	0
+ 1046 0522 16       		.uleb128 0x16
+ 1047 0523 1E020000 		.4byte	.LASF51
+ 1048 0527 07       		.byte	0x7
+ 1049 0528 23       		.byte	0x23
+ 1050 0529 33050000 		.4byte	0x533
+ 1051 052d 05       		.uleb128 0x5
+ 1052 052e 03       		.byte	0x3
+ 1053 052f 00000000 		.4byte	data_buffer
+ 1054 0533 06       		.uleb128 0x6
+ 1055 0534 12050000 		.4byte	0x512
+ 1056 0538 16       		.uleb128 0x16
+ 1057 0539 5A010000 		.4byte	.LASF52
+ 1058 053d 07       		.byte	0x7
+ 1059 053e 24       		.byte	0x24
+ 1060 053f 49050000 		.4byte	0x549
+ 1061 0543 05       		.uleb128 0x5
+ 1062 0544 03       		.byte	0x3
+ 1063 0545 00000000 		.4byte	temp
+ 1064 0549 06       		.uleb128 0x6
+ 1065 054a 12050000 		.4byte	0x512
+ 1066 054e 17       		.uleb128 0x17
+ 1067 054f 0A010000 		.4byte	0x10a
+ 1068 0553 5E050000 		.4byte	0x55e
+ 1069 0557 19       		.uleb128 0x19
+ 1070 0558 03010000 		.4byte	0x103
+ 1071 055c 77       		.byte	0x77
+ 1072 055d 00       		.byte	0
+ 1073 055e 16       		.uleb128 0x16
+ 1074 055f 40040000 		.4byte	.LASF53
+ 1075 0563 07       		.byte	0x7
+ 1076 0564 28       		.byte	0x28
+ 1077 0565 6F050000 		.4byte	0x56f
+ 1078 0569 05       		.uleb128 0x5
+ 1079 056a 03       		.byte	0x3
+ 1080 056b 00000000 		.4byte	data_to_send
+ 1081 056f 06       		.uleb128 0x6
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 24
+
+
+ 1082 0570 4E050000 		.4byte	0x54e
+ 1083 0574 17       		.uleb128 0x17
+ 1084 0575 0A010000 		.4byte	0x10a
+ 1085 0579 85050000 		.4byte	0x585
+ 1086 057d 18       		.uleb128 0x18
+ 1087 057e 03010000 		.4byte	0x103
+ 1088 0582 8713     		.2byte	0x1387
+ 1089 0584 00       		.byte	0
+ 1090 0585 16       		.uleb128 0x16
+ 1091 0586 25000000 		.4byte	.LASF54
+ 1092 058a 07       		.byte	0x7
+ 1093 058b 27       		.byte	0x27
+ 1094 058c 96050000 		.4byte	0x596
+ 1095 0590 05       		.uleb128 0x5
+ 1096 0591 03       		.byte	0x3
+ 1097 0592 00000000 		.4byte	data_long
+ 1098 0596 06       		.uleb128 0x6
+ 1099 0597 74050000 		.4byte	0x574
+ 1100 059b 16       		.uleb128 0x16
+ 1101 059c 28030000 		.4byte	.LASF55
+ 1102 05a0 05       		.byte	0x5
+ 1103 05a1 BC       		.byte	0xbc
+ 1104 05a2 97000000 		.4byte	0x97
+ 1105 05a6 05       		.uleb128 0x5
+ 1106 05a7 03       		.byte	0x3
+ 1107 05a8 00000000 		.4byte	finished_procedure_flag
+ 1108 05ac 17       		.uleb128 0x17
+ 1109 05ad AD000000 		.4byte	0xad
+ 1110 05b1 BC050000 		.4byte	0x5bc
+ 1111 05b5 19       		.uleb128 0x19
+ 1112 05b6 03010000 		.4byte	0x103
+ 1113 05ba 09       		.byte	0x9
+ 1114 05bb 00       		.byte	0
+ 1115 05bc 16       		.uleb128 0x16
+ 1116 05bd 98010000 		.4byte	.LASF56
+ 1117 05c1 08       		.byte	0x8
+ 1118 05c2 2A       		.byte	0x2a
+ 1119 05c3 AC050000 		.4byte	0x5ac
+ 1120 05c7 05       		.uleb128 0x5
+ 1121 05c8 03       		.byte	0x3
+ 1122 05c9 00000000 		.4byte	calibrate_array
+ 1123 05cd 16       		.uleb128 0x16
+ 1124 05ce 78000000 		.4byte	.LASF30
+ 1125 05d2 08       		.byte	0x8
+ 1126 05d3 31       		.byte	0x31
+ 1127 05d4 97000000 		.4byte	0x97
+ 1128 05d8 05       		.uleb128 0x5
+ 1129 05d9 03       		.byte	0x3
+ 1130 05da 00000000 		.4byte	TIA_resistor_value_index
+ 1131 05de 17       		.uleb128 0x17
+ 1132 05df EE050000 		.4byte	0x5ee
+ 1133 05e3 EE050000 		.4byte	0x5ee
+ 1134 05e7 19       		.uleb128 0x19
+ 1135 05e8 03010000 		.4byte	0x103
+ 1136 05ec 07       		.byte	0x7
+ 1137 05ed 00       		.byte	0
+ 1138 05ee 1A       		.uleb128 0x1a
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 25
+
+
+ 1139 05ef AD000000 		.4byte	0xad
+ 1140 05f3 16       		.uleb128 0x16
+ 1141 05f4 6B020000 		.4byte	.LASF57
+ 1142 05f8 01       		.byte	0x1
+ 1143 05f9 14       		.byte	0x14
+ 1144 05fa 04060000 		.4byte	0x604
+ 1145 05fe 05       		.uleb128 0x5
+ 1146 05ff 03       		.byte	0x3
+ 1147 0600 00000000 		.4byte	calibrate_TIA_resistor_list
+ 1148 0604 1A       		.uleb128 0x1a
+ 1149 0605 DE050000 		.4byte	0x5de
+ 1150 0609 16       		.uleb128 0x16
+ 1151 060a 95020000 		.4byte	.LASF58
+ 1152 060e 01       		.byte	0x1
+ 1153 060f 17       		.byte	0x17
+ 1154 0610 A2000000 		.4byte	0xa2
+ 1155 0614 05       		.uleb128 0x5
+ 1156 0615 03       		.byte	0x3
+ 1157 0616 00000000 		.4byte	valore
+ 1158 061a 16       		.uleb128 0x16
+ 1159 061b C9030000 		.4byte	.LASF59
+ 1160 061f 01       		.byte	0x1
+ 1161 0620 18       		.byte	0x18
+ 1162 0621 A2000000 		.4byte	0xa2
+ 1163 0625 05       		.uleb128 0x5
+ 1164 0626 03       		.byte	0x3
+ 1165 0627 00000000 		.4byte	valore_s
+ 1166 062b 1B       		.uleb128 0x1b
+ 1167 062c 17040000 		.4byte	.LASF60
+ 1168 0630 17040000 		.4byte	.LASF60
+ 1169 0634 09       		.byte	0x9
+ 1170 0635 57       		.byte	0x57
+ 1171 0636 1B       		.uleb128 0x1b
+ 1172 0637 53030000 		.4byte	.LASF61
+ 1173 063b 53030000 		.4byte	.LASF61
+ 1174 063f 0A       		.byte	0xa
+ 1175 0640 43       		.byte	0x43
+ 1176 0641 1B       		.uleb128 0x1b
+ 1177 0642 BC000000 		.4byte	.LASF62
+ 1178 0646 BC000000 		.4byte	.LASF62
+ 1179 064a 0B       		.byte	0xb
+ 1180 064b 3E       		.byte	0x3e
+ 1181 064c 1B       		.uleb128 0x1b
+ 1182 064d 0C020000 		.4byte	.LASF63
+ 1183 0651 0C020000 		.4byte	.LASF63
+ 1184 0655 0C       		.byte	0xc
+ 1185 0656 4B       		.byte	0x4b
+ 1186 0657 1B       		.uleb128 0x1b
+ 1187 0658 47020000 		.4byte	.LASF64
+ 1188 065c 47020000 		.4byte	.LASF64
+ 1189 0660 0D       		.byte	0xd
+ 1190 0661 41       		.byte	0x41
+ 1191 0662 1B       		.uleb128 0x1b
+ 1192 0663 E8040000 		.4byte	.LASF65
+ 1193 0667 E8040000 		.4byte	.LASF65
+ 1194 066b 0E       		.byte	0xe
+ 1195 066c 76       		.byte	0x76
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 26
+
+
+ 1196 066d 1B       		.uleb128 0x1b
+ 1197 066e 90030000 		.4byte	.LASF66
+ 1198 0672 90030000 		.4byte	.LASF66
+ 1199 0676 0C       		.byte	0xc
+ 1200 0677 41       		.byte	0x41
+ 1201 0678 1B       		.uleb128 0x1b
+ 1202 0679 DB030000 		.4byte	.LASF67
+ 1203 067d DB030000 		.4byte	.LASF67
+ 1204 0681 0A       		.byte	0xa
+ 1205 0682 42       		.byte	0x42
+ 1206 0683 1B       		.uleb128 0x1b
+ 1207 0684 2E010000 		.4byte	.LASF68
+ 1208 0688 2E010000 		.4byte	.LASF68
+ 1209 068c 0B       		.byte	0xb
+ 1210 068d 3D       		.byte	0x3d
+ 1211 068e 1B       		.uleb128 0x1b
+ 1212 068f 87010000 		.4byte	.LASF69
+ 1213 0693 87010000 		.4byte	.LASF69
+ 1214 0697 0C       		.byte	0xc
+ 1215 0698 4A       		.byte	0x4a
+ 1216 0699 1B       		.uleb128 0x1b
+ 1217 069a E2020000 		.4byte	.LASF70
+ 1218 069e E2020000 		.4byte	.LASF70
+ 1219 06a2 0D       		.byte	0xd
+ 1220 06a3 3D       		.byte	0x3d
+ 1221 06a4 1B       		.uleb128 0x1b
+ 1222 06a5 0A010000 		.4byte	.LASF71
+ 1223 06a9 0A010000 		.4byte	.LASF71
+ 1224 06ad 0D       		.byte	0xd
+ 1225 06ae 3C       		.byte	0x3c
+ 1226 06af 1B       		.uleb128 0x1b
+ 1227 06b0 CC000000 		.4byte	.LASF72
+ 1228 06b4 CC000000 		.4byte	.LASF72
+ 1229 06b8 0C       		.byte	0xc
+ 1230 06b9 3D       		.byte	0x3d
+ 1231 06ba 1B       		.uleb128 0x1b
+ 1232 06bb 0A000000 		.4byte	.LASF73
+ 1233 06bf 0A000000 		.4byte	.LASF73
+ 1234 06c3 0D       		.byte	0xd
+ 1235 06c4 3F       		.byte	0x3f
+ 1236 06c5 1B       		.uleb128 0x1b
+ 1237 06c6 3F020000 		.4byte	.LASF74
+ 1238 06ca 3F020000 		.4byte	.LASF74
+ 1239 06ce 07       		.byte	0x7
+ 1240 06cf 15       		.byte	0x15
+ 1241 06d0 00       		.byte	0
+ 1242              		.section	.debug_abbrev,"",%progbits
+ 1243              	.Ldebug_abbrev0:
+ 1244 0000 01       		.uleb128 0x1
+ 1245 0001 11       		.uleb128 0x11
+ 1246 0002 01       		.byte	0x1
+ 1247 0003 25       		.uleb128 0x25
+ 1248 0004 0E       		.uleb128 0xe
+ 1249 0005 13       		.uleb128 0x13
+ 1250 0006 0B       		.uleb128 0xb
+ 1251 0007 03       		.uleb128 0x3
+ 1252 0008 0E       		.uleb128 0xe
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 27
+
+
+ 1253 0009 1B       		.uleb128 0x1b
+ 1254 000a 0E       		.uleb128 0xe
+ 1255 000b 55       		.uleb128 0x55
+ 1256 000c 17       		.uleb128 0x17
+ 1257 000d 11       		.uleb128 0x11
+ 1258 000e 01       		.uleb128 0x1
+ 1259 000f 10       		.uleb128 0x10
+ 1260 0010 17       		.uleb128 0x17
+ 1261 0011 00       		.byte	0
+ 1262 0012 00       		.byte	0
+ 1263 0013 02       		.uleb128 0x2
+ 1264 0014 24       		.uleb128 0x24
+ 1265 0015 00       		.byte	0
+ 1266 0016 0B       		.uleb128 0xb
+ 1267 0017 0B       		.uleb128 0xb
+ 1268 0018 3E       		.uleb128 0x3e
+ 1269 0019 0B       		.uleb128 0xb
+ 1270 001a 03       		.uleb128 0x3
+ 1271 001b 0E       		.uleb128 0xe
+ 1272 001c 00       		.byte	0
+ 1273 001d 00       		.byte	0
+ 1274 001e 03       		.uleb128 0x3
+ 1275 001f 16       		.uleb128 0x16
+ 1276 0020 00       		.byte	0
+ 1277 0021 03       		.uleb128 0x3
+ 1278 0022 0E       		.uleb128 0xe
+ 1279 0023 3A       		.uleb128 0x3a
+ 1280 0024 0B       		.uleb128 0xb
+ 1281 0025 3B       		.uleb128 0x3b
+ 1282 0026 0B       		.uleb128 0xb
+ 1283 0027 49       		.uleb128 0x49
+ 1284 0028 13       		.uleb128 0x13
+ 1285 0029 00       		.byte	0
+ 1286 002a 00       		.byte	0
+ 1287 002b 04       		.uleb128 0x4
+ 1288 002c 24       		.uleb128 0x24
+ 1289 002d 00       		.byte	0
+ 1290 002e 0B       		.uleb128 0xb
+ 1291 002f 0B       		.uleb128 0xb
+ 1292 0030 3E       		.uleb128 0x3e
+ 1293 0031 0B       		.uleb128 0xb
+ 1294 0032 03       		.uleb128 0x3
+ 1295 0033 08       		.uleb128 0x8
+ 1296 0034 00       		.byte	0
+ 1297 0035 00       		.byte	0
+ 1298 0036 05       		.uleb128 0x5
+ 1299 0037 16       		.uleb128 0x16
+ 1300 0038 00       		.byte	0
+ 1301 0039 03       		.uleb128 0x3
+ 1302 003a 0E       		.uleb128 0xe
+ 1303 003b 3A       		.uleb128 0x3a
+ 1304 003c 0B       		.uleb128 0xb
+ 1305 003d 3B       		.uleb128 0x3b
+ 1306 003e 05       		.uleb128 0x5
+ 1307 003f 49       		.uleb128 0x49
+ 1308 0040 13       		.uleb128 0x13
+ 1309 0041 00       		.byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 28
+
+
+ 1310 0042 00       		.byte	0
+ 1311 0043 06       		.uleb128 0x6
+ 1312 0044 35       		.uleb128 0x35
+ 1313 0045 00       		.byte	0
+ 1314 0046 49       		.uleb128 0x49
+ 1315 0047 13       		.uleb128 0x13
+ 1316 0048 00       		.byte	0
+ 1317 0049 00       		.byte	0
+ 1318 004a 07       		.uleb128 0x7
+ 1319 004b 2E       		.uleb128 0x2e
+ 1320 004c 01       		.byte	0x1
+ 1321 004d 03       		.uleb128 0x3
+ 1322 004e 0E       		.uleb128 0xe
+ 1323 004f 3A       		.uleb128 0x3a
+ 1324 0050 0B       		.uleb128 0xb
+ 1325 0051 3B       		.uleb128 0x3b
+ 1326 0052 0B       		.uleb128 0xb
+ 1327 0053 27       		.uleb128 0x27
+ 1328 0054 19       		.uleb128 0x19
+ 1329 0055 11       		.uleb128 0x11
+ 1330 0056 01       		.uleb128 0x1
+ 1331 0057 12       		.uleb128 0x12
+ 1332 0058 06       		.uleb128 0x6
+ 1333 0059 40       		.uleb128 0x40
+ 1334 005a 18       		.uleb128 0x18
+ 1335 005b 9742     		.uleb128 0x2117
+ 1336 005d 19       		.uleb128 0x19
+ 1337 005e 01       		.uleb128 0x1
+ 1338 005f 13       		.uleb128 0x13
+ 1339 0060 00       		.byte	0
+ 1340 0061 00       		.byte	0
+ 1341 0062 08       		.uleb128 0x8
+ 1342 0063 898201   		.uleb128 0x4109
+ 1343 0066 01       		.byte	0x1
+ 1344 0067 11       		.uleb128 0x11
+ 1345 0068 01       		.uleb128 0x1
+ 1346 0069 31       		.uleb128 0x31
+ 1347 006a 13       		.uleb128 0x13
+ 1348 006b 01       		.uleb128 0x1
+ 1349 006c 13       		.uleb128 0x13
+ 1350 006d 00       		.byte	0
+ 1351 006e 00       		.byte	0
+ 1352 006f 09       		.uleb128 0x9
+ 1353 0070 8A8201   		.uleb128 0x410a
+ 1354 0073 00       		.byte	0
+ 1355 0074 02       		.uleb128 0x2
+ 1356 0075 18       		.uleb128 0x18
+ 1357 0076 9142     		.uleb128 0x2111
+ 1358 0078 18       		.uleb128 0x18
+ 1359 0079 00       		.byte	0
+ 1360 007a 00       		.byte	0
+ 1361 007b 0A       		.uleb128 0xa
+ 1362 007c 898201   		.uleb128 0x4109
+ 1363 007f 00       		.byte	0
+ 1364 0080 11       		.uleb128 0x11
+ 1365 0081 01       		.uleb128 0x1
+ 1366 0082 31       		.uleb128 0x31
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 29
+
+
+ 1367 0083 13       		.uleb128 0x13
+ 1368 0084 00       		.byte	0
+ 1369 0085 00       		.byte	0
+ 1370 0086 0B       		.uleb128 0xb
+ 1371 0087 05       		.uleb128 0x5
+ 1372 0088 00       		.byte	0
+ 1373 0089 03       		.uleb128 0x3
+ 1374 008a 0E       		.uleb128 0xe
+ 1375 008b 3A       		.uleb128 0x3a
+ 1376 008c 0B       		.uleb128 0xb
+ 1377 008d 3B       		.uleb128 0x3b
+ 1378 008e 0B       		.uleb128 0xb
+ 1379 008f 49       		.uleb128 0x49
+ 1380 0090 13       		.uleb128 0x13
+ 1381 0091 02       		.uleb128 0x2
+ 1382 0092 17       		.uleb128 0x17
+ 1383 0093 00       		.byte	0
+ 1384 0094 00       		.byte	0
+ 1385 0095 0C       		.uleb128 0xc
+ 1386 0096 2E       		.uleb128 0x2e
+ 1387 0097 01       		.byte	0x1
+ 1388 0098 3F       		.uleb128 0x3f
+ 1389 0099 19       		.uleb128 0x19
+ 1390 009a 03       		.uleb128 0x3
+ 1391 009b 0E       		.uleb128 0xe
+ 1392 009c 3A       		.uleb128 0x3a
+ 1393 009d 0B       		.uleb128 0xb
+ 1394 009e 3B       		.uleb128 0x3b
+ 1395 009f 0B       		.uleb128 0xb
+ 1396 00a0 27       		.uleb128 0x27
+ 1397 00a1 19       		.uleb128 0x19
+ 1398 00a2 11       		.uleb128 0x11
+ 1399 00a3 01       		.uleb128 0x1
+ 1400 00a4 12       		.uleb128 0x12
+ 1401 00a5 06       		.uleb128 0x6
+ 1402 00a6 40       		.uleb128 0x40
+ 1403 00a7 18       		.uleb128 0x18
+ 1404 00a8 9642     		.uleb128 0x2116
+ 1405 00aa 19       		.uleb128 0x19
+ 1406 00ab 01       		.uleb128 0x1
+ 1407 00ac 13       		.uleb128 0x13
+ 1408 00ad 00       		.byte	0
+ 1409 00ae 00       		.byte	0
+ 1410 00af 0D       		.uleb128 0xd
+ 1411 00b0 34       		.uleb128 0x34
+ 1412 00b1 00       		.byte	0
+ 1413 00b2 03       		.uleb128 0x3
+ 1414 00b3 0E       		.uleb128 0xe
+ 1415 00b4 3A       		.uleb128 0x3a
+ 1416 00b5 0B       		.uleb128 0xb
+ 1417 00b6 3B       		.uleb128 0x3b
+ 1418 00b7 0B       		.uleb128 0xb
+ 1419 00b8 49       		.uleb128 0x49
+ 1420 00b9 13       		.uleb128 0x13
+ 1421 00ba 02       		.uleb128 0x2
+ 1422 00bb 17       		.uleb128 0x17
+ 1423 00bc 00       		.byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 30
+
+
+ 1424 00bd 00       		.byte	0
+ 1425 00be 0E       		.uleb128 0xe
+ 1426 00bf 34       		.uleb128 0x34
+ 1427 00c0 00       		.byte	0
+ 1428 00c1 03       		.uleb128 0x3
+ 1429 00c2 0E       		.uleb128 0xe
+ 1430 00c3 3A       		.uleb128 0x3a
+ 1431 00c4 0B       		.uleb128 0xb
+ 1432 00c5 3B       		.uleb128 0x3b
+ 1433 00c6 0B       		.uleb128 0xb
+ 1434 00c7 49       		.uleb128 0x49
+ 1435 00c8 13       		.uleb128 0x13
+ 1436 00c9 1C       		.uleb128 0x1c
+ 1437 00ca 0B       		.uleb128 0xb
+ 1438 00cb 00       		.byte	0
+ 1439 00cc 00       		.byte	0
+ 1440 00cd 0F       		.uleb128 0xf
+ 1441 00ce 0B       		.uleb128 0xb
+ 1442 00cf 01       		.byte	0x1
+ 1443 00d0 55       		.uleb128 0x55
+ 1444 00d1 17       		.uleb128 0x17
+ 1445 00d2 01       		.uleb128 0x1
+ 1446 00d3 13       		.uleb128 0x13
+ 1447 00d4 00       		.byte	0
+ 1448 00d5 00       		.byte	0
+ 1449 00d6 10       		.uleb128 0x10
+ 1450 00d7 34       		.uleb128 0x34
+ 1451 00d8 00       		.byte	0
+ 1452 00d9 03       		.uleb128 0x3
+ 1453 00da 08       		.uleb128 0x8
+ 1454 00db 3A       		.uleb128 0x3a
+ 1455 00dc 0B       		.uleb128 0xb
+ 1456 00dd 3B       		.uleb128 0x3b
+ 1457 00de 0B       		.uleb128 0xb
+ 1458 00df 49       		.uleb128 0x49
+ 1459 00e0 13       		.uleb128 0x13
+ 1460 00e1 02       		.uleb128 0x2
+ 1461 00e2 17       		.uleb128 0x17
+ 1462 00e3 00       		.byte	0
+ 1463 00e4 00       		.byte	0
+ 1464 00e5 11       		.uleb128 0x11
+ 1465 00e6 0B       		.uleb128 0xb
+ 1466 00e7 01       		.byte	0x1
+ 1467 00e8 11       		.uleb128 0x11
+ 1468 00e9 01       		.uleb128 0x1
+ 1469 00ea 12       		.uleb128 0x12
+ 1470 00eb 06       		.uleb128 0x6
+ 1471 00ec 00       		.byte	0
+ 1472 00ed 00       		.byte	0
+ 1473 00ee 12       		.uleb128 0x12
+ 1474 00ef 0B       		.uleb128 0xb
+ 1475 00f0 01       		.byte	0x1
+ 1476 00f1 11       		.uleb128 0x11
+ 1477 00f2 01       		.uleb128 0x1
+ 1478 00f3 12       		.uleb128 0x12
+ 1479 00f4 06       		.uleb128 0x6
+ 1480 00f5 01       		.uleb128 0x1
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 31
+
+
+ 1481 00f6 13       		.uleb128 0x13
+ 1482 00f7 00       		.byte	0
+ 1483 00f8 00       		.byte	0
+ 1484 00f9 13       		.uleb128 0x13
+ 1485 00fa 898201   		.uleb128 0x4109
+ 1486 00fd 01       		.byte	0x1
+ 1487 00fe 11       		.uleb128 0x11
+ 1488 00ff 01       		.uleb128 0x1
+ 1489 0100 31       		.uleb128 0x31
+ 1490 0101 13       		.uleb128 0x13
+ 1491 0102 00       		.byte	0
+ 1492 0103 00       		.byte	0
+ 1493 0104 14       		.uleb128 0x14
+ 1494 0105 34       		.uleb128 0x34
+ 1495 0106 00       		.byte	0
+ 1496 0107 03       		.uleb128 0x3
+ 1497 0108 0E       		.uleb128 0xe
+ 1498 0109 3A       		.uleb128 0x3a
+ 1499 010a 0B       		.uleb128 0xb
+ 1500 010b 3B       		.uleb128 0x3b
+ 1501 010c 0B       		.uleb128 0xb
+ 1502 010d 49       		.uleb128 0x49
+ 1503 010e 13       		.uleb128 0x13
+ 1504 010f 02       		.uleb128 0x2
+ 1505 0110 18       		.uleb128 0x18
+ 1506 0111 00       		.byte	0
+ 1507 0112 00       		.byte	0
+ 1508 0113 15       		.uleb128 0x15
+ 1509 0114 34       		.uleb128 0x34
+ 1510 0115 00       		.byte	0
+ 1511 0116 03       		.uleb128 0x3
+ 1512 0117 0E       		.uleb128 0xe
+ 1513 0118 3A       		.uleb128 0x3a
+ 1514 0119 0B       		.uleb128 0xb
+ 1515 011a 3B       		.uleb128 0x3b
+ 1516 011b 05       		.uleb128 0x5
+ 1517 011c 49       		.uleb128 0x49
+ 1518 011d 13       		.uleb128 0x13
+ 1519 011e 3F       		.uleb128 0x3f
+ 1520 011f 19       		.uleb128 0x19
+ 1521 0120 3C       		.uleb128 0x3c
+ 1522 0121 19       		.uleb128 0x19
+ 1523 0122 00       		.byte	0
+ 1524 0123 00       		.byte	0
+ 1525 0124 16       		.uleb128 0x16
+ 1526 0125 34       		.uleb128 0x34
+ 1527 0126 00       		.byte	0
+ 1528 0127 03       		.uleb128 0x3
+ 1529 0128 0E       		.uleb128 0xe
+ 1530 0129 3A       		.uleb128 0x3a
+ 1531 012a 0B       		.uleb128 0xb
+ 1532 012b 3B       		.uleb128 0x3b
+ 1533 012c 0B       		.uleb128 0xb
+ 1534 012d 49       		.uleb128 0x49
+ 1535 012e 13       		.uleb128 0x13
+ 1536 012f 3F       		.uleb128 0x3f
+ 1537 0130 19       		.uleb128 0x19
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 32
+
+
+ 1538 0131 02       		.uleb128 0x2
+ 1539 0132 18       		.uleb128 0x18
+ 1540 0133 00       		.byte	0
+ 1541 0134 00       		.byte	0
+ 1542 0135 17       		.uleb128 0x17
+ 1543 0136 01       		.uleb128 0x1
+ 1544 0137 01       		.byte	0x1
+ 1545 0138 49       		.uleb128 0x49
+ 1546 0139 13       		.uleb128 0x13
+ 1547 013a 01       		.uleb128 0x1
+ 1548 013b 13       		.uleb128 0x13
+ 1549 013c 00       		.byte	0
+ 1550 013d 00       		.byte	0
+ 1551 013e 18       		.uleb128 0x18
+ 1552 013f 21       		.uleb128 0x21
+ 1553 0140 00       		.byte	0
+ 1554 0141 49       		.uleb128 0x49
+ 1555 0142 13       		.uleb128 0x13
+ 1556 0143 2F       		.uleb128 0x2f
+ 1557 0144 05       		.uleb128 0x5
+ 1558 0145 00       		.byte	0
+ 1559 0146 00       		.byte	0
+ 1560 0147 19       		.uleb128 0x19
+ 1561 0148 21       		.uleb128 0x21
+ 1562 0149 00       		.byte	0
+ 1563 014a 49       		.uleb128 0x49
+ 1564 014b 13       		.uleb128 0x13
+ 1565 014c 2F       		.uleb128 0x2f
+ 1566 014d 0B       		.uleb128 0xb
+ 1567 014e 00       		.byte	0
+ 1568 014f 00       		.byte	0
+ 1569 0150 1A       		.uleb128 0x1a
+ 1570 0151 26       		.uleb128 0x26
+ 1571 0152 00       		.byte	0
+ 1572 0153 49       		.uleb128 0x49
+ 1573 0154 13       		.uleb128 0x13
+ 1574 0155 00       		.byte	0
+ 1575 0156 00       		.byte	0
+ 1576 0157 1B       		.uleb128 0x1b
+ 1577 0158 2E       		.uleb128 0x2e
+ 1578 0159 00       		.byte	0
+ 1579 015a 3F       		.uleb128 0x3f
+ 1580 015b 19       		.uleb128 0x19
+ 1581 015c 3C       		.uleb128 0x3c
+ 1582 015d 19       		.uleb128 0x19
+ 1583 015e 6E       		.uleb128 0x6e
+ 1584 015f 0E       		.uleb128 0xe
+ 1585 0160 03       		.uleb128 0x3
+ 1586 0161 0E       		.uleb128 0xe
+ 1587 0162 3A       		.uleb128 0x3a
+ 1588 0163 0B       		.uleb128 0xb
+ 1589 0164 3B       		.uleb128 0x3b
+ 1590 0165 0B       		.uleb128 0xb
+ 1591 0166 00       		.byte	0
+ 1592 0167 00       		.byte	0
+ 1593 0168 00       		.byte	0
+ 1594              		.section	.debug_loc,"",%progbits
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 33
+
+
+ 1595              	.Ldebug_loc0:
+ 1596              	.LLST0:
+ 1597 0000 00000000 		.4byte	.LVL4
+ 1598 0004 08000000 		.4byte	.LVL5
+ 1599 0008 0100     		.2byte	0x1
+ 1600 000a 50       		.byte	0x50
+ 1601 000b 08000000 		.4byte	.LVL5
+ 1602 000f 4C000000 		.4byte	.LFE65
+ 1603 0013 0400     		.2byte	0x4
+ 1604 0015 F3       		.byte	0xf3
+ 1605 0016 01       		.uleb128 0x1
+ 1606 0017 50       		.byte	0x50
+ 1607 0018 9F       		.byte	0x9f
+ 1608 0019 00000000 		.4byte	0
+ 1609 001d 00000000 		.4byte	0
+ 1610              	.LLST1:
+ 1611 0021 00000000 		.4byte	.LVL4
+ 1612 0025 0B000000 		.4byte	.LVL6-1
+ 1613 0029 0100     		.2byte	0x1
+ 1614 002b 51       		.byte	0x51
+ 1615 002c 0B000000 		.4byte	.LVL6-1
+ 1616 0030 4C000000 		.4byte	.LFE65
+ 1617 0034 0400     		.2byte	0x4
+ 1618 0036 F3       		.byte	0xf3
+ 1619 0037 01       		.uleb128 0x1
+ 1620 0038 51       		.byte	0x51
+ 1621 0039 9F       		.byte	0x9f
+ 1622 003a 00000000 		.4byte	0
+ 1623 003e 00000000 		.4byte	0
+ 1624              	.LLST2:
+ 1625 0042 00000000 		.4byte	.LVL15
+ 1626 0046 07000000 		.4byte	.LVL16-1
+ 1627 004a 0100     		.2byte	0x1
+ 1628 004c 50       		.byte	0x50
+ 1629 004d 07000000 		.4byte	.LVL16-1
+ 1630 0051 08010000 		.4byte	.LFE64
+ 1631 0055 0400     		.2byte	0x4
+ 1632 0057 F3       		.byte	0xf3
+ 1633 0058 01       		.uleb128 0x1
+ 1634 0059 50       		.byte	0x50
+ 1635 005a 9F       		.byte	0x9f
+ 1636 005b 00000000 		.4byte	0
+ 1637 005f 00000000 		.4byte	0
+ 1638              	.LLST3:
+ 1639 0063 1E000000 		.4byte	.LVL20
+ 1640 0067 46000000 		.4byte	.LVL27
+ 1641 006b 0100     		.2byte	0x1
+ 1642 006d 54       		.byte	0x54
+ 1643 006e 00000000 		.4byte	0
+ 1644 0072 00000000 		.4byte	0
+ 1645              	.LLST4:
+ 1646 0076 40000000 		.4byte	.LVL25
+ 1647 007a 43000000 		.4byte	.LVL26-1
+ 1648 007e 0100     		.2byte	0x1
+ 1649 0080 50       		.byte	0x50
+ 1650 0081 00000000 		.4byte	0
+ 1651 0085 00000000 		.4byte	0
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 34
+
+
+ 1652              	.LLST5:
+ 1653 0089 46000000 		.4byte	.LVL27
+ 1654 008d 50000000 		.4byte	.LVL28
+ 1655 0091 0100     		.2byte	0x1
+ 1656 0093 50       		.byte	0x50
+ 1657 0094 50000000 		.4byte	.LVL28
+ 1658 0098 64000000 		.4byte	.LVL31
+ 1659 009c 0100     		.2byte	0x1
+ 1660 009e 54       		.byte	0x54
+ 1661 009f 00000000 		.4byte	0
+ 1662 00a3 00000000 		.4byte	0
+ 1663              	.LLST6:
+ 1664 00a7 9E000000 		.4byte	.LVL38
+ 1665 00ab B2000000 		.4byte	.LVL41
+ 1666 00af 0100     		.2byte	0x1
+ 1667 00b1 53       		.byte	0x53
+ 1668 00b2 B2000000 		.4byte	.LVL41
+ 1669 00b6 B6000000 		.4byte	.LVL42
+ 1670 00ba 0300     		.2byte	0x3
+ 1671 00bc 73       		.byte	0x73
+ 1672 00bd 7F       		.sleb128 -1
+ 1673 00be 9F       		.byte	0x9f
+ 1674 00bf B6000000 		.4byte	.LVL42
+ 1675 00c3 B8000000 		.4byte	.LVL43
+ 1676 00c7 0100     		.2byte	0x1
+ 1677 00c9 53       		.byte	0x53
+ 1678 00ca BA000000 		.4byte	.LVL44
+ 1679 00ce C2000000 		.4byte	.LVL45
+ 1680 00d2 0100     		.2byte	0x1
+ 1681 00d4 53       		.byte	0x53
+ 1682 00d5 00000000 		.4byte	0
+ 1683 00d9 00000000 		.4byte	0
+ 1684              	.LLST7:
+ 1685 00dd A6000000 		.4byte	.LVL39
+ 1686 00e1 B8000000 		.4byte	.LVL43
+ 1687 00e5 0100     		.2byte	0x1
+ 1688 00e7 54       		.byte	0x54
+ 1689 00e8 00000000 		.4byte	0
+ 1690 00ec 00000000 		.4byte	0
+ 1691              	.LLST8:
+ 1692 00f0 A8000000 		.4byte	.LVL40
+ 1693 00f4 B8000000 		.4byte	.LVL43
+ 1694 00f8 0100     		.2byte	0x1
+ 1695 00fa 52       		.byte	0x52
+ 1696 00fb 00000000 		.4byte	0
+ 1697 00ff 00000000 		.4byte	0
+ 1698              	.LLST9:
+ 1699 0103 CC000000 		.4byte	.LVL47
+ 1700 0107 DE000000 		.4byte	.LVL50
+ 1701 010b 0100     		.2byte	0x1
+ 1702 010d 53       		.byte	0x53
+ 1703 010e DE000000 		.4byte	.LVL50
+ 1704 0112 E2000000 		.4byte	.LVL51
+ 1705 0116 0300     		.2byte	0x3
+ 1706 0118 73       		.byte	0x73
+ 1707 0119 7F       		.sleb128 -1
+ 1708 011a 9F       		.byte	0x9f
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 35
+
+
+ 1709 011b E2000000 		.4byte	.LVL51
+ 1710 011f EA000000 		.4byte	.LVL52
+ 1711 0123 0100     		.2byte	0x1
+ 1712 0125 53       		.byte	0x53
+ 1713 0126 00000000 		.4byte	0
+ 1714 012a 00000000 		.4byte	0
+ 1715              	.LLST10:
+ 1716 012e D2000000 		.4byte	.LVL48
+ 1717 0132 E2000000 		.4byte	.LVL51
+ 1718 0136 0100     		.2byte	0x1
+ 1719 0138 50       		.byte	0x50
+ 1720 0139 00000000 		.4byte	0
+ 1721 013d 00000000 		.4byte	0
+ 1722              	.LLST11:
+ 1723 0141 D4000000 		.4byte	.LVL49
+ 1724 0145 E2000000 		.4byte	.LVL51
+ 1725 0149 0100     		.2byte	0x1
+ 1726 014b 54       		.byte	0x54
+ 1727 014c 00000000 		.4byte	0
+ 1728 0150 00000000 		.4byte	0
+ 1729              		.section	.debug_aranges,"",%progbits
+ 1730 0000 34000000 		.4byte	0x34
+ 1731 0004 0200     		.2byte	0x2
+ 1732 0006 00000000 		.4byte	.Ldebug_info0
+ 1733 000a 04       		.byte	0x4
+ 1734 000b 00       		.byte	0
+ 1735 000c 0000     		.2byte	0
+ 1736 000e 0000     		.2byte	0
+ 1737 0010 00000000 		.4byte	.LFB66
+ 1738 0014 16000000 		.4byte	.LFE66-.LFB66
+ 1739 0018 00000000 		.4byte	.LFB65
+ 1740 001c 4C000000 		.4byte	.LFE65-.LFB65
+ 1741 0020 00000000 		.4byte	.LFB67
+ 1742 0024 1A000000 		.4byte	.LFE67-.LFB67
+ 1743 0028 00000000 		.4byte	.LFB64
+ 1744 002c 08010000 		.4byte	.LFE64-.LFB64
+ 1745 0030 00000000 		.4byte	0
+ 1746 0034 00000000 		.4byte	0
+ 1747              		.section	.debug_ranges,"",%progbits
+ 1748              	.Ldebug_ranges0:
+ 1749 0000 9E000000 		.4byte	.LBB2
+ 1750 0004 B8000000 		.4byte	.LBE2
+ 1751 0008 BA000000 		.4byte	.LBB4
+ 1752 000c BE000000 		.4byte	.LBE4
+ 1753 0010 00000000 		.4byte	0
+ 1754 0014 00000000 		.4byte	0
+ 1755 0018 00000000 		.4byte	.LFB66
+ 1756 001c 16000000 		.4byte	.LFE66
+ 1757 0020 00000000 		.4byte	.LFB65
+ 1758 0024 4C000000 		.4byte	.LFE65
+ 1759 0028 00000000 		.4byte	.LFB67
+ 1760 002c 1A000000 		.4byte	.LFE67
+ 1761 0030 00000000 		.4byte	.LFB64
+ 1762 0034 08010000 		.4byte	.LFE64
+ 1763 0038 00000000 		.4byte	0
+ 1764 003c 00000000 		.4byte	0
+ 1765              		.section	.debug_line,"",%progbits
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 36
+
+
+ 1766              	.Ldebug_line0:
+ 1767 0000 82020000 		.section	.debug_str,"MS",%progbits,1
+ 1767      0200E101 
+ 1767      00000201 
+ 1767      FB0E0D00 
+ 1767      01010101 
+ 1768              	.LASF3:
+ 1769 0000 5F5F696E 		.ascii	"__int16_t\000"
+ 1769      7431365F 
+ 1769      7400
+ 1770              	.LASF73:
+ 1771 000a 49444143 		.ascii	"IDAC_calibrate_SetPolarity\000"
+ 1771      5F63616C 
+ 1771      69627261 
+ 1771      74655F53 
+ 1771      6574506F 
+ 1772              	.LASF54:
+ 1773 0025 64617461 		.ascii	"data_long\000"
+ 1773      5F6C6F6E 
+ 1773      6700
+ 1774              	.LASF39:
+ 1775 002f 636F6E6E 		.ascii	"connection_state\000"
+ 1775      65637469 
+ 1775      6F6E5F73 
+ 1775      74617465 
+ 1775      00
+ 1776              	.LASF18:
+ 1777 0040 666C6F61 		.ascii	"float32\000"
+ 1777      74333200 
+ 1778              	.LASF29:
+ 1779 0048 43616C69 		.ascii	"Calibrate_Hardware_Sleep\000"
+ 1779      62726174 
+ 1779      655F4861 
+ 1779      72647761 
+ 1779      72655F53 
+ 1780              	.LASF35:
+ 1781 0061 7472616E 		.ascii	"transfer_int\000"
+ 1781      73666572 
+ 1781      5F696E74 
+ 1781      00
+ 1782              	.LASF4:
+ 1783 006e 73686F72 		.ascii	"short int\000"
+ 1783      7420696E 
+ 1783      7400
+ 1784              	.LASF30:
+ 1785 0078 5449415F 		.ascii	"TIA_resistor_value_index\000"
+ 1785      72657369 
+ 1785      73746F72 
+ 1785      5F76616C 
+ 1785      75655F69 
+ 1786              	.LASF24:
+ 1787 0091 73697A65 		.ascii	"sizetype\000"
+ 1787      74797065 
+ 1787      00
+ 1788              	.LASF33:
+ 1789 009a 4144435F 		.ascii	"ADC_buffer_value\000"
+ 1789      62756666 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 37
+
+
+ 1789      65725F76 
+ 1789      616C7565 
+ 1789      00
+ 1790              	.LASF43:
+ 1791 00ab 6461635F 		.ascii	"dac_ground_value\000"
+ 1791      67726F75 
+ 1791      6E645F76 
+ 1791      616C7565 
+ 1791      00
+ 1792              	.LASF62:
+ 1793 00bc 56444143 		.ascii	"VDAC_TIA_Wakeup\000"
+ 1793      5F544941 
+ 1793      5F57616B 
+ 1793      65757000 
+ 1794              	.LASF72:
+ 1795 00cc 4144435F 		.ascii	"ADC_SigDel_StartConvert\000"
+ 1795      53696744 
+ 1795      656C5F53 
+ 1795      74617274 
+ 1795      436F6E76 
+ 1796              	.LASF5:
+ 1797 00e4 5F5F7569 		.ascii	"__uint16_t\000"
+ 1797      6E743136 
+ 1797      5F7400
+ 1798              	.LASF41:
+ 1799 00ef 4144435F 		.ascii	"ADC_value\000"
+ 1799      76616C75 
+ 1799      6500
+ 1800              	.LASF28:
+ 1801 00f9 49444143 		.ascii	"IDAC_index\000"
+ 1801      5F696E64 
+ 1801      657800
+ 1802              	.LASF17:
+ 1803 0104 75696E74 		.ascii	"uint8\000"
+ 1803      3800
+ 1804              	.LASF71:
+ 1805 010a 49444143 		.ascii	"IDAC_calibrate_Start\000"
+ 1805      5F63616C 
+ 1805      69627261 
+ 1805      74655F53 
+ 1805      74617274 
+ 1806              	.LASF31:
+ 1807 011f 72657369 		.ascii	"resistor_value\000"
+ 1807      73746F72 
+ 1807      5F76616C 
+ 1807      756500
+ 1808              	.LASF68:
+ 1809 012e 56444143 		.ascii	"VDAC_TIA_Sleep\000"
+ 1809      5F544941 
+ 1809      5F536C65 
+ 1809      657000
+ 1810              	.LASF19:
+ 1811 013d 666C6F61 		.ascii	"float\000"
+ 1811      7400
+ 1812              	.LASF49:
+ 1813 0143 7469615F 		.ascii	"tia_calibration_values\000"
+ 1813      63616C69 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 38
+
+
+ 1813      62726174 
+ 1813      696F6E5F 
+ 1813      76616C75 
+ 1814              	.LASF52:
+ 1815 015a 74656D70 		.ascii	"temp\000"
+ 1815      00
+ 1816              	.LASF10:
+ 1817 015f 6C6F6E67 		.ascii	"long long int\000"
+ 1817      206C6F6E 
+ 1817      6720696E 
+ 1817      7400
+ 1818              	.LASF25:
+ 1819 016d 43616C69 		.ascii	"Calibrate_Hardware_Wakeup\000"
+ 1819      62726174 
+ 1819      655F4861 
+ 1819      72647761 
+ 1819      72655F57 
+ 1820              	.LASF69:
+ 1821 0187 4144435F 		.ascii	"ADC_SigDel_Sleep\000"
+ 1821      53696744 
+ 1821      656C5F53 
+ 1821      6C656570 
+ 1821      00
+ 1822              	.LASF56:
+ 1823 0198 63616C69 		.ascii	"calibrate_array\000"
+ 1823      62726174 
+ 1823      655F6172 
+ 1823      72617900 
+ 1824              	.LASF8:
+ 1825 01a8 6C6F6E67 		.ascii	"long int\000"
+ 1825      20696E74 
+ 1825      00
+ 1826              	.LASF77:
+ 1827 01b1 5C5C4D61 		.ascii	"\\\\Mac\\Home\\Desktop\\LAB_TEBS\\_Progetto\\TEBS_G"
+ 1827      635C486F 
+ 1827      6D655C44 
+ 1827      65736B74 
+ 1827      6F705C4C 
+ 1828 01dd 69744875 		.ascii	"itHub\\PSoC_Project\\PSoC_Project.cydsn\000"
+ 1828      625C5053 
+ 1828      6F435F50 
+ 1828      726F6A65 
+ 1828      63745C50 
+ 1829              	.LASF37:
+ 1830 0203 4D53425F 		.ascii	"MSB_data\000"
+ 1830      64617461 
+ 1830      00
+ 1831              	.LASF63:
+ 1832 020c 4144435F 		.ascii	"ADC_SigDel_Wakeup\000"
+ 1832      53696744 
+ 1832      656C5F57 
+ 1832      616B6575 
+ 1832      7000
+ 1833              	.LASF51:
+ 1834 021e 64617461 		.ascii	"data_buffer\000"
+ 1834      5F627566 
+ 1834      66657200 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 39
+
+
+ 1835              	.LASF2:
+ 1836 022a 5F5F7569 		.ascii	"__uint8_t\000"
+ 1836      6E74385F 
+ 1836      7400
+ 1837              	.LASF40:
+ 1838 0234 696E7075 		.ascii	"input_flag\000"
+ 1838      745F666C 
+ 1838      616700
+ 1839              	.LASF74:
+ 1840 023f 77726974 		.ascii	"writeBT\000"
+ 1840      65425400 
+ 1841              	.LASF64:
+ 1842 0247 49444143 		.ascii	"IDAC_calibrate_SetValue\000"
+ 1842      5F63616C 
+ 1842      69627261 
+ 1842      74655F53 
+ 1842      65745661 
+ 1843              	.LASF23:
+ 1844 025f 6C6F6E67 		.ascii	"long double\000"
+ 1844      20646F75 
+ 1844      626C6500 
+ 1845              	.LASF57:
+ 1846 026b 63616C69 		.ascii	"calibrate_TIA_resistor_list\000"
+ 1846      62726174 
+ 1846      655F5449 
+ 1846      415F7265 
+ 1846      73697374 
+ 1847              	.LASF1:
+ 1848 0287 756E7369 		.ascii	"unsigned char\000"
+ 1848      676E6564 
+ 1848      20636861 
+ 1848      7200
+ 1849              	.LASF58:
+ 1850 0295 76616C6F 		.ascii	"valore\000"
+ 1850      726500
+ 1851              	.LASF0:
+ 1852 029c 7369676E 		.ascii	"signed char\000"
+ 1852      65642063 
+ 1852      68617200 
+ 1853              	.LASF11:
+ 1854 02a8 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 1854      206C6F6E 
+ 1854      6720756E 
+ 1854      7369676E 
+ 1854      65642069 
+ 1855              	.LASF46:
+ 1856 02bf 77617665 		.ascii	"waveform_lut\000"
+ 1856      666F726D 
+ 1856      5F6C7574 
+ 1856      00
+ 1857              	.LASF12:
+ 1858 02cc 756E7369 		.ascii	"unsigned int\000"
+ 1858      676E6564 
+ 1858      20696E74 
+ 1858      00
+ 1859              	.LASF15:
+ 1860 02d9 75696E74 		.ascii	"uint16_t\000"
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 40
+
+
+ 1860      31365F74 
+ 1860      00
+ 1861              	.LASF70:
+ 1862 02e2 49444143 		.ascii	"IDAC_calibrate_Stop\000"
+ 1862      5F63616C 
+ 1862      69627261 
+ 1862      74655F53 
+ 1862      746F7000 
+ 1863              	.LASF38:
+ 1864 02f6 62756666 		.ascii	"buffer_index\000"
+ 1864      65725F69 
+ 1864      6E646578 
+ 1864      00
+ 1865              	.LASF44:
+ 1866 0303 72657475 		.ascii	"return_value\000"
+ 1866      726E5F76 
+ 1866      616C7565 
+ 1866      00
+ 1867              	.LASF50:
+ 1868 0310 73656C65 		.ascii	"selected_voltage_source\000"
+ 1868      63746564 
+ 1868      5F766F6C 
+ 1868      74616765 
+ 1868      5F736F75 
+ 1869              	.LASF55:
+ 1870 0328 66696E69 		.ascii	"finished_procedure_flag\000"
+ 1870      73686564 
+ 1870      5F70726F 
+ 1870      63656475 
+ 1870      72655F66 
+ 1871              	.LASF6:
+ 1872 0340 73686F72 		.ascii	"short unsigned int\000"
+ 1872      7420756E 
+ 1872      7369676E 
+ 1872      65642069 
+ 1872      6E7400
+ 1873              	.LASF61:
+ 1874 0353 5449415F 		.ascii	"TIA_Wakeup\000"
+ 1874      57616B65 
+ 1874      757000
+ 1875              	.LASF21:
+ 1876 035e 63686172 		.ascii	"char\000"
+ 1876      00
+ 1877              	.LASF22:
+ 1878 0363 63797374 		.ascii	"cystatus\000"
+ 1878      61747573 
+ 1878      00
+ 1879              	.LASF45:
+ 1880 036c 6C75745F 		.ascii	"lut_value\000"
+ 1880      76616C75 
+ 1880      6500
+ 1881              	.LASF16:
+ 1882 0376 696E7433 		.ascii	"int32_t\000"
+ 1882      325F7400 
+ 1883              	.LASF14:
+ 1884 037e 696E7431 		.ascii	"int16_t\000"
+ 1884      365F7400 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 41
+
+
+ 1885              	.LASF47:
+ 1886 0386 6C75745F 		.ascii	"lut_index\000"
+ 1886      696E6465 
+ 1886      7800
+ 1887              	.LASF66:
+ 1888 0390 4144435F 		.ascii	"ADC_SigDel_GetResult16\000"
+ 1888      53696744 
+ 1888      656C5F47 
+ 1888      65745265 
+ 1888      73756C74 
+ 1889              	.LASF27:
+ 1890 03a7 49444143 		.ascii	"IDAC_value\000"
+ 1890      5F76616C 
+ 1890      756500
+ 1891              	.LASF78:
+ 1892 03b2 63616C69 		.ascii	"calibrate_TIA\000"
+ 1892      62726174 
+ 1892      655F5449 
+ 1892      4100
+ 1893              	.LASF34:
+ 1894 03c0 7472616E 		.ascii	"transfer\000"
+ 1894      73666572 
+ 1894      00
+ 1895              	.LASF59:
+ 1896 03c9 76616C6F 		.ascii	"valore_s\000"
+ 1896      72655F73 
+ 1896      00
+ 1897              	.LASF36:
+ 1898 03d2 4C53425F 		.ascii	"LSB_data\000"
+ 1898      64617461 
+ 1898      00
+ 1899              	.LASF67:
+ 1900 03db 5449415F 		.ascii	"TIA_Sleep\000"
+ 1900      536C6565 
+ 1900      7000
+ 1901              	.LASF26:
+ 1902 03e5 63616C69 		.ascii	"calibrate_step\000"
+ 1902      62726174 
+ 1902      655F7374 
+ 1902      657000
+ 1903              	.LASF9:
+ 1904 03f4 6C6F6E67 		.ascii	"long unsigned int\000"
+ 1904      20756E73 
+ 1904      69676E65 
+ 1904      6420696E 
+ 1904      7400
+ 1905              	.LASF20:
+ 1906 0406 646F7562 		.ascii	"double\000"
+ 1906      6C6500
+ 1907              	.LASF7:
+ 1908 040d 5F5F696E 		.ascii	"__int32_t\000"
+ 1908      7433325F 
+ 1908      7400
+ 1909              	.LASF60:
+ 1910 0417 414D7578 		.ascii	"AMux_TIA_input_Select\000"
+ 1910      5F544941 
+ 1910      5F696E70 
+ARM GAS  C:\Users\ANNASP~1\AppData\Local\Temp\cctwKfdT.s 			page 42
+
+
+ 1910      75745F53 
+ 1910      656C6563 
+ 1911              	.LASF13:
+ 1912 042d 75696E74 		.ascii	"uint8_t\000"
+ 1912      385F7400 
+ 1913              	.LASF48:
+ 1914 0435 6C75745F 		.ascii	"lut_length\000"
+ 1914      6C656E67 
+ 1914      746800
+ 1915              	.LASF53:
+ 1916 0440 64617461 		.ascii	"data_to_send\000"
+ 1916      5F746F5F 
+ 1916      73656E64 
+ 1916      00
+ 1917              	.LASF42:
+ 1918 044d 49544D5F 		.ascii	"ITM_RxBuffer\000"
+ 1918      52784275 
+ 1918      66666572 
+ 1918      00
+ 1919              	.LASF75:
+ 1920 045a 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 1920      43313120 
+ 1920      352E342E 
+ 1920      31203230 
+ 1920      31363036 
+ 1921 048d 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m3 -mthumb -g -O"
+ 1921      20726576 
+ 1921      6973696F 
+ 1921      6E203233 
+ 1921      37373135 
+ 1922 04c0 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 1922      66756E63 
+ 1922      74696F6E 
+ 1922      2D736563 
+ 1922      74696F6E 
+ 1923              	.LASF65:
+ 1924 04e8 43794465 		.ascii	"CyDelay\000"
+ 1924      6C617900 
+ 1925              	.LASF32:
+ 1926 04f0 49444143 		.ascii	"IDAC_setting\000"
+ 1926      5F736574 
+ 1926      74696E67 
+ 1926      00
+ 1927              	.LASF76:
+ 1928 04fd 5449415F 		.ascii	"TIA_calibrate.c\000"
+ 1928      63616C69 
+ 1928      62726174 
+ 1928      652E6300 
+ 1929              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran

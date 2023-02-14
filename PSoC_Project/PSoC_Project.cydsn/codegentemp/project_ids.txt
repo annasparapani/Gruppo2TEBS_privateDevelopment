@@ -1,0 +1,8 @@
+C:\Users\Gabriele\Desktop\LAB\AY2223_I_Project-2\PSoC_Project\PSoC_Project.cydsn\PSoC_Project.cyprj|1d852d77-6ff7-4d53-b75e-c465a09329ee
+C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\default\CyAnnotationLibrary\CyAnnotationLibrary.cylib\CyAnnotationLibrary.cyprj|9d341eb9-5a2f-4349-8008-b537960f5235
+C:\Users\Gabriele\Documents\PSoC Creator\4.4\Downloads ( 4.4).cylib\Downloads ( 4.4).cyprj|12d67573-7830-4da4-8eef-a2c2eb1ed267
+C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\cycomponentlibraryupdates\CyComponentLibraryUpdates.cylib\CyComponentLibraryUpdates.cyprj|3f26b8ab-458f-4a30-9c39-e63eb8edf9f2
+C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\cycomponentlibrary\CyComponentLibrary.cylib\CyComponentLibrary.cyprj|8fa3ffc2-6534-4e4f-a7a8-18bfe02d60bf
+C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\cyprimitives\CyPrimitives.cylib\CyPrimitives.cyprj|b44e4ccf-bf8a-444b-9253-37c09d283559
+C:\Users\Gabriele\Desktop\LAB\AY2223_I_Project-2\PSoC_Project\Amperometry_v059_2_Copy_01.cydsn\Amperometry_v059_2_Copy_01.cyprj|97b42ebb-3b11-4995-a8b5-c506323cab9d
+C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\default\CyReferenceLibrary\CyReferenceLibrary.cylib\CyReferenceLibrary.cyprj|6adbb3f7-def3-4b23-96c9-9aca6d972e6d
