@@ -1,6 +1,8 @@
 # GlucoSense&reg;  Project
 ## LTEBS Group 2 (2022-2023)
 
+> NB this is the **private development** folder to use after the submission of Feb. 13th for further development that's not going to be graded. What we submitted and all the commits history before Feb. 13th is in [**this repo**](https://github.com/ltebs-polimi/AY2223_I_Project-2)
+
 Hi! Welcome to our project repository. 
 We are **Pedro Gianjoppe, Gabriele Paroli, Anna Sparapani** and **Pietro Zerboni** and we worked with or tutor Andrea Rescalli for the "Laboratorio di tecnologie elettroniche e biosensori", a course from professor Cerveri @PoliMi. 
 
