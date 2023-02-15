@@ -260,6 +260,25 @@ def read_PSoC(self, signals): #we can add the parameter signals if we wanna do s
         if char_buffer == b'F':
             logging.info('F')
 
+        elif char_buffer==b'E': #receiving values from PSoC EEPROM
+            '''
+            data_buffer= M + Q + V + CA_period + scan_rate + start_value + end_value + increment + step 
+            '''
+            data_buffer=bytearray()
+
+            while True:
+                char_buffer = self.serial_worker.read(1)
+                data_buffer+=char_buffer
+                if(char_buffer==b'Z'):
+                    break
+
+            if(flag_CV_CA==0): #CV
+                #save CV values self.read_EEPROM_cv(scan_rate, start_value, end_value, increment, step):
+                 self.read_EEPROM_CV(data_buffer[0], data_buffer[1], data_buffer[2], 
+                                     data_buffer[3], data_buffer[4])
+            else : #CA
+                self.read_EEPROM_CA(data_buffer[0], data_buffer[1])
+
         elif char_buffer == b'B':
             logging.info('B')
             self.serial_worker.send(b'DZ') #When B is received (CV parameters are SET), we send the D (to start procedure)
@@ -1096,7 +1115,23 @@ class MainWindow(QMainWindow):
 
 
         #TBD communication with PSoC to read values from EEPROM
-        
+
+    def read_EEPROM_CV(self, scan_rate, start_value, end_value, increment, step):
+        self.scan_rate_data=scan_rate
+        self.scan_rate_field=scan_rate
+
+        self.start_value_data = start_value*10
+        self.start_value_field = start_value*10
+
+        self.end_value_data = end_value*10 
+        self.end_value_data = end_value*10 
+
+        self.pulse_height_data = step
+        self.pulse_height_field=step
+
+        self.pulse_inc_data = increment
+        self.pulse_inc_field = increment
+
         
     def change_type_cv(self):
         """
@@ -1182,7 +1217,7 @@ class MainWindow(QMainWindow):
         self.header_data = b'\x00'#data_buffer[0]
         self.type_ca_data = b'\x00' #data_buffer[1]
         self.duration_data = b'\x03\xe8' #data_buffer[2] e [3]
-        self.pulse_voltage_data = b'\x38' #data_buffer[4] -> 56mV from calibration
+        self.pulse_voltage_data = b'\x82' #data_buffer[4] -> 56mV from calibration
         self.fixed_voltage_data = b'\x7f' #data_buffer[5]
         self.tail_data = b'Z' #data_buffer[5]
 
@@ -1366,11 +1401,16 @@ class MainWindow(QMainWindow):
         self.currentCA_stored = current_axis
         self.timeCA_stored = time_axis
 
+        # Regression line from calibration: 
+        #concentration (mg/dL) = -122.0998 + 368393.2303 * current (mA)
         self.glucoseCA_stored = int(-122.0998 + (368393.2303*current_axis[50]))
+        
         self.glucoseCA_LCD.display(self.glucoseCA_stored)
-
         self.glucose_lcd.display(self.glucoseCA_stored)
 
+        if self.glucoseCA_stored < 0: 
+            self.glucoseCA_LCD.display('Error.')
+            self.glucose_lcd.display('Error')
 
 
     def restore_default_ca(self):
@@ -1389,6 +1429,13 @@ class MainWindow(QMainWindow):
 
         #TBD communication with PSoC to read values from EEPROM
         
+    def read_EEPROM_CA(self, pulse_voltage, period):
+        self.pulse_voltage_data=pulse_voltage
+        self.pulse_voltage_field=pulse_voltage
+
+        self.duration_data = period * 100
+        self.duration_field = period * 100
+        
     
     def save_changes_ca(self):
         """
@@ -1396,7 +1443,7 @@ class MainWindow(QMainWindow):
         """
         self.header_data = b'R' #data_buffer[0] -> EEPROM_mng state
         self.tail_data = b'Z'
-        self.data_buffer = self.header_data + b'\x00' + self.type_ca_data + self.duration_data + self.pulse_voltage_data + self.fixed_voltage_data + self.tail_data
+        self.data_buffer = self.header_data + b'\x00' + self.type_ca_data + self.duration_data/100 + self.pulse_voltage_data + self.fixed_voltage_data + self.tail_data
         logging.info(self.data_buffer)
         self.serial_worker.send(self.data_buffer)
         #TBD communication with PSoC to save values in EEPROM
